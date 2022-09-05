@@ -1,0 +1,3 @@
+[submodule "modules/cva6"]
+	path = modules/cva6
+	url = git@github.com:planvtech/cva6.git
