@@ -481,32 +481,30 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( NB_CORES + 1 ),
+    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
   ) Core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( NB_CORES + 1 ), // IdWidthSlave ?
+    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ), // IdWidthSlave ?
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) CCU_to_Xbar[1:0](); // cores + debug module
 
-  axi_pkg::xbar_rule_64_t [ariane_soc::NB_CORES-1:0] core_addr_map;
+  axi_pkg::xbar_rule_64_t core_addr_map;
 
-  assign core_addr_map = '{
-    '{ idx: ariane_soc::AXI,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       }
-  };
+  assign core_addr_map = '{ idx: 0,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       };
 
   localparam axi_pkg::xbar_cfg_t CORE_AXI_XBAR_CFG = '{
-    NoSlvPorts: NB_CORES,
+    NoSlvPorts: ariane_soc::NB_CORES,
     NoMstPorts: 1,
     MaxMstTrans: 1, // Probably requires update
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: NB_CORES,
-    AxiIdUsedSlvPorts: NB_CORES,
+    AxiIdWidthSlvPorts: ariane_soc::NB_CORES,
+    AxiIdUsedSlvPorts: ariane_soc::NB_CORES,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -517,7 +515,7 @@ module ariane_ccu_multicore_top #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH          ),
     .Cfg            ( CORE_AXI_XBAR_CFG       ),
     .rule_t         ( axi_pkg::xbar_rule_64_t )
-  ) i_axi_xbar (
+  ) i_ccu (
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
@@ -662,11 +660,11 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CoreS
   // ---------------
-  ariane_axi_soc::req_t    axi_ariane_req[NB_CORES-1:0];
-  ariane_axi_soc::resp_t   axi_ariane_resp[NB_CORES-1:0];
-  ariane_rvfi_pkg::rvfi_port_t rvfi[NB_CORES-1:0];
+  ariane_axi_soc::req_t axi_ariane_req [ariane_soc::NB_CORES-1];
+  ariane_axi_soc::resp_t  axi_ariane_resp [ariane_soc::NB_CORES-1];
+  ariane_rvfi_pkg::rvfi_port_t rvfi [ariane_soc::NB_CORES-1];
 
-  for (genvar i = 0; i < NB_CORES; i++) begin
+  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
     ariane #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
@@ -691,8 +689,8 @@ module ariane_ccu_multicore_top #(
       .axi_resp_i           ( axi_ariane_resp[i]  )
     );
 
-    `AXI_ASSIGN_FROM_REQ(Core_to_CCU[i], axi_ariane_req)
-    `AXI_ASSIGN_TO_RESP(axi_ariane_resp, Core_to_CCU[i])
+    `AXI_ASSIGN_FROM_REQ(Core_to_CCU[i], axi_ariane_req[i])
+    `AXI_ASSIGN_TO_RESP(axi_ariane_resp[i], Core_to_CCU[i])
 
   end
 
@@ -700,17 +698,20 @@ module ariane_ccu_multicore_top #(
   // Simulation Helper Functions
   // -------------
   // check for response errors
+  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
+
   always_ff @(posedge clk_i) begin : p_assert
-    if (axi_ariane_req.r_ready &&
-      axi_ariane_resp.r_valid &&
-      axi_ariane_resp.r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+    if (axi_ariane_req[i].r_ready &&
+      axi_ariane_resp[i].r_valid &&
+      axi_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
       $warning("R Response Errored");
     end
-    if (axi_ariane_req.b_ready &&
-      axi_ariane_resp.b_valid &&
-      axi_ariane_resp.b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+    if (axi_ariane_req[i].b_ready &&
+      axi_ariane_resp[i].b_valid &&
+      axi_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
       $warning("B Response Errored");
     end
+  end
   end
 
   rvfi_tracer  #(

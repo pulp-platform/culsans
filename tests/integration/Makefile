@@ -42,7 +42,7 @@ sw : libs/libintegr.a
 CVA6_DIR = ../../modules/cva6
 
 # CVA6 packages
-CVA6_PKG := core/include/$(target)_config_pkg.sv
+CVA6_PKG := core/include/cv64a6_imafdc_sv39_config_pkg.sv
 CVA6_PKG += core/include/riscv_pkg.sv                              \
               corev_apu/riscv-dbg/src/dm_pkg.sv                      \
               core/include/ariane_pkg.sv                             \
@@ -61,7 +61,7 @@ CVA6_PKG += core/include/riscv_pkg.sv                              \
               common/submodules/common_cells/src/cf_math_pkg.sv      \
               core/cvxif_example/include/cvxif_instr_pkg.sv          \
               core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
-CVA6_PKG := $(addprefix $(CVA6_DIR), $(CVA6_PKG))
+CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
 
 # utility modules
 UTIL := core/include/instr_tracer_pkg.sv                              \
@@ -69,7 +69,7 @@ UTIL := core/include/instr_tracer_pkg.sv                              \
         common/local/util/instr_tracer.sv                             \
         corev_apu/tb/common/mock_uart.sv                              \
         common/local/util/sram.sv
-UTIL := $(addprefix $(CVA6_DIR), $(UTIL))
+UTIL := $(addprefix $(CVA6_DIR)/, $(UTIL))
 
 # CVA6 standalone components
 CVA6_SRC := $(filter-out core/ariane_regfile.sv, $(wildcard core/*.sv))                  \
@@ -154,31 +154,31 @@ CVA6_SRC := $(filter-out core/ariane_regfile.sv, $(wildcard core/*.sv))         
 	        corev_apu/tb/common/uart.sv                                                  \
 	        corev_apu/tb/common/SimDTM.sv                                                \
 	        corev_apu/tb/common/SimJTAG.sv
-CVA6_SRC := $(addprefix $(CVA6_DIR), $(CVA6_SRC))
+CVA6_SRC := $(addprefix $(CVA6_DIR)/, $(CVA6_SRC))
 
 CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ corev_apu/register_interface/include/
-CVA6_INCDIR := $(addprefix $(CVA6_DIR), $(RTL_INCDIR))
-CVA6_INCDIR := $(foreach dir, ${RTL_INCDIR}, +incdir+$(dir))
+CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
+CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
 # Culsans components
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
-CULSANS_SRC := $(wildcard $(CULSANS_DIR)/rtl/*.sv)
+CULSANS_SRC := $(wildcard $(CULSANS_DIR)/src/*.sv)
 CULSANS_INCDIR := $(CULSANS_DIR)/include
-CVA6_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
+CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
 # Testbench
 TB_DIR = ./tb
-TB_SRC := c$(wildcard $(TB_DIR)/*.sv)
+TB_SRC := $(wildcard $(TB_DIR)/*.sv)
 
 TOP_LEVEL := culsans_tb
 
-RTL_INCDIR := $(CVA6_INCDIR)
+RTL_INCDIR += $(CVA6_INCDIR)
 RTL_INCDIR += $(CULSANS_INCDIR)
 
 VSIM_LIB = work
 
-VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -permissive +define+$(defines)
+VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
