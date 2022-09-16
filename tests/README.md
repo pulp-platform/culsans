@@ -53,20 +53,21 @@ Within the FPGA regression list, these commands are available:
 
 Within a specific unit-level test:
 
-- `make run`: runs the test
-- `make rungui`: runs the test in GUI mode
+- `make all`: runs the test
+- `make gui`: runs the test in GUI mode
 - `make rtl`: compiles the RTL code
 
 Within a specific integration or performance testcase:
 
 - `make sw`: compiles the C-code for the specific testcase
-- `make run`: runs the testcase
-- `make rungui`: runs the test in GUI mode
+- `make dis`: generates the disassembled file
+- `make all`: runs the testcase
+- `make gui`: runs the test in GUI mode
 
 Within a specific FPGA-based testcase:
 
 - `make sw`: compiles the C-code for the specific testcase
-- `make run`: runs the testcase
+- `make all`: runs the testcase
 
 ## Folders Structure
 
@@ -145,6 +146,6 @@ Note: having a separate function for implementation and usage of the test functi
 
 ### Test evaluation
 
-The execution of each test results in the generation of a `<testname>.rpt` file, which contains information about the result of the test (`PASS` or `FAIL`) and possibly some additional information to help with debugging (e.g. timeout or error code).
+The execution of each test results in the generation of a `result.rpt` file, which contains information about the result of the test (`PASS` or `FAIL`) and possibly some additional information to help with debugging (e.g. timeout or error code).
 
 These files are used when generating the test summary.

@@ -5,7 +5,7 @@ TEST ?= all
 ifeq ($(TEST), all)
 	TEST_SELECT := all
 else
-	TEST_SELECT := TEST=$(TEST)
+	TEST_SELECT := run TEST=$(TEST)
 endif
 
 # Test execution
