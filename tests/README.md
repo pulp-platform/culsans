@@ -54,15 +54,13 @@ Within the FPGA regression list, these commands are available:
 Within a specific unit-level test:
 
 - `make all`: runs the test
-- `make gui`: runs the test in GUI mode
-- `make rtl`: compiles the RTL code
+- `make rtl`: compiles the RTL code; setting GUI=1 runs the test in GUI mode
 
 Within a specific integration or performance testcase:
 
 - `make sw`: compiles the C-code for the specific testcase
 - `make dis`: generates the disassembled file
-- `make all`: runs the testcase
-- `make gui`: runs the test in GUI mode
+- `make all`: runs the testcase; setting GUI=1 runs the test in GUI mode
 
 Within a specific FPGA-based testcase:
 
@@ -105,7 +103,7 @@ Other requirements change dependent on the regression list.
 Each test folder must contain:
 
 - `<testname>.sv`: the testbench file
-- `test.tcl`: a tcl file driving the simulation
+- `sim.tcl`: a tcl file driving the simulation
 
 The testbench file's header must be formatted like this:
 ```
@@ -126,7 +124,7 @@ Each test folder must contain:
 - `<testfunction>.c`: the C-file implementing a test function; there can be multiple test functions in the same testcase
 - `<testfunction>.h`: the header file declaring a test function
 - `main.c`: the C-file using the test function(s)
-- `test.tcl`: a tcl file driving the simulation
+- `sim.tcl`: a tcl file driving the simulation
 
 Note: having a separate function for implementation and usage of the test function can help reusing some test functions among different testcases
 
