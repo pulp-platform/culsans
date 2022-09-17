@@ -579,8 +579,8 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CLINT
   // ---------------
-  logic ipi;
-  logic timer_irq;
+  logic [ariane_soc::NB_CORES-1:0] ipi;
+  logic [ariane_soc::NB_CORES-1:0] timer_irq;
 
   ariane_axi_soc::req_slv_t  axi_clint_req;
   ariane_axi_soc::resp_slv_t axi_clint_resp;
@@ -589,7 +589,7 @@ module ariane_ccu_multicore_top #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH          ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH             ),
     .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave   ),
-    .NR_CORES       ( 1                          ),
+    .NR_CORES       ( ariane_soc::NB_CORES       ),
     .axi_req_t      ( ariane_axi_soc::req_slv_t  ),
     .axi_resp_t     ( ariane_axi_soc::resp_slv_t )
   ) i_clint (
@@ -675,8 +675,8 @@ module ariane_ccu_multicore_top #(
       .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id}    ),
       .irq_i                ( irqs[2*i+1:2*i]     ),
-      .ipi_i                ( ipi                 ),
-      .time_irq_i           ( timer_irq           ),
+      .ipi_i                ( ipi[i]              ),
+      .time_irq_i           ( timer_irq[i]        ),
   `ifdef RVFI_TRACE
       .rvfi_o               ( rvfi[i]             ),
   `endif
