@@ -30,7 +30,7 @@ sw : main.hex
 GUI ?= 0
 
 VSIM_LIB = ../../work
-TOP_LEVEL = culsans_tb_optimized
+TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
 UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW

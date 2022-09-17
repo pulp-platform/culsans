@@ -280,8 +280,8 @@ module ariane_ccu_multicore_top #(
     .data_i     ( dm_slave_rdata            )
   );
 
-  `AXI_ASSIGN_FROM_REQ(CCU_to_Xbar[1], dm_axi_m_req)
-  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, CCU_to_Xbar[1])
+  `AXI_ASSIGN_FROM_REQ(DM_to_xbar[0], dm_axi_m_req)
+  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, DM_to_xbar[0])
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
@@ -491,7 +491,16 @@ module ariane_ccu_multicore_top #(
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ), // IdWidthSlave ?
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) CCU_to_Xbar[1:0](); // cores + debug module
+  ) CCU_to_Xbar[0:0]();
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
+    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ), // IdWidthSlave ?
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+  ) DM_to_xbar[0:0]();
+
+
 
   axi_pkg::xbar_rule_64_t core_addr_map;
 
@@ -521,7 +530,7 @@ module ariane_ccu_multicore_top #(
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
     .slv_ports             ( Core_to_CCU     ),
-    .mst_ports             ( CCU_to_Xbar[0]  ),
+    .mst_ports             ( CCU_to_Xbar  ),
     .addr_map_i            ( core_addr_map   ),
     .en_default_mst_port_i ( '0         ),
     .default_mst_port_i    ( '0         )
@@ -569,7 +578,7 @@ module ariane_ccu_multicore_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( CCU_to_Xbar      ),
+    .slv_ports             ( {CCU_to_Xbar, DM_to_xbar}      ),
     .mst_ports             ( master     ),
     .addr_map_i            ( addr_map   ),
     .en_default_mst_port_i ( '0         ),
@@ -621,7 +630,7 @@ module ariane_ccu_multicore_top #(
   `ifdef SPIKE_TANDEM
     .InclUART     ( 1'b0                     ),
   `else
-    .InclUART     ( 1'b1                     ),
+    .InclUART     ( 1'b0                     ),
   `endif
 `else
     .InclUART     ( 1'b0                     ),
@@ -661,9 +670,9 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CoreS
   // ---------------
-  ariane_axi_soc::req_t axi_ariane_req [ariane_soc::NB_CORES-1];
-  ariane_axi_soc::resp_t  axi_ariane_resp [ariane_soc::NB_CORES-1];
-  ariane_rvfi_pkg::rvfi_port_t rvfi [ariane_soc::NB_CORES-1];
+  ariane_axi_soc::req_t [ariane_soc::NB_CORES-1:0] axi_ariane_req;
+  ariane_axi_soc::resp_t [ariane_soc::NB_CORES-1:0] axi_ariane_resp;
+  ariane_rvfi_pkg::rvfi_port_t [ariane_soc::NB_CORES-1:0] rvfi;
 
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
