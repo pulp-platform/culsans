@@ -27,7 +27,8 @@ module ariane_ccu_multicore_top #(
 `endif
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
-  parameter bit          StallRandomInput  = 1'b0
+  parameter bit          StallRandomInput  = 1'b0,
+  parameter BootAddress = ariane_soc::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
@@ -671,7 +672,7 @@ module ariane_ccu_multicore_top #(
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
-      .boot_addr_i          ( ariane_soc::ROMBase ), // start fetching from ROM
+      .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id}    ),
       .irq_i                ( irqs                ),
       .ipi_i                ( ipi                 ),

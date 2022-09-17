@@ -33,12 +33,13 @@ MEMORY
 
 SECTIONS
 {
+  /* set the base address at the beginnning of the RAM */
+  . = 0x80000000;
 
   /* data segment */
-  . = 0x1000000;
   .data : { *(.data) }
 
-  . = 0x1001000;
+  . = 0x80001000;
   .tohost : { *(.tohost) }
 
   .sdata : {
@@ -71,7 +72,6 @@ SECTIONS
   /* End of uninitalized data segement */
   _end = .;
 
-. = 0x2000000;
 .text.init : { *(.text.init) }
 
 .text : { *(.text) }

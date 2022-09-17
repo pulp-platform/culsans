@@ -20,7 +20,7 @@ dis : main.dis
 
 main.hex : main.riscv
 	riscv64-unknown-elf-objcopy -O verilog main.riscv main.vh
-	../../test_automation/vh2hex.py -i main.vh -o main.hex -p 0x02000000 -d 0x01000000
+	../../test_automation/vh2hex.py -i main.vh -o main.hex -b 0x080000000
 	rm main.vh
 
 sw : main.hex
