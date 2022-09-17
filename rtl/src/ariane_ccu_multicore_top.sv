@@ -610,7 +610,7 @@ module ariane_ccu_multicore_top #(
   // Peripherals
   // ---------------
   logic tx, rx;
-  logic [1:0] irqs;
+  logic [ariane_soc::NumTargets-1:0] irqs;
 
   ariane_peripherals #(
     .AxiAddrWidth ( AXI_ADDRESS_WIDTH        ),
@@ -674,7 +674,7 @@ module ariane_ccu_multicore_top #(
       .rst_ni               ( ndmreset_n          ),
       .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id}    ),
-      .irq_i                ( irqs                ),
+      .irq_i                ( irqs[2*i+1:2*i]     ),
       .ipi_i                ( ipi                 ),
       .time_irq_i           ( timer_irq           ),
   `ifdef RVFI_TRACE
