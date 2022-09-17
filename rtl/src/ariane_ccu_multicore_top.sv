@@ -80,13 +80,6 @@ module ariane_ccu_multicore_top #(
   assign test_en = 1'b0;
 
   AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
-  ) slave[ariane_soc::NrSlaves-1:0]();
-
-  AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
@@ -482,25 +475,23 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ),
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
   ) Core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ), // IdWidthSlave ?
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) CCU_to_Xbar[0:0]();
+  ) CCU_to_xbar[0:0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::NB_CORES + 1 ), // IdWidthSlave ?
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) DM_to_xbar[0:0]();
-
-
 
   axi_pkg::xbar_rule_64_t core_addr_map;
 
@@ -530,7 +521,7 @@ module ariane_ccu_multicore_top #(
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
     .slv_ports             ( Core_to_CCU     ),
-    .mst_ports             ( CCU_to_Xbar  ),
+    .mst_ports             ( CCU_to_xbar  ),
     .addr_map_i            ( core_addr_map   ),
     .en_default_mst_port_i ( '0         ),
     .default_mst_port_i    ( '0         )
@@ -578,7 +569,7 @@ module ariane_ccu_multicore_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( {CCU_to_Xbar, DM_to_xbar}      ),
+    .slv_ports             ( {CCU_to_xbar, DM_to_xbar}      ),
     .mst_ports             ( master     ),
     .addr_map_i            ( addr_map   ),
     .en_default_mst_port_i ( '0         ),
@@ -710,29 +701,29 @@ module ariane_ccu_multicore_top #(
   // check for response errors
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
-  always_ff @(posedge clk_i) begin : p_assert
-    if (axi_ariane_req[i].r_ready &&
-      axi_ariane_resp[i].r_valid &&
-      axi_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
-      $warning("R Response Errored");
+    always_ff @(posedge clk_i) begin : p_assert
+      if (axi_ariane_req[i].r_ready &&
+        axi_ariane_resp[i].r_valid &&
+        axi_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+        $warning("R Response Errored");
+      end
+      if (axi_ariane_req[i].b_ready &&
+        axi_ariane_resp[i].b_valid &&
+        axi_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+        $warning("B Response Errored");
+      end
     end
-    if (axi_ariane_req[i].b_ready &&
-      axi_ariane_resp[i].b_valid &&
-      axi_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
-      $warning("B Response Errored");
-    end
-  end
-  end
 
-  rvfi_tracer  #(
-    .HART_ID(hart_id),
-    .DEBUG_START(0),
-    .DEBUG_STOP(0)
-  ) rvfi_tracer_i (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .rvfi_i(rvfi)
-  );
+    rvfi_tracer  #(
+      .HART_ID(hart_id),
+      .DEBUG_START(0),
+      .DEBUG_STOP(0)
+    ) rvfi_tracer_i (
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),
+      .rvfi_i(rvfi[i])
+    );
+  end
 
 `ifdef AXI_SVA
   // AXI 4 Assertion IP integration - You will need to get your own copy of this IP if you want

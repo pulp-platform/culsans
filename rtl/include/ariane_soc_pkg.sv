@@ -22,8 +22,9 @@ package ariane_soc;
   localparam NB_CORES = 2; // 2~4 number of cores
 
   // 4 is recommended by AXI standard, so lets stick to it, do not change
-  localparam IdWidth   = 4;
-  localparam IdWidthSlave = IdWidth + $clog2(NrSlaves);
+  localparam IdWidth = 4;
+  localparam IdWidthToXbar = IdWidth + $clog2(NB_CORES);
+  localparam IdWidthSlave = IdWidthToXbar + $clog2(NrSlaves);
 
   typedef enum int unsigned {
     DRAM     = 0,
