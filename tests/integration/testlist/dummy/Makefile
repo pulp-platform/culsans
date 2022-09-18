@@ -30,6 +30,8 @@ sw : main.hex
 GUI ?= 0
 
 VSIM_LIB = ../../work
+VERILATOR_LIB = ../../work_verilate
+
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
@@ -44,11 +46,16 @@ else
 endif
 VSIM_CMD = -do $(SIM_TCL)
 
+ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) +permissive $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) +permissive-off | tee sim.log
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 	cat $(TEST_REPORT)
+else
+$(TEST_REPORT): main.riscv
+	$(VERILATOR_LIB)/Variane_ccu_multicore_top 
+endif
 
 all: $(TEST_REPORT)
 

@@ -156,6 +156,9 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(CVA6_DIR)/corev_apu/tb/common/SimJTAG.sv
 #CVA6_SRC := $(addprefix $(CVA6_DIR)/, $(CVA6_SRC))
 
+COPRO_SRC := $(CVA6_DIR)/core/cvxif_example/include/cvxif_instr_pkg.sv \
+             $(wildcard $(CVA6_DIR)/core/cvxif_example/*.sv)
+
 CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ corev_apu/register_interface/include/
 CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
@@ -177,8 +180,34 @@ RTL_INCDIR += $(CVA6_INCDIR)
 RTL_INCDIR += $(CULSANS_INCDIR)
 
 VSIM_LIB = work
+VERILATOR_LIB = work_verilate
 
 VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+
+VERILATOR_CMD := $(VERILATOR)                                                                                 \
+                    $(COPRO_SRC)                                                                                 \
+                    $(CVA6_DIR)/common/local/util/sram.sv                                                        \
+                    $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv                                                 \
+                    +incdir+$(CVA6_DIR)/corev_apu/axi_node                                                       \
+                    --unroll-count 256                                                                           \
+                    -Werror-PINMISSING                                                                           \
+                    -Werror-IMPLICIT                                                                             \
+                    -Wno-fatal                                                                                   \
+                    -Wno-PINCONNECTEMPTY                                                                         \
+                    -Wno-ASSIGNDLY                                                                               \
+                    -Wno-DECLFILENAME                                                                            \
+                    -Wno-UNUSED                                                                                  \
+                    -Wno-UNOPTFLAT                                                                               \
+                    -Wno-BLKANDNBLK                                                                              \
+                    -Wno-style                                                                                   \
+                    --trace --trace-structs,                                                                     \
+                    -Wall --cc  --vpi                                                                            \
+                    $(list_incdir) --top-module ariane_testharness                                               \
+					--threads-dpi none 																			 \
+                    --Mdir $(VERILATOR_LIB) -O3                                                                    \
+                    --exe $(CVA6_DIR)/corev_apu/tb/ariane_tb.cpp $(CVA6_DIR)/corev_apu/tb/dpi/SimDTM.cc $(CVA6_DIR)/corev_apu/tb/dpi/SimJTAG.cc      \
+                    $(CVA6_DIR)/corev_apu/tb/dpi/remote_bitbang.cc $(CVA6_DIR)/corev_apu/tb/dpi/msim_helper.cc 
+
 
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
@@ -195,8 +224,15 @@ $(VSIM_LIB)/.build-tb: $(TB_SRC)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-tb
 
+ifeq ($(VERILATE), 0)
 rtl: $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
+else
+VERILATOR_JOBS = 1
+rtl:
+	$(VERILATOR_CMD)
+	cd $(VERILATOR_LIB) && $(MAKE) -j${VERILATOR_JOBS} -f Variane_ccu_multicore_top.mk
+endif
 
 # Run the test(s)
 
