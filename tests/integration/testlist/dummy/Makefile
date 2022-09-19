@@ -64,6 +64,9 @@ clean:
 	rm -rf main.riscv
 	rm -rf main.dis
 	rm -rf main.hex
+	rm -rf *.log
+	rm -rf *.vcd
 	rm -rf $(TEST_REPORT)
+	rm -rf transcript
 
 .PHONY: all gui sw dis sw clean

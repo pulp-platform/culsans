@@ -4,7 +4,9 @@ main.riscv
 main.vh
 *.hex
 *.log
+*.vcd
 transcript
 work/
 objs/
 libs/
+work_verilate/

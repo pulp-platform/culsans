@@ -259,6 +259,7 @@ clean_sw:
 
 clean_rtl:
 	rm -rf $(VSIM_LIB)
+	rm -rf $(VERILATOR_LIB)
 
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
