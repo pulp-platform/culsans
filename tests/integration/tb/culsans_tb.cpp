@@ -18,12 +18,12 @@ int main(int argc, char** argv, char** env)
     while (sim_time < MAX_SIM_TIME) {
         top->clk_i ^= 1;
         if (sim_time < RST_TIME)
-            top->rstn_i = 0;
+            top->rst_ni = 0;
         else
-            top->rstn_i = 1;
+            top->rst_ni = 1;
         top->eval();
         m_trace->dump(sim_time);
-        if (top->exit_o[0])
+       if (top->exit_o & 0x1)
             break;
         sim_time++;
     }
@@ -31,7 +31,7 @@ int main(int argc, char** argv, char** env)
     m_trace->close();
     if (top->exit_o >> 1) {
         delete top;
-        exit(EXIT_FAILUE);
+        exit(EXIT_FAILURE);
     }
     else {
         delete top;

@@ -53,8 +53,6 @@ CVA6_PKG += core/include/riscv_pkg.sv                              \
               corev_apu/register_interface/src/reg_intf.sv           \
               core/include/axi_intf.sv                               \
               corev_apu/tb/rvfi_pkg.sv                               \
-              corev_apu/tb/ariane_soc_pkg.sv                         \
-              corev_apu/tb/ariane_axi_soc_pkg.sv                     \
               core/include/ariane_axi_pkg.sv                         \
               core/include/std_cache_pkg.sv                          \
               core/fpu/src/fpnew_pkg.sv                              \
@@ -148,12 +146,11 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(CVA6_DIR)/common/local/util/tc_sram_wrapper.sv                                         \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_sram.sv                          \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_clk.sv                           \
-	        $(CVA6_DIR)/corev_apu/tb/ariane_testharness.sv                                           \
-	        $(CVA6_DIR)/corev_apu/tb/ariane_peripherals.sv                                           \
 	        $(CVA6_DIR)/corev_apu/tb/rvfi_tracer.sv                                                  \
-	        $(CVA6_DIR)/corev_apu/tb/common/uart.sv                                                  \
-	        $(CVA6_DIR)/corev_apu/tb/common/SimDTM.sv                                                \
-	        $(CVA6_DIR)/corev_apu/tb/common/SimJTAG.sv
+	        $(CVA6_DIR)/corev_apu/tb/common/uart.sv                                                  
+
+#	        $(CVA6_DIR)/corev_apu/tb/common/SimDTM.sv                                                \
+#	        $(CVA6_DIR)/corev_apu/tb/common/SimJTAG.sv
 #CVA6_SRC := $(addprefix $(CVA6_DIR)/, $(CVA6_SRC))
 
 COPRO_SRC := $(CVA6_DIR)/core/cvxif_example/include/cvxif_instr_pkg.sv \
@@ -163,16 +160,14 @@ CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ co
 CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
-# Culsans components
 CULSANS_DIR := ../../rtl
-CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
-CULSANS_SRC := $(wildcard $(CULSANS_DIR)/src/*.sv)
+CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv) $(CVA6_DIR)/corev_apu/tb/ariane_axi_soc_pkg.sv 
+CULSANS_SRC := $(CVA6_DIR)/corev_apu/tb/ariane_peripherals.sv $(wildcard $(CULSANS_DIR)/src/*.sv)
 CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
-# Testbench
 TB_DIR = ./tb
-TB_SRC := $(wildcard $(TB_DIR)/*.sv)
+TB_SRC := $(wildcard $(TB_DIR)/*.sv)i
 
 TOP_LEVEL := culsans_tb
 
@@ -185,6 +180,7 @@ VERILATOR_LIB = work_verilate
 VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
+                    $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
                     $(COPRO_SRC)                                                                                 \
                     $(CVA6_DIR)/common/local/util/sram.sv                                                        \
                     $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv                                                 \
@@ -200,23 +196,25 @@ VERILATOR_CMD := $(VERILATOR)                                                   
                     -Wno-UNOPTFLAT                                                                               \
                     -Wno-BLKANDNBLK                                                                              \
                     -Wno-style                                                                                   \
-                    --trace --trace-structs,                                                                     \
+                    --trace                                                                     \
+                    -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_ROOT)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_ROOT)/lib -lpthread" \
+                    -CFLAGS "-I$(RISCV)/include -I$(SPIKE_ROOT) -I$(SPIKE_ROOT)/include -std=c++11 -I$(SPIKE_ROOT)/include -I$(CVA6_DIR)/corev_apu/tb/dpi -O3 -DVL_DEBUG"       \
                     -Wall --cc  --vpi                                                                            \
-                    $(list_incdir) --top-module ariane_testharness                                               \
+                    $(RTL_INCDIR) --top-module ariane_ccu_multicore_top                                         \
 					--threads-dpi none 																			 \
                     --Mdir $(VERILATOR_LIB) -O3                                                                    \
-                    --exe $(CVA6_DIR)/corev_apu/tb/ariane_tb.cpp $(CVA6_DIR)/corev_apu/tb/dpi/SimDTM.cc $(CVA6_DIR)/corev_apu/tb/dpi/SimJTAG.cc      \
-                    $(CVA6_DIR)/corev_apu/tb/dpi/remote_bitbang.cc $(CVA6_DIR)/corev_apu/tb/dpi/msim_helper.cc 
-
+                    --exe ./tb/culsans_tb.cpp 
+#                    $(CVA6_DIR)/corev_apu/tb/dpi/SimDTM.cc $(CVA6_DIR)/corev_apu/tb/dpi/SimJTAG.cc \
+#                    $(CVA6_DIR)/corev_apu/tb/dpi/remote_bitbang.cc $(CVA6_DIR)/corev_apu/tb/dpi/msim_helper.cc 
 
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
-	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(CULSANS_PKG) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-cva6-srcs
 
 $(VSIM_LIB)/.build-culsans-srcs: $(CULSANS_PKG) $(CULSANS_SRC)
-	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
+#	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-culsans-srcs
 

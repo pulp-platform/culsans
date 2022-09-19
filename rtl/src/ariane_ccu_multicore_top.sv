@@ -23,12 +23,12 @@ module ariane_ccu_multicore_top #(
 `ifdef DROMAJO
   parameter bit          InclSimDTM        = 1'b0,
 `else
-  parameter bit          InclSimDTM        = 1'b1,
+  parameter bit          InclSimDTM        = 1'b0,
 `endif
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0,
-  parameter BootAddress = ariane_soc::ROMBase
+  parameter int unsigned BootAddress = 64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //ariane_soc::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
@@ -82,6 +82,13 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+  ) to_xbar[1:0]();
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) master[ariane_soc::NB_PERIPHERALS-1:0]();
@@ -113,7 +120,7 @@ module ariane_ccu_multicore_top #(
   assign exit_o              = (jtag_enable[0]) ? jtag_exit          : dmi_exit;
   assign jtag_resp_valid     = (jtag_enable[0]) ? debug_resp_valid   : 1'b0;
   assign dmi_resp_valid      = (jtag_enable[0]) ? 1'b0               : debug_resp_valid;
-
+/*
   // SiFive's SimJTAG Module
   // Converts to DPI calls
   SimJTAG i_SimJTAG (
@@ -129,7 +136,7 @@ module ariane_ccu_multicore_top #(
     .jtag_TDO_driven      ( jtag_TDO_driven      ),
     .exit                 ( jtag_exit            )
   );
-
+*/
   dmi_jtag i_dmi_jtag (
     .clk_i            ( clk_i           ),
     .rst_ni           ( rst_ni          ),
@@ -273,8 +280,8 @@ module ariane_ccu_multicore_top #(
     .data_i     ( dm_slave_rdata            )
   );
 
-  `AXI_ASSIGN_FROM_REQ(DM_to_xbar[0], dm_axi_m_req)
-  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, DM_to_xbar[0])
+  `AXI_ASSIGN_FROM_REQ(to_xbar[0], dm_axi_m_req)
+  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, to_xbar[0])
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
@@ -477,21 +484,7 @@ module ariane_ccu_multicore_top #(
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
     .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
-  ) Core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) CCU_to_xbar[0:0]();
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) DM_to_xbar[0:0]();
+  ) core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
 
   axi_pkg::xbar_rule_64_t core_addr_map;
 
@@ -520,8 +513,8 @@ module ariane_ccu_multicore_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( Core_to_CCU     ),
-    .mst_ports             ( CCU_to_xbar  ),
+    .slv_ports             ( core_to_CCU     ),
+    .mst_ports             ( to_xbar[1:1]  ),
     .addr_map_i            ( core_addr_map   ),
     .en_default_mst_port_i ( '0         ),
     .default_mst_port_i    ( '0         )
@@ -569,7 +562,7 @@ module ariane_ccu_multicore_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( {CCU_to_xbar, DM_to_xbar}      ),
+    .slv_ports             ( to_xbar    ),
     .mst_ports             ( master     ),
     .addr_map_i            ( addr_map   ),
     .en_default_mst_port_i ( '0         ),
@@ -690,8 +683,8 @@ module ariane_ccu_multicore_top #(
       .axi_resp_i           ( axi_ariane_resp[i]  )
     );
 
-    `AXI_ASSIGN_FROM_REQ(Core_to_CCU[i], axi_ariane_req[i])
-    `AXI_ASSIGN_TO_RESP(axi_ariane_resp[i], Core_to_CCU[i])
+    `AXI_ASSIGN_FROM_REQ(core_to_CCU[i], axi_ariane_req[i])
+    `AXI_ASSIGN_TO_RESP(axi_ariane_resp[i], core_to_CCU[i])
 
   end
 

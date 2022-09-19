@@ -19,12 +19,13 @@ VERILATE ?= 0
 EXECUTABLES = $(GCC) 
 #EXECUTABLES += $(VSIM) 
 ifeq ($(VERILATE), 1)
-        EXECUTABLES += VERILATOR
+#        EXECUTABLES += VERILATOR
 endif
 
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 
 # Common variables
-
+SPIKE_ROOT ?= /opt/riscv-gnu-toolchain/spike/
+RISCV ?= /opt/riscv
 TEST_REPORT = result.rpt

@@ -58,16 +58,16 @@ module culsans_tb ();
     initial begin
         integer file;
         integer error;
-        string  mem_init_file = "main.hex";
+        static string  mem_init_file = "main.hex";
 
         @(negedge rst);
         #1
 
-        file = $fopen(mem_init_file, "r");
-        $ferror(file, error);
-        $fclose(file);
+//        file = $fopen(mem_init_file, "r");
+//        $ferror(file, error);
+//        $fclose(file);
         if (error == 0) begin
-           $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram);
+//           $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram);
         end
 
 
