@@ -180,24 +180,27 @@ VSIM_LIB = work
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
-VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583
+VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
 
-$(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
+$(library):
+	$(VLIB) $(library)
+
+$(VSIM_LIB)/.build-cva6-srcs: $(library) $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-cva6-srcs
 
-$(VSIM_LIB)/.build-culsans-srcs: $(CULSANS_PKG) $(CULSANS_SRC)
+$(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(TB_SRC)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-tb
 
-rtl: $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+rtl: $(library) $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 
 # Run the test(s)
