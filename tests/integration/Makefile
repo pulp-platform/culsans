@@ -26,7 +26,7 @@ libs:
 	mkdir -p $@
 
 $(OBJDIR)/%.o: %.c objs
-	$(GCC) $(SW_INCLUDES) -Werror -c $< -o $@
+	$(GCC) $(SW_INCLUDES) -Werror -falign-functions=32 -falign-jumps=32 -c $< -o $@
 
 # 
 libs/libintegr.a: $(OBJS) libs
