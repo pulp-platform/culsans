@@ -177,7 +177,9 @@ RTL_INCDIR += $(CULSANS_INCDIR)
 VSIM_LIB = work
 VERILATOR_LIB = work_verilate
 
-VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+#VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+#VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
                     $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
@@ -207,23 +209,26 @@ VERILATOR_CMD := $(VERILATOR)                                                   
 #                    $(CVA6_DIR)/corev_apu/tb/dpi/SimDTM.cc $(CVA6_DIR)/corev_apu/tb/dpi/SimJTAG.cc \
 #                    $(CVA6_DIR)/corev_apu/tb/dpi/remote_bitbang.cc $(CVA6_DIR)/corev_apu/tb/dpi/msim_helper.cc 
 
+$(library):
+	$(VLIB) $(library)
+
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
-	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(CULSANS_PKG) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-cva6-srcs
 
-$(VSIM_LIB)/.build-culsans-srcs: $(CULSANS_PKG) $(CULSANS_SRC)
-#	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
+$(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(TB_SRC)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+rtl: $(library) $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1

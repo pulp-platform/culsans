@@ -35,8 +35,10 @@ VERILATOR_LIB = ../../work_verilate
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
-UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
+#UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
 VSIM_FLAGS = -t 1ns -64 -coverage -classdebug
+VSIM_FLAGS = -novopt -t 1ns -64 -suppress 12110
+
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
 else
@@ -49,7 +51,7 @@ VSIM_CMD = -do $(SIM_TCL)
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
-	$(VSIM) +permissive $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) +permissive-off | tee sim.log
+	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 	cat $(TEST_REPORT)
 else
