@@ -17,7 +17,7 @@
 #include <fesvr/elfloader.h>
 #include <fesvr/htif.h>
 
-#define MAX_SIM_TIME 100
+#define MAX_SIM_TIME 100000
 #define RST_TIME 5
 vluint64_t sim_time = 0;
 
@@ -25,20 +25,8 @@ int main(int argc, char** argv, char** env)
 {
     static struct option htif_long_options [] = { HTIF_LONG_OPTIONS };
     struct option * htif_option = &htif_long_options[0];
-    std::string arg = optarg;
     char ** htif_argv = NULL;
-    bool done = false;
-    while (htif_option->name) {
-        if (arg.substr(1, strlen(htif_option->name)) == htif_option->name) {
-            optind--;
-            done = true;
-        }
-        htif_option++;
-    }
-    if (done == false)
-	std::cerr << argv[0] << ": invalid plus-arg (Verilog or HTIF) \""
-                  << arg << "\"\n";
-
+    
     int htif_argc = 1 + argc - optind;
     htif_argv = (char **) malloc((htif_argc) * sizeof (char *));
     htif_argv[0] = argv[0];
@@ -86,5 +74,4 @@ int main(int argc, char** argv, char** env)
         delete top;
         exit(EXIT_SUCCESS);
     }
-        
 }

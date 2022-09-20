@@ -5,6 +5,7 @@ main.vh
 *.hex
 *.log
 *.vcd
+*.dasm
 transcript
 work/
 objs/

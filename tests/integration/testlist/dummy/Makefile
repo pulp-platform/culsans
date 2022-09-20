@@ -66,6 +66,7 @@ clean:
 	rm -rf main.hex
 	rm -rf *.log
 	rm -rf *.vcd
+	rm -rf *.dasm
 	rm -rf $(TEST_REPORT)
 	rm -rf transcript
 

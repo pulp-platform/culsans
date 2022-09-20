@@ -28,7 +28,7 @@ module ariane_ccu_multicore_top #(
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0,
-  parameter int unsigned BootAddress = 64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //64'h8000_0000 //ariane_soc::ROMBase
+  parameter int unsigned BootAddress = 64'h8000_2000 //ariane_soc::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
