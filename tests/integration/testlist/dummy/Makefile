@@ -54,7 +54,7 @@ $(TEST_REPORT): main.hex
 	cat $(TEST_REPORT)
 else
 $(TEST_REPORT): main.riscv
-	$(VERILATOR_LIB)/Variane_ccu_multicore_top 
+	$(VERILATOR_LIB)/Variane_ccu_multicore_top main.riscv
 endif
 
 all: $(TEST_REPORT)

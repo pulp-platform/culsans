@@ -197,7 +197,7 @@ VERILATOR_CMD := $(VERILATOR)                                                   
                     -Wno-BLKANDNBLK                                                                              \
                     -Wno-style                                                                                   \
                     --trace                                                                     \
-                    -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_ROOT)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_ROOT)/lib -lpthread" \
+                    -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_ROOT)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_ROOT)/lib -lfesvr -lpthread" \
                     -CFLAGS "-I$(RISCV)/include -I$(SPIKE_ROOT) -I$(SPIKE_ROOT)/include -std=c++11 -I$(SPIKE_ROOT)/include -I$(CVA6_DIR)/corev_apu/tb/dpi -O3 -DVL_DEBUG"       \
                     -Wall --cc  --vpi                                                                            \
                     $(RTL_INCDIR) --top-module ariane_ccu_multicore_top                                         \

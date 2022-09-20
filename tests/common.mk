@@ -26,6 +26,6 @@ K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
 
 # Common variables
-SPIKE_ROOT ?= /opt/riscv-gnu-toolchain/spike/
+SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
 TEST_REPORT = result.rpt
