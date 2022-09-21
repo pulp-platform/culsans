@@ -167,7 +167,7 @@ CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
 TB_DIR = ./tb
-TB_SRC := $(wildcard $(TB_DIR)/*.sv)i
+TB_SRC := $(wildcard $(TB_DIR)/*.sv)
 
 TOP_LEVEL := culsans_tb
 
