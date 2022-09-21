@@ -36,8 +36,6 @@ module ariane_ccu_multicore_top #(
   output logic [31:0]                    exit_o
 );
 
-  localparam [7:0] hart_id = '0;
-
   // disable test-enable
   logic        test_en;
   logic        ndmreset;
@@ -117,7 +115,7 @@ module ariane_ccu_multicore_top #(
   assign debug_req_valid     = (jtag_enable[0]) ? jtag_req_valid     : dmi_req_valid;
   assign debug_resp_ready    = (jtag_enable[0]) ? jtag_resp_ready    : dmi_resp_ready;
   assign debug_req           = (jtag_enable[0]) ? jtag_dmi_req       : dmi_req;
-  assign exit_o              = (jtag_enable[0]) ? jtag_exit          : dmi_exit;
+//  assign exit_o              = (jtag_enable[0]) ? jtag_exit          : dmi_exit;
   assign jtag_resp_valid     = (jtag_enable[0]) ? debug_resp_valid   : 1'b0;
   assign dmi_resp_valid      = (jtag_enable[0]) ? 1'b0               : debug_resp_valid;
 /*
@@ -280,8 +278,8 @@ module ariane_ccu_multicore_top #(
     .data_i     ( dm_slave_rdata            )
   );
 
-  `AXI_ASSIGN_FROM_REQ(to_xbar[0], dm_axi_m_req)
-  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, to_xbar[0])
+  `AXI_ASSIGN_FROM_REQ(to_xbar[1], dm_axi_m_req)
+  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, to_xbar[1])
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
@@ -475,6 +473,8 @@ module ariane_ccu_multicore_top #(
     .rdata_o    ( rdata                                                                       )
   );
 
+  assign exit_o = (req == 1'b1 && we == 1'b1 && addr == ariane_soc::exitAddr) ? wdata : '0;
+
   // ---------------
   // CCU - now only another AXI Xbar
   // ---------------
@@ -497,8 +497,8 @@ module ariane_ccu_multicore_top #(
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::NB_CORES,
-    AxiIdUsedSlvPorts: ariane_soc::NB_CORES,
+    AxiIdWidthSlvPorts: ariane_soc::IdWidthToXbar,
+    AxiIdUsedSlvPorts: ariane_soc::IdWidthToXbar,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -514,7 +514,7 @@ module ariane_ccu_multicore_top #(
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
     .slv_ports             ( core_to_CCU     ),
-    .mst_ports             ( to_xbar[1:1]  ),
+    .mst_ports             ( to_xbar[0:0]  ),
     .addr_map_i            ( core_addr_map   ),
     .en_default_mst_port_i ( '0         ),
     .default_mst_port_i    ( '0         )
@@ -546,8 +546,8 @@ module ariane_ccu_multicore_top #(
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::IdWidth,
-    AxiIdUsedSlvPorts: ariane_soc::IdWidth,
+    AxiIdWidthSlvPorts: ariane_soc::IdWidthSlave,
+    AxiIdUsedSlvPorts: ariane_soc::IdWidthSlave,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -658,15 +658,23 @@ module ariane_ccu_multicore_top #(
   ariane_axi_soc::resp_t [ariane_soc::NB_CORES-1:0] axi_ariane_resp;
   ariane_rvfi_pkg::rvfi_port_t [ariane_soc::NB_CORES-1:0] rvfi;
 
+  logic [ariane_soc::NB_CORES-1:0][7:0] hart_id;
+
+  logic [ariane_soc::NB_CORES-1:0] cpu_rstn;
+
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
+
+    assign hart_id[i] = i;
+
+    assign cpu_rstn[i] = ndmreset_n;
 
     ariane #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
     ) i_ariane (
       .clk_i                ( clk_i               ),
-      .rst_ni               ( ndmreset_n          ),
+      .rst_ni               ( cpu_rstn[i]         ),
       .boot_addr_i          ( BootAddress         ),
-      .hart_id_i            ( {56'h0, hart_id}    ),
+      .hart_id_i            ( {56'h0, hart_id[i]} ),
       .irq_i                ( irqs[2*i+1:2*i]     ),
       .ipi_i                ( ipi[i]              ),
       .time_irq_i           ( timer_irq[i]        ),
@@ -708,7 +716,7 @@ module ariane_ccu_multicore_top #(
     end
 
     rvfi_tracer  #(
-      .HART_ID(hart_id),
+      .HART_ID(i),
       .DEBUG_START(0),
       .DEBUG_STOP(0)
     ) rvfi_tracer_i (
