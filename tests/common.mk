@@ -1,7 +1,8 @@
 RV_TOOL_PREFIX = riscv64-unknown-elf-
-GCC := $(RV_TOOL_PREFIX)gcc
-AR := $(RV_TOOL_PREFIX)ar
-OBJDUMP := $(RV_TOOL_PREFIX)objdump
+RV_GCC := $(RV_TOOL_PREFIX)gcc
+RV_AR := $(RV_TOOL_PREFIX)ar
+RV_OBJDUMP := $(RV_TOOL_PREFIX)objdump
+RV_OBJCOPY := $(RV_TOOL_PREFIX)objcopy
 
 VSIM = vsim
 VLOG = vlog
@@ -24,6 +25,11 @@ endif
 
 K := $(foreach exec,$(EXECUTABLES),\
         $(if $(shell which $(exec)),some string,$(error "No $(exec) in PATH")))
+
+GCC_VERSION := $(shell gcc -dumpversion)
+ifneq ($(GCC_VERSION), 8)
+$(error "Wrong gcc version - try "scl enable devtoolset-8 bash")
+endif
 
 # Common variables
 SPIKE_ROOT ?= /opt/riscv-isa-sim
