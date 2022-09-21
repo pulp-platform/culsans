@@ -661,12 +661,12 @@ module ariane_ccu_multicore_top #(
   logic [ariane_soc::NB_CORES-1:0][7:0] hart_id;
 
   logic [ariane_soc::NB_CORES-1:0] cpu_rstn;
+  assign cpu_rstn[0] = ndmreset_n;
+  assign cpu_rstn[ariane_soc::NB_CORES-1:1] = '0;
 
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
     assign hart_id[i] = i;
-
-    assign cpu_rstn[i] = ndmreset_n;
 
     ariane #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
