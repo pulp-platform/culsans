@@ -43,7 +43,7 @@ Within each regression list, these commands are available:
 
 Within the integration and performance regression lists, these commands are available:
 
-- `make rtl`: compiles the RTL code
+- `make rtl`: compiles the RTL code; setting VERILATE=1 makes use of Verilator
 - `make sw`: compiles the C-code for all the tests
 
 Within the FPGA regression list, these commands are available:
@@ -53,14 +53,14 @@ Within the FPGA regression list, these commands are available:
 
 Within a specific unit-level test:
 
-- `make all`: runs the test
+- `make all`: runs the test; setting VERILATE=1 makes use of Verilator, setting GUI=1 runs the test in GUI mode
 - `make rtl`: compiles the RTL code; setting GUI=1 runs the test in GUI mode
 
 Within a specific integration or performance testcase:
 
 - `make sw`: compiles the C-code for the specific testcase
 - `make dis`: generates the disassembled file
-- `make all`: runs the testcase; setting GUI=1 runs the test in GUI mode
+- `make all`: runs the testcase; setting VERILATE=1 makes use of Verilator, setting GUI=1 runs the test in GUI mode
 
 Within a specific FPGA-based testcase:
 
