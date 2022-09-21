@@ -130,6 +130,9 @@ Note: having a separate function for implementation and usage of the test functi
 
 `main.c`'s header must follow the same rules as the one for the unit-level tests.
 
+The main function must return 0 in case of correct execution, an error code otherwise.
+The `return` command is translated to a write to the location `to_host` (see `syscalls.c`), which is defined in the linker script (`linker.ld`). The testbench (both SystemVerilog and C++) react to this event, interrupt the simulation and write the report file.
+
 ### FPGA tests
 
 Each test folder must contain:

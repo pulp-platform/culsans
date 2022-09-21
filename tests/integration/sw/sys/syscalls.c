@@ -46,6 +46,7 @@ static uintptr_t syscall(uintptr_t which, uint64_t arg0, uint64_t arg1, uint64_t
 
 void __attribute__((noreturn)) tohost_exit(uintptr_t code)
 {
+  asm volatile("fence");
   tohost = (code << 1) | 1;
   asm volatile("fence");
   while (1);
