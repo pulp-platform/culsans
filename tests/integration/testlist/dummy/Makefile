@@ -44,6 +44,8 @@ ifeq ($(GUI), 0)
 else
 	ifneq ($(GUI), 1)
 		$(error GUI must be 0 or 1)
+	else
+		GTKWAVE_CMD = gtkwave waveform.vcd
 	endif
 endif
 VSIM_CMD = -do $(SIM_TCL)
@@ -53,13 +55,14 @@ $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
-	cat $(TEST_REPORT)
 else
 $(TEST_REPORT): main.riscv
-	$(VERILATOR_LIB)/Variane_ccu_multicore_top main.riscv
+	-$(VERILATOR_LIB)/Variane_ccu_multicore_top main.riscv
+	$(GTKWAVE_CMD)
 endif
 
 all: $(TEST_REPORT)
+	@cat $(TEST_REPORT)
 
 clean:
 	rm -rf objs

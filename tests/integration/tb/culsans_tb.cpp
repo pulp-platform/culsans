@@ -11,6 +11,7 @@
 #include <ctime>
 #include <signal.h>
 #include <unistd.h>
+#include <fstream>
 
 #include <fesvr/dtm.h>
 #include <fesvr/htif_hexwriter.h>
@@ -66,11 +67,24 @@ int main(int argc, char** argv, char** env)
     }
 
     m_trace->close();
-    if (top->exit_o >> 1) {
+
+    std::string filename("result.rpt");
+    std::fstream file_out;
+    file_out.open(filename, std::ios_base::out);
+    if (!file_out.is_open()) {
+        std::cout << "failed to open " << filename << '\n';
+    }
+
+    if (sim_time == MAX_SIM_TIME) {
+        file_out << "FAIL" << std::endl << "Timeout" << std::endl;
+    }
+    else if (top->exit_o >> 1) {
+        file_out << "FAIL" << std::endl << "return code: 0x" << std::hex << (top->exit_o >> 1) << std::endl;
         delete top;
         exit(EXIT_FAILURE);
     }
     else {
+        file_out << "PASS" << std::endl;
         delete top;
         exit(EXIT_SUCCESS);
     }
