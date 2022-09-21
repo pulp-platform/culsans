@@ -26,11 +26,11 @@ libs:
 	mkdir -p $@
 
 $(OBJDIR)/%.o: %.c objs
-	$(GCC) $(SW_INCLUDES) -Werror -falign-functions=32 -falign-jumps=32 -c $< -o $@
+	$(RV_GCC) $(SW_INCLUDES) -Werror -falign-functions=32 -falign-jumps=32 -c $< -o $@
 
 # 
 libs/libintegr.a: $(OBJS) libs
-	$(AR) -rcs $@ $(OBJS)
+	$(RV_AR) -rcs $@ $(OBJS)
 
 sw : libs/libintegr.a
 	for d in $(TESTLIST); do make -C $$d sw; done
