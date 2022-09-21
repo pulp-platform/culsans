@@ -1,0 +1,10 @@
+result.rpt
+main.dis
+main.riscv
+main.vh
+*.hex
+*.log
+transcript
+work/
+objs/
+libs/

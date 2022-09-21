@@ -27,7 +27,8 @@ module ariane_ccu_multicore_top #(
 `endif
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
-  parameter bit          StallRandomInput  = 1'b0
+  parameter bit          StallRandomInput  = 1'b0,
+  parameter BootAddress = ariane_soc::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
@@ -77,13 +78,6 @@ module ariane_ccu_multicore_top #(
   dm::dmi_resp_t debug_resp;
 
   assign test_en = 1'b0;
-
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
-  ) slave[ariane_soc::NrSlaves-1:0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
@@ -279,8 +273,8 @@ module ariane_ccu_multicore_top #(
     .data_i     ( dm_slave_rdata            )
   );
 
-  `AXI_ASSIGN_FROM_REQ(CCU_to_Xbar[1], dm_axi_m_req)
-  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, CCU_to_Xbar[1])
+  `AXI_ASSIGN_FROM_REQ(DM_to_xbar[0], dm_axi_m_req)
+  `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, DM_to_xbar[0])
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
@@ -481,32 +475,37 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( NB_CORES + 1 ),
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
   ) Core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( NB_CORES + 1 ), // IdWidthSlave ?
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) CCU_to_Xbar[1:0](); // cores + debug module
+  ) CCU_to_xbar[0:0]();
 
-  axi_pkg::xbar_rule_64_t [ariane_soc::NB_CORES-1:0] core_addr_map;
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
+    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+  ) DM_to_xbar[0:0]();
 
-  assign core_addr_map = '{
-    '{ idx: ariane_soc::AXI,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       }
-  };
+  axi_pkg::xbar_rule_64_t core_addr_map;
+
+  assign core_addr_map = '{ idx: 0,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       };
 
   localparam axi_pkg::xbar_cfg_t CORE_AXI_XBAR_CFG = '{
-    NoSlvPorts: NB_CORES,
+    NoSlvPorts: ariane_soc::NB_CORES,
     NoMstPorts: 1,
     MaxMstTrans: 1, // Probably requires update
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: NB_CORES,
-    AxiIdUsedSlvPorts: NB_CORES,
+    AxiIdWidthSlvPorts: ariane_soc::NB_CORES,
+    AxiIdUsedSlvPorts: ariane_soc::NB_CORES,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -517,12 +516,12 @@ module ariane_ccu_multicore_top #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH          ),
     .Cfg            ( CORE_AXI_XBAR_CFG       ),
     .rule_t         ( axi_pkg::xbar_rule_64_t )
-  ) i_axi_xbar (
+  ) i_ccu (
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
     .slv_ports             ( Core_to_CCU     ),
-    .mst_ports             ( CCU_to_Xbar[0]  ),
+    .mst_ports             ( CCU_to_xbar  ),
     .addr_map_i            ( core_addr_map   ),
     .en_default_mst_port_i ( '0         ),
     .default_mst_port_i    ( '0         )
@@ -570,7 +569,7 @@ module ariane_ccu_multicore_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( CCU_to_Xbar      ),
+    .slv_ports             ( {CCU_to_xbar, DM_to_xbar}      ),
     .mst_ports             ( master     ),
     .addr_map_i            ( addr_map   ),
     .en_default_mst_port_i ( '0         ),
@@ -580,8 +579,8 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CLINT
   // ---------------
-  logic ipi;
-  logic timer_irq;
+  logic [ariane_soc::NB_CORES-1:0] ipi;
+  logic [ariane_soc::NB_CORES-1:0] timer_irq;
 
   ariane_axi_soc::req_slv_t  axi_clint_req;
   ariane_axi_soc::resp_slv_t axi_clint_resp;
@@ -590,7 +589,7 @@ module ariane_ccu_multicore_top #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH          ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH             ),
     .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave   ),
-    .NR_CORES       ( 1                          ),
+    .NR_CORES       ( ariane_soc::NB_CORES       ),
     .axi_req_t      ( ariane_axi_soc::req_slv_t  ),
     .axi_resp_t     ( ariane_axi_soc::resp_slv_t )
   ) i_clint (
@@ -611,7 +610,7 @@ module ariane_ccu_multicore_top #(
   // Peripherals
   // ---------------
   logic tx, rx;
-  logic [1:0] irqs;
+  logic [ariane_soc::NumTargets-1:0] irqs;
 
   ariane_peripherals #(
     .AxiAddrWidth ( AXI_ADDRESS_WIDTH        ),
@@ -622,7 +621,7 @@ module ariane_ccu_multicore_top #(
   `ifdef SPIKE_TANDEM
     .InclUART     ( 1'b0                     ),
   `else
-    .InclUART     ( 1'b1                     ),
+    .InclUART     ( 1'b0                     ),
   `endif
 `else
     .InclUART     ( 1'b0                     ),
@@ -662,22 +661,22 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CoreS
   // ---------------
-  ariane_axi_soc::req_t    axi_ariane_req[NB_CORES-1:0];
-  ariane_axi_soc::resp_t   axi_ariane_resp[NB_CORES-1:0];
-  ariane_rvfi_pkg::rvfi_port_t rvfi[NB_CORES-1:0];
+  ariane_axi_soc::req_t [ariane_soc::NB_CORES-1:0] axi_ariane_req;
+  ariane_axi_soc::resp_t [ariane_soc::NB_CORES-1:0] axi_ariane_resp;
+  ariane_rvfi_pkg::rvfi_port_t [ariane_soc::NB_CORES-1:0] rvfi;
 
-  for (genvar i = 0; i < NB_CORES; i++) begin
+  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
     ariane #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
-      .boot_addr_i          ( ariane_soc::ROMBase ), // start fetching from ROM
+      .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id}    ),
-      .irq_i                ( irqs                ),
-      .ipi_i                ( ipi                 ),
-      .time_irq_i           ( timer_irq           ),
+      .irq_i                ( irqs[2*i+1:2*i]     ),
+      .ipi_i                ( ipi[i]              ),
+      .time_irq_i           ( timer_irq[i]        ),
   `ifdef RVFI_TRACE
       .rvfi_o               ( rvfi[i]             ),
   `endif
@@ -691,8 +690,8 @@ module ariane_ccu_multicore_top #(
       .axi_resp_i           ( axi_ariane_resp[i]  )
     );
 
-    `AXI_ASSIGN_FROM_REQ(Core_to_CCU[i], axi_ariane_req)
-    `AXI_ASSIGN_TO_RESP(axi_ariane_resp, Core_to_CCU[i])
+    `AXI_ASSIGN_FROM_REQ(Core_to_CCU[i], axi_ariane_req[i])
+    `AXI_ASSIGN_TO_RESP(axi_ariane_resp[i], Core_to_CCU[i])
 
   end
 
@@ -700,28 +699,31 @@ module ariane_ccu_multicore_top #(
   // Simulation Helper Functions
   // -------------
   // check for response errors
-  always_ff @(posedge clk_i) begin : p_assert
-    if (axi_ariane_req.r_ready &&
-      axi_ariane_resp.r_valid &&
-      axi_ariane_resp.r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
-      $warning("R Response Errored");
-    end
-    if (axi_ariane_req.b_ready &&
-      axi_ariane_resp.b_valid &&
-      axi_ariane_resp.b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
-      $warning("B Response Errored");
-    end
-  end
+  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
-  rvfi_tracer  #(
-    .HART_ID(hart_id),
-    .DEBUG_START(0),
-    .DEBUG_STOP(0)
-  ) rvfi_tracer_i (
-    .clk_i(clk_i),
-    .rst_ni(rst_ni),
-    .rvfi_i(rvfi)
-  );
+    always_ff @(posedge clk_i) begin : p_assert
+      if (axi_ariane_req[i].r_ready &&
+        axi_ariane_resp[i].r_valid &&
+        axi_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+        $warning("R Response Errored");
+      end
+      if (axi_ariane_req[i].b_ready &&
+        axi_ariane_resp[i].b_valid &&
+        axi_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+        $warning("B Response Errored");
+      end
+    end
+
+    rvfi_tracer  #(
+      .HART_ID(hart_id),
+      .DEBUG_START(0),
+      .DEBUG_STOP(0)
+    ) rvfi_tracer_i (
+      .clk_i(clk_i),
+      .rst_ni(rst_ni),
+      .rvfi_i(rvfi[i])
+    );
+  end
 
 `ifdef AXI_SVA
   // AXI 4 Assertion IP integration - You will need to get your own copy of this IP if you want
