@@ -493,13 +493,13 @@ module ariane_ccu_multicore_top #(
   localparam axi_pkg::xbar_cfg_t CORE_AXI_XBAR_CFG = '{
     NoSlvPorts: ariane_soc::NB_CORES,
     NoMstPorts: 1,
-    MaxMstTrans: 1, // Probably requires update
-    MaxSlvTrans: 1, // Probably requires update
+    MaxMstTrans: 2, // Probably requires update
+    MaxSlvTrans: 2, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::IdWidthToXbar,
-    AxiIdUsedSlvPorts: ariane_soc::IdWidthToXbar,
-    UniqueIds: 1'b0,
+    AxiIdWidthSlvPorts: ariane_soc::IdWidth,
+    AxiIdUsedSlvPorts: ariane_soc::IdWidth,
+    UniqueIds: 1'b1,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
     NoAddrRules: 1
@@ -546,8 +546,8 @@ module ariane_ccu_multicore_top #(
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::IdWidthSlave,
-    AxiIdUsedSlvPorts: ariane_soc::IdWidthSlave,
+    AxiIdWidthSlvPorts: ariane_soc::IdWidthToXbar,
+    AxiIdUsedSlvPorts: ariane_soc::IdWidthToXbar,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -660,10 +660,6 @@ module ariane_ccu_multicore_top #(
 
   logic [ariane_soc::NB_CORES-1:0][7:0] hart_id;
 
-  logic [ariane_soc::NB_CORES-1:0] cpu_rstn;
-  assign cpu_rstn[0] = ndmreset_n;
-  assign cpu_rstn[ariane_soc::NB_CORES-1:1] = '0;
-
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
     assign hart_id[i] = i;
@@ -672,7 +668,7 @@ module ariane_ccu_multicore_top #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
     ) i_ariane (
       .clk_i                ( clk_i               ),
-      .rst_ni               ( cpu_rstn[i]         ),
+      .rst_ni               ( ndmreset_n          ),
       .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id[i]} ),
       .irq_i                ( irqs[2*i+1:2*i]     ),
