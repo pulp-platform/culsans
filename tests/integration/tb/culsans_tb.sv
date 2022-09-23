@@ -14,7 +14,7 @@ module culsans_tb ();
         repeat(8)
             #(CLK_PERIOD/2) clk = ~clk;
 
-        rst = 1'b1;
+        rst = 1'b0;
 
         forever begin
             #(CLK_PERIOD/2) clk = ~clk;
@@ -39,15 +39,25 @@ module culsans_tb ();
     logic [31:0] exit_val;
 
     initial begin
+        
+        int fd;
+
         forever begin
 
             wait (exit_val[0]);
 
+            fd = $fopen("result.rpt", "w");
+
             if ((exit_val >> 1)) begin
                 $error("*** FAILED *** (tohost = %0d)", (exit_val >> 1));
+                $fdisplay(fd, "FAIL");
+                $fdisplay(fd, "return code: 0x%x", (exit_val >> 1));
             end else begin
                 $info("*** SUCCESS *** (tohost = %0d)", (exit_val >> 1));
+                $fdisplay(fd, "PASS");
             end
+
+            $fclose(fd);
 
             $finish();
         end
@@ -59,26 +69,28 @@ module culsans_tb ();
         integer file;
         integer error;
         static string  mem_init_file = "main.hex";
+        static string  instr_init_file = "main_instr.hex";
+        static string  data_init_file = "main_data.hex";
 
         @(negedge rst);
-        #1
+        #2
 
-//        file = $fopen(mem_init_file, "r");
-//        $ferror(file, error);
-//        $fclose(file);
-        if (error == 0) begin
-//           $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram);
-        end
-
-
+        //file = $fopen(mem_init_file, "r");
+        //$ferror(file, error);
+        //$fclose(file);
+        //if (error == 0) begin
+//        $readmemh(data_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h0000);
+//        $readmemh(instr_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h10_0000);
+        $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram);
+        //end
     end
 
     // DUT
 
     ariane_ccu_multicore_top #(
         .InclSimDTM (1'b0),
-        .NUM_WORDS  (2**10), // 1Kwords
-        .BootAddress (ariane_soc::DRAMBase)
+        .NUM_WORDS  (4**10), // 4Kwords
+        .BootAddress (ariane_soc::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i (clk),
         .rtc_i (rtc),

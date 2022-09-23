@@ -70,11 +70,9 @@ SECTIONS
   /* End of uninitalized data segement */
   _end = .;
 
-. = 0x80002000;
+  . = 0x80100000;
 
-.text.init : { *(.text.init) }
-
-.text : { *(.text) }
-
+  .text.init : { *(.text.init) }
+  .text : { *(.text) }
 }
 

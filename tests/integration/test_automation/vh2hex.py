@@ -10,10 +10,12 @@ import re
 def usage():
     print 'This script reads a memory file written in verilog format and translates it to hexfile.'
     print 'The first word copied to the output is the one at the address specified with -b (0 by default).'
-    print 'Usage: '+sys.argv[0]+' [-i  <verilog_memfile>] [-o  <hexfile>] [-b <baseaddress>] [-w <4/8>[-h]'
-    print '-i: verilog memfile'
+    print 'Usage: '+sys.argv[0]+' [-m  <verilog_memfile>] [-o  <hexfile>] [-b <baseaddress>] [-i <instructions_baseaddress>] [-d <data_baseaddress>] [-w <4/8>[-h]'
+    print '-m: verilog memfile'
     print '-o: output hexfile'
     print '-b: first address copied to hexfile'
+    print '-i: first address copied to the instructions hexfile'
+    print '-d: first address copied to the data hexfile'
     print '-w: word size (4 or 8 bytes)'
     print '-h: this help'
 
@@ -118,22 +120,34 @@ def main():
     vhFile = "main.vh"
     hexFile = "main.hex"
     baseAddr = 0x0
+    baseAddrDefined = False
+    instrBaseAddr = 0x0
+    instrBaseAddrDefined = False
+    dataBaseAddr = 0x0
+    dataBaseAddrDefined = False
     wordLength = 8
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "i:o:b:w:h")
+        opts, args = getopt.getopt(sys.argv[1:], "m:o:b:i:d:w:h")
     except getopt.GetoptError as err:
         # print help information and exit:
         print str(err)
         usage()
         sys.exit(2)
     for o, a in opts:
-        if o in ("-i"):
+        if o in ("-m"):
             vhFile = a
         elif o in ("-o"):
             hexFile = a
         elif o in ("-b"):
             baseAddr = int(a, 0)
+            baseAddrDefined = True
+        elif o in ("-i"):
+            instrBaseAddr = int(a, 0)
+            instrBaseAddrDefined = True
+        elif o in ("-d"):
+            dataBaseAddr = int(a, 0)
+            instrDataAddrDefined = True
         elif o in ("-w"):
             wordLength = int(a, 0)
         elif o in ("-h"):
@@ -144,9 +158,20 @@ def main():
 
     assert wordLength == 4 or wordLength == 8, 'w should be 4 or 8'
 
-    hexDataFile = hexFile
+    hexFile = hexFile
+    hexInstrFile = hexFile.replace(".hex", "_instr.hex")
+    hexDataFile = hexFile.replace(".hex", "_data.hex")
 
-    extractHex(vhFile, hexFile, baseAddr, 0xFFFFFFFF, wordLength)
+    if baseAddrDefined:
+        extractHex(vhFile, hexFile, baseAddr, 0xFFFFFFFF, wordLength)
+
+    if instrBaseAddrDefined or dataBaseAddrDefined:
+        if instrBaseAddr < dataBaseAddr:
+            extractHex(vhFile, hexInstrFile, instrBaseAddr, dataBaseAddr-1, wordLength)
+            extractHex(vhFile, hexDataFile, dataBaseAddr, 0xFFFFFFFF, 8)
+        else:
+            extractHex(vhFile, hexInstrFile, instrBaseAddr, 0xFFFFFFFF, wordLength)
+            extractHex(vhFile, hexDataFile, dataBaseAddr, instrBaseAddr-1, 8)
 
 ################################################################
 

@@ -28,7 +28,7 @@ module ariane_ccu_multicore_top #(
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0,
-  parameter int unsigned BootAddress = 64'h8000_2000 //ariane_soc::ROMBase
+  parameter BootAddress = 64'h8010_0000 //ariane_soc::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
@@ -660,6 +660,11 @@ module ariane_ccu_multicore_top #(
 
   logic [ariane_soc::NB_CORES-1:0][7:0] hart_id;
 
+  logic [ariane_soc::NB_CORES-1:0] cpu_rstn;
+
+  assign cpu_rstn[0] = ndmreset_n;
+  assign cpu_rstn[ariane_soc::NB_CORES-1:1] = 1'b0;
+
   for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
 
     assign hart_id[i] = i;
@@ -668,7 +673,7 @@ module ariane_ccu_multicore_top #(
       .ArianeCfg  ( ariane_soc::ArianeSocCfg )
     ) i_ariane (
       .clk_i                ( clk_i               ),
-      .rst_ni               ( ndmreset_n          ),
+      .rst_ni               ( cpu_rstn[i]         ),
       .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id[i]} ),
       .irq_i                ( irqs[2*i+1:2*i]     ),

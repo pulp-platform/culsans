@@ -6,6 +6,8 @@ main.vh
 *.log
 *.vcd
 *.dasm
+vish_stacktrace.vstf
+vsim.wlf
 transcript
 work/
 objs/

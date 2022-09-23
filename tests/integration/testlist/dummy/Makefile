@@ -20,7 +20,7 @@ dis : main.dis
 
 main.hex : main.riscv
 	$(RV_OBJCOPY) -O verilog main.riscv main.vh
-	../../test_automation/vh2hex.py -i main.vh -o main.hex -b 0x080000000
+	../../test_automation/vh2hex.py -m main.vh -o main.hex -b 0x80000000 -d 0x80000000 -i 0x80100000
 	rm main.vh
 
 sw : main.hex
