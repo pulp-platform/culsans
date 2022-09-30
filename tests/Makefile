@@ -2,6 +2,8 @@ include common.mk
 
 TEST ?= all
 
+VERILATE ?= 0
+
 ifeq ($(TEST), all)
 	TEST_SELECT := all
 else
@@ -11,13 +13,13 @@ endif
 # Test execution
 
 unit:
-	echo make -C unit $(TEST_SELECT)
+	echo make -C unit VERILATE=$(VERILATE) $(TEST_SELECT)
 
 integr:
-	echo make -C integration $(TEST_SELECT)
+	echo make -C integration VERILATE=$(VERILATE) $(TEST_SELECT)
 
 perf:
-	echo make -C perf $(TEST_SELECT)
+	echo make -C perf VERILATE=$(VERILATE) $(TEST_SELECT)
 
 fpga:
 	echo make -C fpga $(TEST_SELECT)

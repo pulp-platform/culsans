@@ -46,7 +46,9 @@ static uintptr_t syscall(uintptr_t which, uint64_t arg0, uint64_t arg1, uint64_t
 
 void __attribute__((noreturn)) tohost_exit(uintptr_t code)
 {
+  asm volatile("fence");
   tohost = (code << 1) | 1;
+  asm volatile("fence");
   while (1);
 }
 
@@ -69,7 +71,7 @@ void __attribute__((weak)) thread_entry(int cid, int nc)
 {
   // multi-threaded programs override this function.
   // for the case of single-threaded programs, only let core 0 proceed.
-  while (cid != 0);
+//  while (cid != 0);
 }
 
 int __attribute__((weak)) main(int argc, char** argv)
@@ -103,6 +105,7 @@ void _init(int cid, int nc)
 
 void* memcpy(void* dest, const void* src, size_t len)
 {
+  if (len) {
   if ((((uintptr_t)dest | (uintptr_t)src | len) & (sizeof(uintptr_t)-1)) == 0) {
     const uintptr_t* s = src;
     uintptr_t *d = dest;
@@ -114,11 +117,13 @@ void* memcpy(void* dest, const void* src, size_t len)
     while (d < (char*)(dest + len))
       *d++ = *s++;
   }
+  }
   return dest;
 }
 
 void* memset(void* dest, int byte, size_t len)
 {
+  if (len) {
   if ((((uintptr_t)dest | len) & (sizeof(uintptr_t)-1)) == 0) {
     uintptr_t word = byte & 0xFF;
     word |= word << 8;
@@ -132,6 +137,7 @@ void* memset(void* dest, int byte, size_t len)
     char *d = dest;
     while (d < (char*)(dest + len))
       *d++ = byte;
+  }
   }
   return dest;
 }

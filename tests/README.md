@@ -43,7 +43,7 @@ Within each regression list, these commands are available:
 
 Within the integration and performance regression lists, these commands are available:
 
-- `make rtl`: compiles the RTL code
+- `make rtl`: compiles the RTL code; setting VERILATE=1 makes use of Verilator
 - `make sw`: compiles the C-code for all the tests
 
 Within the FPGA regression list, these commands are available:
@@ -53,14 +53,14 @@ Within the FPGA regression list, these commands are available:
 
 Within a specific unit-level test:
 
-- `make all`: runs the test
+- `make all`: runs the test; setting VERILATE=1 makes use of Verilator, setting GUI=1 runs the test in GUI mode
 - `make rtl`: compiles the RTL code; setting GUI=1 runs the test in GUI mode
 
 Within a specific integration or performance testcase:
 
 - `make sw`: compiles the C-code for the specific testcase
 - `make dis`: generates the disassembled file
-- `make all`: runs the testcase; setting GUI=1 runs the test in GUI mode
+- `make all`: runs the testcase; setting VERILATE=1 makes use of Verilator, setting GUI=1 runs the test in GUI mode
 
 Within a specific FPGA-based testcase:
 
@@ -129,6 +129,9 @@ Each test folder must contain:
 Note: having a separate function for implementation and usage of the test function can help reusing some test functions among different testcases
 
 `main.c`'s header must follow the same rules as the one for the unit-level tests.
+
+The main function must return 0 in case of correct execution, an error code otherwise.
+The `return` command is translated to a write to the location `to_host` (see `syscalls.c`), which is defined in the linker script (`linker.ld`). The testbench (both SystemVerilog and C++) react to this event, interrupt the simulation and write the report file.
 
 ### FPGA tests
 

@@ -21,9 +21,7 @@ ENTRY(_start)
 /*
 MEMORY
 {
-  SRAM (rwx) : ORIGIN = 0x01000000, LENGTH = 1M
-  ROM (rx)  : ORIGIN = 0x02000000, LENGTH = 512K
-  FLASH (rwx) : ORIGIN = 0x03000000, LENGTH = 2M
+  SRAM (rwx) : ORIGIN = 0x80000000, LENGTH = 1M
 }
 */
 
@@ -72,9 +70,9 @@ SECTIONS
   /* End of uninitalized data segement */
   _end = .;
 
-.text.init : { *(.text.init) }
+  . = 0x80100000;
 
-.text : { *(.text) }
-
+  .text.init : { *(.text.init) }
+  .text : { *(.text) }
 }
 

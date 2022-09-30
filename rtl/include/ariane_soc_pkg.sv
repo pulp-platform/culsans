@@ -96,4 +96,7 @@ package ariane_soc;
     NrPMPEntries:           8
   };
 
+  localparam exitOffset = 64'h1000;
+  localparam exitAddr = DRAMBase + exitOffset;
+
 endpackage

@@ -11,16 +11,16 @@ TEST_SRCS += $(shell find . -name "*.c" -exec basename {} \;)
 # elf file generation
 
 main.riscv : $(TEST_SRCS) $(LIB_DIR)/libintegr.a $(SYS_DIR)/crt.S $(SYS_DIR)/syscalls.c $(SYS_DIR)/linker.ld
-	$(GCC) -Werror $(INCLUDES) -L$(LIB_DIR) -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O0 -ffast-math -fno-common -fno-builtin-printf $(SYS_DIR)/syscalls.c -static -nostdlib $(SYS_DIR)/crt.S  -nostartfiles -lm -lgcc -T $(SYS_DIR)/linker.ld $(INCLUDES) -o main.riscv $(TEST_SRCS) -lintegr
+	$(RV_GCC) -Werror -falign-functions=32 -falign-jumps=32 $(INCLUDES) -L$(LIB_DIR) -DPREALLOCATE=1 -mcmodel=medany -static -std=gnu99 -O0 -ffast-math -fno-common -fno-builtin-printf $(SYS_DIR)/syscalls.c -static -nostdlib $(SYS_DIR)/crt.S  -nostartfiles -lm -lgcc -T $(SYS_DIR)/linker.ld $(INCLUDES) -o main.riscv $(TEST_SRCS) -lintegr
 
 main.dis : main.riscv
-	$(OBJDUMP) -d main.riscv > main.dis
+	$(RV_OBJDUMP) -d main.riscv > main.dis
 
 dis : main.dis
 
 main.hex : main.riscv
-	riscv64-unknown-elf-objcopy -O verilog main.riscv main.vh
-	../../test_automation/vh2hex.py -i main.vh -o main.hex -b 0x080000000
+	$(RV_OBJCOPY) -O verilog main.riscv main.vh
+	../../test_automation/vh2hex.py -m main.vh -o main.hex -b 0x80000000 -d 0x80000000 -i 0x80100000
 	rm main.vh
 
 sw : main.hex
@@ -30,6 +30,8 @@ sw : main.hex
 GUI ?= 0
 
 VSIM_LIB = ../../work
+VERILATOR_LIB = ../../work_verilate
+
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
@@ -42,23 +44,35 @@ ifeq ($(GUI), 0)
 else
 	ifneq ($(GUI), 1)
 		$(error GUI must be 0 or 1)
+	else
+		GTKWAVE_CMD = gtkwave waveform.vcd
 	endif
 endif
 VSIM_CMD = -do $(SIM_TCL)
 
+ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
-	cat $(TEST_REPORT)
+else
+$(TEST_REPORT): main.riscv
+	-$(VERILATOR_LIB)/Variane_ccu_multicore_top main.riscv
+	$(GTKWAVE_CMD)
+endif
 
 all: $(TEST_REPORT)
+	@cat $(TEST_REPORT)
 
 clean:
 	rm -rf objs
 	rm -rf main.riscv
 	rm -rf main.dis
 	rm -rf main.hex
+	rm -rf *.log
+	rm -rf *.vcd
+	rm -rf *.dasm
 	rm -rf $(TEST_REPORT)
+	rm -rf transcript
 
 .PHONY: all gui sw dis sw clean

@@ -3,6 +3,5 @@
 ## Getting started
 
 ```
-git clone https://github.com/planvtech/Culsans.git
-git submodule update --init --recursive
+git clone https://github.com/planvtech/culsans.git --recursive
 ```
