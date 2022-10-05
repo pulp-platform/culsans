@@ -57,7 +57,7 @@ $(TEST_REPORT): main.hex
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 else
 $(TEST_REPORT): main.riscv
-	-$(VERILATOR_LIB)/Variane_ccu_multicore_top main.riscv
+	-$(VERILATOR_LIB)/Vculsans_top main.riscv
 	$(GTKWAVE_CMD)
 endif
 

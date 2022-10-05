@@ -147,7 +147,7 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_sram.sv                          \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_clk.sv                           \
 	        $(CVA6_DIR)/corev_apu/tb/rvfi_tracer.sv                                                  \
-	        $(CVA6_DIR)/corev_apu/tb/common/uart.sv                                                  
+	        $(CVA6_DIR)/corev_apu/tb/common/uart.sv
 
 #	        $(CVA6_DIR)/corev_apu/tb/common/SimDTM.sv                                                \
 #	        $(CVA6_DIR)/corev_apu/tb/common/SimJTAG.sv
@@ -161,8 +161,8 @@ CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
 CULSANS_DIR := ../../rtl
-CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv) $(CVA6_DIR)/corev_apu/tb/ariane_axi_soc_pkg.sv 
-CULSANS_SRC := $(CVA6_DIR)/corev_apu/tb/ariane_peripherals.sv $(wildcard $(CULSANS_DIR)/src/*.sv)
+CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
+CULSANS_SRC := $(wildcard $(CULSANS_DIR)/src/*.sv)
 CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
@@ -202,7 +202,7 @@ VERILATOR_CMD := $(VERILATOR)                                                   
                     -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_ROOT)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_ROOT)/lib -lfesvr -lpthread" \
                     -CFLAGS "-I$(RISCV)/include -I$(SPIKE_ROOT) -I$(SPIKE_ROOT)/include -std=c++11 -I$(SPIKE_ROOT)/include -I$(CVA6_DIR)/corev_apu/tb/dpi -O3 -DVL_DEBUG"       \
                     -Wall --cc  --vpi                                                                            \
-                    $(RTL_INCDIR) --top-module ariane_ccu_multicore_top                                         \
+                    $(RTL_INCDIR) --top-module culsans_top                                         \
 					--threads-dpi none 																			 \
                     --Mdir $(VERILATOR_LIB) -O3                                                                    \
                     --exe ./tb/culsans_tb.cpp 
@@ -234,7 +234,7 @@ else
 VERILATOR_JOBS = 1
 rtl:
 	$(VERILATOR_CMD)
-	cd $(VERILATOR_LIB) && $(MAKE) -j${VERILATOR_JOBS} -f Variane_ccu_multicore_top.mk
+	cd $(VERILATOR_LIB) && $(MAKE) -j${VERILATOR_JOBS} -f Vculsans_top.mk
 endif
 
 # Run the test(s)

@@ -1,4 +1,4 @@
-#include "Variane_ccu_multicore_top.h"
+#include "Vculsans_top.h"
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 
@@ -35,7 +35,7 @@ int main(int argc, char** argv, char** env)
 
     const char *vcd_file = NULL;
     Verilated::commandArgs(argc, argv);
-    Variane_ccu_multicore_top* top = new Variane_ccu_multicore_top;
+    Vculsans_top* top = new Vculsans_top;
 
     // Use an hitf hexwriter to read the binary data.
     htif_hexwriter_t htif(0x0, 1, -1);
@@ -57,7 +57,7 @@ int main(int argc, char** argv, char** env)
 	if (sim_time == RST_TIME) {
             // Preload memory.
             size_t mem_size = 0xFFFFFF;
-            memif.read(0x80000000, mem_size, (void *)top->ariane_ccu_multicore_top__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__gen_mem__DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram);
+            memif.read(0x80000000, mem_size, (void *)top->culsans_top__DOT__i_sram__DOT__gen_cut__BRA__0__KET____DOT__gen_mem__DOT__i_tc_sram_wrapper__DOT__i_tc_sram__DOT__sram);
 	}
         top->eval();
         m_trace->dump(sim_time);

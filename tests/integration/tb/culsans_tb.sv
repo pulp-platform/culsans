@@ -87,10 +87,10 @@ module culsans_tb ();
 
     // DUT
 
-    ariane_ccu_multicore_top #(
+    culsans_top #(
         .InclSimDTM (1'b0),
         .NUM_WORDS  (4**10), // 4Kwords
-        .BootAddress (ariane_soc::DRAMBase + 64'h10_0000)
+        .BootAddress (culsans_pkg::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i (clk),
         .rtc_i (rtc),
