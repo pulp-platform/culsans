@@ -15,7 +15,7 @@
 
 `include "axi/assign.svh"
 
-module ariane_ccu_multicore_top #(
+module culsans_top #(
   parameter int unsigned AXI_USER_WIDTH    = ariane_pkg::AXI_USER_WIDTH,
   parameter int unsigned AXI_USER_EN       = ariane_pkg::AXI_USER_EN,
   parameter int unsigned AXI_ADDRESS_WIDTH = 64,
@@ -28,7 +28,7 @@ module ariane_ccu_multicore_top #(
   parameter int unsigned NUM_WORDS         = 2**25,         // memory size
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0,
-  parameter BootAddress = 64'h8010_0000 //ariane_soc::ROMBase
+  parameter BootAddress = 64'h8010_0000 //culsans_pkg::ROMBase
 ) (
   input  logic                           clk_i,
   input  logic                           rtc_i,
@@ -80,16 +80,16 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthToXbar ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) to_xbar[1:0]();
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) master[ariane_soc::NB_PERIPHERALS-1:0]();
+  ) master[culsans_pkg::NB_PERIPHERALS-1:0]();
 
   rstgen i_rstgen_main (
     .clk_i        ( clk_i                ),
@@ -202,8 +202,8 @@ module ariane_ccu_multicore_top #(
     end
   end
 
-  ariane_axi_soc::req_t    dm_axi_m_req;
-  ariane_axi_soc::resp_t   dm_axi_m_resp;
+  culsans_pkg::req_t    dm_axi_m_req;
+  culsans_pkg::resp_t   dm_axi_m_resp;
 
   logic                dm_slave_req;
   logic                dm_slave_we;
@@ -260,14 +260,14 @@ module ariane_ccu_multicore_top #(
 
 
   axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) i_dm_axi2mem (
     .clk_i      ( clk_i                     ),
     .rst_ni     ( rst_ni                    ),
-    .slave      ( master[ariane_soc::Debug] ),
+    .slave      ( master[culsans_pkg::Debug] ),
     .req_o      ( dm_slave_req              ),
     .we_o       ( dm_slave_we               ),
     .addr_o     ( dm_slave_addr             ),
@@ -283,7 +283,7 @@ module ariane_ccu_multicore_top #(
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
-    .AXI_ID_WIDTH          ( ariane_soc::IdWidth       )
+    .AXI_ID_WIDTH          ( culsans_pkg::IdWidth       )
   ) i_dm_axi_master (
     .clk_i                 ( clk_i                     ),
     .rst_ni                ( rst_ni                    ),
@@ -315,14 +315,14 @@ module ariane_ccu_multicore_top #(
   logic [AXI_DATA_WIDTH-1:0]    rom_rdata;
 
   axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) i_axi2rom (
     .clk_i  ( clk_i                   ),
     .rst_ni ( ndmreset_n              ),
-    .slave  ( master[ariane_soc::ROM] ),
+    .slave  ( master[culsans_pkg::ROM] ),
     .req_o  ( rom_req                 ),
     .we_o   (                         ),
     .addr_o ( rom_addr                ),
@@ -355,14 +355,14 @@ module ariane_ccu_multicore_top #(
 
   // GPIO not implemented, adding an error slave here
 
-  ariane_axi_soc::req_slv_t  gpio_req;
-  ariane_axi_soc::resp_slv_t gpio_resp;
-  `AXI_ASSIGN_TO_REQ(gpio_req, master[ariane_soc::GPIO])
-  `AXI_ASSIGN_FROM_RESP(master[ariane_soc::GPIO], gpio_resp)
+  culsans_pkg::req_slv_t  gpio_req;
+  culsans_pkg::resp_slv_t gpio_resp;
+  `AXI_ASSIGN_TO_REQ(gpio_req, master[culsans_pkg::GPIO])
+  `AXI_ASSIGN_FROM_RESP(master[culsans_pkg::GPIO], gpio_resp)
   axi_err_slv #(
-    .AxiIdWidth ( ariane_soc::IdWidthSlave   ),
-    .req_t      ( ariane_axi_soc::req_slv_t  ),
-    .resp_t     ( ariane_axi_soc::resp_slv_t )
+    .AxiIdWidth ( culsans_pkg::IdWidthSlave   ),
+    .req_t      ( culsans_pkg::req_slv_t  ),
+    .resp_t     ( culsans_pkg::resp_slv_t )
   ) i_gpio_err_slv (
     .clk_i      ( clk_i      ),
     .rst_ni     ( ndmreset_n ),
@@ -378,7 +378,7 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) dram();
 
@@ -394,26 +394,26 @@ module ariane_ccu_multicore_top #(
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           ),
     .AXI_MAX_WRITE_TXNS ( 1  ),
     .RISCV_WORD_WIDTH   ( 64 )
   ) i_axi_riscv_atomics (
     .clk_i,
     .rst_ni ( ndmreset_n               ),
-    .slv    ( master[ariane_soc::DRAM] ),
+    .slv    ( master[culsans_pkg::DRAM] ),
     .mst    ( dram                     )
   );
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
   ) dram_delayed();
 
   axi_delayer_intf #(
-    .AXI_ID_WIDTH        ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH        ( culsans_pkg::IdWidthSlave ),
     .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH           ),
     .AXI_USER_WIDTH      ( AXI_USER_WIDTH           ),
@@ -429,7 +429,7 @@ module ariane_ccu_multicore_top #(
   );
 
   axi2mem #(
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
@@ -473,7 +473,7 @@ module ariane_ccu_multicore_top #(
     .rdata_o    ( rdata                                                                       )
   );
 
-  assign exit_o = (req == 1'b1 && we == 1'b1 && addr == ariane_soc::exitAddr) ? wdata : '0;
+  assign exit_o = (req == 1'b1 && we == 1'b1 && addr == culsans_pkg::exitAddr) ? wdata : '0;
 
   // ---------------
   // CCU - now only another AXI Xbar
@@ -482,23 +482,23 @@ module ariane_ccu_multicore_top #(
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidth ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidth ),
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
-  ) core_to_CCU[ariane_soc::NB_CORES - 1 : 0]();
+  ) core_to_CCU[culsans_pkg::NB_CORES - 1 : 0]();
 
   axi_pkg::xbar_rule_64_t core_addr_map;
 
   assign core_addr_map = '{ idx: 0,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       };
 
   localparam axi_pkg::xbar_cfg_t CORE_AXI_XBAR_CFG = '{
-    NoSlvPorts: ariane_soc::NB_CORES,
+    NoSlvPorts: culsans_pkg::NB_CORES,
     NoMstPorts: 1,
     MaxMstTrans: 2, // Probably requires update
     MaxSlvTrans: 2, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::IdWidth,
-    AxiIdUsedSlvPorts: ariane_soc::IdWidth,
+    AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
+    AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
@@ -524,34 +524,34 @@ module ariane_ccu_multicore_top #(
   // AXI Xbar
   // ---------------
 
-  axi_pkg::xbar_rule_64_t [ariane_soc::NB_PERIPHERALS-1:0] addr_map;
+  axi_pkg::xbar_rule_64_t [culsans_pkg::NB_PERIPHERALS-1:0] addr_map;
 
   assign addr_map = '{
-    '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
-    '{ idx: ariane_soc::ROM,      start_addr: ariane_soc::ROMBase,      end_addr: ariane_soc::ROMBase + ariane_soc::ROMLength           },
-    '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
-    '{ idx: ariane_soc::PLIC,     start_addr: ariane_soc::PLICBase,     end_addr: ariane_soc::PLICBase + ariane_soc::PLICLength         },
-    '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
-    '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
-    '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
-    '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
-    '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
-    '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
+    '{ idx: culsans_pkg::Debug,    start_addr: culsans_pkg::DebugBase,    end_addr: culsans_pkg::DebugBase + culsans_pkg::DebugLength       },
+    '{ idx: culsans_pkg::ROM,      start_addr: culsans_pkg::ROMBase,      end_addr: culsans_pkg::ROMBase + culsans_pkg::ROMLength           },
+    '{ idx: culsans_pkg::CLINT,    start_addr: culsans_pkg::CLINTBase,    end_addr: culsans_pkg::CLINTBase + culsans_pkg::CLINTLength       },
+    '{ idx: culsans_pkg::PLIC,     start_addr: culsans_pkg::PLICBase,     end_addr: culsans_pkg::PLICBase + culsans_pkg::PLICLength         },
+    '{ idx: culsans_pkg::UART,     start_addr: culsans_pkg::UARTBase,     end_addr: culsans_pkg::UARTBase + culsans_pkg::UARTLength         },
+    '{ idx: culsans_pkg::Timer,    start_addr: culsans_pkg::TimerBase,    end_addr: culsans_pkg::TimerBase + culsans_pkg::TimerLength       },
+    '{ idx: culsans_pkg::SPI,      start_addr: culsans_pkg::SPIBase,      end_addr: culsans_pkg::SPIBase + culsans_pkg::SPILength           },
+    '{ idx: culsans_pkg::Ethernet, start_addr: culsans_pkg::EthernetBase, end_addr: culsans_pkg::EthernetBase + culsans_pkg::EthernetLength },
+    '{ idx: culsans_pkg::GPIO,     start_addr: culsans_pkg::GPIOBase,     end_addr: culsans_pkg::GPIOBase + culsans_pkg::GPIOLength         },
+    '{ idx: culsans_pkg::DRAM,     start_addr: culsans_pkg::DRAMBase,     end_addr: culsans_pkg::DRAMBase + culsans_pkg::DRAMLength         }
   };
 
   localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
-    NoSlvPorts: ariane_soc::NrSlaves,
-    NoMstPorts: ariane_soc::NB_PERIPHERALS,
+    NoSlvPorts: culsans_pkg::NrSlaves,
+    NoMstPorts: culsans_pkg::NB_PERIPHERALS,
     MaxMstTrans: 1, // Probably requires update
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
-    AxiIdWidthSlvPorts: ariane_soc::IdWidthToXbar,
-    AxiIdUsedSlvPorts: ariane_soc::IdWidthToXbar,
+    AxiIdWidthSlvPorts: culsans_pkg::IdWidthToXbar,
+    AxiIdUsedSlvPorts: culsans_pkg::IdWidthToXbar,
     UniqueIds: 1'b0,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH,
-    NoAddrRules: ariane_soc::NB_PERIPHERALS
+    NoAddrRules: culsans_pkg::NB_PERIPHERALS
   };
 
   axi_xbar_intf #(
@@ -572,19 +572,19 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CLINT
   // ---------------
-  logic [ariane_soc::NB_CORES-1:0] ipi;
-  logic [ariane_soc::NB_CORES-1:0] timer_irq;
+  logic [culsans_pkg::NB_CORES-1:0] ipi;
+  logic [culsans_pkg::NB_CORES-1:0] timer_irq;
 
-  ariane_axi_soc::req_slv_t  axi_clint_req;
-  ariane_axi_soc::resp_slv_t axi_clint_resp;
+  culsans_pkg::req_slv_t  axi_clint_req;
+  culsans_pkg::resp_slv_t axi_clint_resp;
 
   clint #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH          ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH             ),
-    .AXI_ID_WIDTH   ( ariane_soc::IdWidthSlave   ),
-    .NR_CORES       ( ariane_soc::NB_CORES       ),
-    .axi_req_t      ( ariane_axi_soc::req_slv_t  ),
-    .axi_resp_t     ( ariane_axi_soc::resp_slv_t )
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave   ),
+    .NR_CORES       ( culsans_pkg::NB_CORES       ),
+    .axi_req_t      ( culsans_pkg::req_slv_t  ),
+    .axi_resp_t     ( culsans_pkg::resp_slv_t )
   ) i_clint (
     .clk_i       ( clk_i          ),
     .rst_ni      ( ndmreset_n     ),
@@ -596,19 +596,19 @@ module ariane_ccu_multicore_top #(
     .ipi_o       ( ipi            )
   );
 
-  `AXI_ASSIGN_TO_REQ(axi_clint_req, master[ariane_soc::CLINT])
-  `AXI_ASSIGN_FROM_RESP(master[ariane_soc::CLINT], axi_clint_resp)
+  `AXI_ASSIGN_TO_REQ(axi_clint_req, master[culsans_pkg::CLINT])
+  `AXI_ASSIGN_FROM_RESP(master[culsans_pkg::CLINT], axi_clint_resp)
 
   // ---------------
   // Peripherals
   // ---------------
   logic tx, rx;
-  logic [ariane_soc::NumTargets-1:0] irqs;
+  logic [culsans_pkg::NumTargets-1:0] irqs;
 
-  ariane_peripherals #(
+  culsans_peripherals #(
     .AxiAddrWidth ( AXI_ADDRESS_WIDTH        ),
     .AxiDataWidth ( AXI_DATA_WIDTH           ),
-    .AxiIdWidth   ( ariane_soc::IdWidthSlave ),
+    .AxiIdWidth   ( culsans_pkg::IdWidthSlave ),
 `ifndef VERILATOR
   // disable UART when using Spike, as we need to rely on the mockuart
   `ifdef SPIKE_TANDEM
@@ -624,11 +624,11 @@ module ariane_ccu_multicore_top #(
   ) i_ariane_peripherals (
     .clk_i     ( clk_i                        ),
     .rst_ni    ( ndmreset_n                   ),
-    .plic      ( master[ariane_soc::PLIC]     ),
-    .uart      ( master[ariane_soc::UART]     ),
-    .spi       ( master[ariane_soc::SPI]      ),
-    .ethernet  ( master[ariane_soc::Ethernet] ),
-    .timer     ( master[ariane_soc::Timer]    ),
+    .plic      ( master[culsans_pkg::PLIC]     ),
+    .uart      ( master[culsans_pkg::UART]     ),
+    .spi       ( master[culsans_pkg::SPI]      ),
+    .ethernet  ( master[culsans_pkg::Ethernet] ),
+    .timer     ( master[culsans_pkg::Timer]    ),
     .irq_o     ( irqs                         ),
     .rx_i      ( rx                           ),
     .tx_o      ( tx                           ),
@@ -654,18 +654,18 @@ module ariane_ccu_multicore_top #(
   // ---------------
   // CoreS
   // ---------------
-  ariane_axi_soc::req_t [ariane_soc::NB_CORES-1:0] axi_ariane_req;
-  ariane_axi_soc::resp_t [ariane_soc::NB_CORES-1:0] axi_ariane_resp;
-  ariane_rvfi_pkg::rvfi_port_t [ariane_soc::NB_CORES-1:0] rvfi;
+  culsans_pkg::req_t [culsans_pkg::NB_CORES-1:0] axi_ariane_req;
+  culsans_pkg::resp_t [culsans_pkg::NB_CORES-1:0] axi_ariane_resp;
+  ariane_rvfi_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
-  logic [ariane_soc::NB_CORES-1:0][7:0] hart_id;
+  logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
 
-  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
 
     assign hart_id[i] = i;
 
     ariane #(
-      .ArianeCfg  ( ariane_soc::ArianeSocCfg )
+      .ArianeCfg  ( culsans_pkg::ArianeSocCfg )
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
@@ -696,7 +696,7 @@ module ariane_ccu_multicore_top #(
   // Simulation Helper Functions
   // -------------
   // check for response errors
-  for (genvar i = 0; i < ariane_soc::NB_CORES; i++) begin
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
 
     always_ff @(posedge clk_i) begin : p_assert
       if (axi_ariane_req[i].r_ready &&
@@ -726,15 +726,15 @@ module ariane_ccu_multicore_top #(
   // AXI 4 Assertion IP integration - You will need to get your own copy of this IP if you want
   // to use it
   Axi4PC #(
-    .DATA_WIDTH(ariane_axi_soc::DataWidth),
-    .WID_WIDTH(ariane_soc::IdWidthSlave),
-    .RID_WIDTH(ariane_soc::IdWidthSlave),
-    .AWUSER_WIDTH(ariane_axi_soc::UserWidth),
-    .WUSER_WIDTH(ariane_axi_soc::UserWidth),
-    .BUSER_WIDTH(ariane_axi_soc::UserWidth),
-    .ARUSER_WIDTH(ariane_axi_soc::UserWidth),
-    .RUSER_WIDTH(ariane_axi_soc::UserWidth),
-    .ADDR_WIDTH(ariane_axi_soc::AddrWidth)
+    .DATA_WIDTH(culsans_pkg::DataWidth),
+    .WID_WIDTH(culsans_pkg::IdWidthSlave),
+    .RID_WIDTH(culsans_pkg::IdWidthSlave),
+    .AWUSER_WIDTH(culsans_pkg::UserWidth),
+    .WUSER_WIDTH(culsans_pkg::UserWidth),
+    .BUSER_WIDTH(culsans_pkg::UserWidth),
+    .ARUSER_WIDTH(culsans_pkg::UserWidth),
+    .RUSER_WIDTH(culsans_pkg::UserWidth),
+    .ADDR_WIDTH(culsans_pkg::AddrWidth)
   ) i_Axi4PC (
     .ACLK(clk_i),
     .ARESETn(ndmreset_n),
