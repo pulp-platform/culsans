@@ -14,6 +14,7 @@
 //              Instantiates an AXI-Bus and memories
 
 `include "axi/assign.svh"
+`include "ace/assign.svh"
 
 module culsans_top #(
   parameter int unsigned AXI_USER_WIDTH    = ariane_pkg::AXI_USER_WIDTH,
@@ -283,12 +284,15 @@ module culsans_top #(
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
-    .AXI_ID_WIDTH          ( culsans_pkg::IdWidth       )
+    .AXI_ID_WIDTH          ( culsans_pkg::IdWidth       ),
+    .mst_req_t             ( ariane_axi::req_t ),
+    .mst_resp_t            ( ariane_axi::resp_t )
   ) i_dm_axi_master (
     .clk_i                 ( clk_i                     ),
     .rst_ni                ( rst_ni                    ),
     .req_i                 ( dm_master_req             ),
     .type_i                ( ariane_axi::SINGLE_REQ    ),
+    .trans_type_i          ( ariane_ace::READ_SHARED ),
     .amo_i                 ( ariane_pkg::AMO_NONE      ),
     .gnt_o                 ( dm_master_gnt             ),
     .addr_i                ( dm_master_add             ),
@@ -361,8 +365,8 @@ module culsans_top #(
   `AXI_ASSIGN_FROM_RESP(master[culsans_pkg::GPIO], gpio_resp)
   axi_err_slv #(
     .AxiIdWidth ( culsans_pkg::IdWidthSlave   ),
-    .req_t      ( culsans_pkg::req_slv_t  ),
-    .resp_t     ( culsans_pkg::resp_slv_t )
+    .axi_req_t      ( culsans_pkg::req_slv_t  ),
+    .axi_resp_t     ( culsans_pkg::resp_slv_t )
   ) i_gpio_err_slv (
     .clk_i      ( clk_i      ),
     .rst_ni     ( ndmreset_n ),
@@ -479,7 +483,7 @@ module culsans_top #(
   // CCU - now only another AXI Xbar
   // ---------------
 
-  AXI_BUS #(
+  ACE_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
     .AXI_ID_WIDTH   ( culsans_pkg::IdWidth ),
@@ -505,7 +509,7 @@ module culsans_top #(
     NoAddrRules: 1
   };
 
-  axi_xbar_intf #(
+  ace_xbar_intf #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH          ),
     .Cfg            ( CORE_AXI_XBAR_CFG       ),
     .rule_t         ( axi_pkg::xbar_rule_64_t )
@@ -654,8 +658,8 @@ module culsans_top #(
   // ---------------
   // CoreS
   // ---------------
-  culsans_pkg::req_t [culsans_pkg::NB_CORES-1:0] axi_ariane_req;
-  culsans_pkg::resp_t [culsans_pkg::NB_CORES-1:0] axi_ariane_resp;
+  ariane_ace::req_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
+  ariane_ace::resp_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
   ariane_rvfi_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
@@ -665,7 +669,9 @@ module culsans_top #(
     assign hart_id[i] = i;
 
     ariane #(
-      .ArianeCfg  ( culsans_pkg::ArianeSocCfg )
+      .ArianeCfg  ( culsans_pkg::ArianeSocCfg ),
+      .mst_req_t (ariane_ace::req_t),
+      .mst_resp_t (ariane_ace::resp_t)
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
@@ -683,12 +689,12 @@ module culsans_top #(
   `else
       .debug_req_i          ( debug_req_core      ),
   `endif
-      .axi_req_o            ( axi_ariane_req[i]   ),
-      .axi_resp_i           ( axi_ariane_resp[i]  )
+      .axi_req_o            ( ace_ariane_req[i]   ),
+      .axi_resp_i           ( ace_ariane_resp[i]  )
     );
 
-    `AXI_ASSIGN_FROM_REQ(core_to_CCU[i], axi_ariane_req[i])
-    `AXI_ASSIGN_TO_RESP(axi_ariane_resp[i], core_to_CCU[i])
+    `ACE_ASSIGN_FROM_REQ(core_to_CCU[i], ace_ariane_req[i])
+    `ACE_ASSIGN_TO_RESP(ace_ariane_resp[i], core_to_CCU[i])
 
   end
 
@@ -699,14 +705,14 @@ module culsans_top #(
   for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
 
     always_ff @(posedge clk_i) begin : p_assert
-      if (axi_ariane_req[i].r_ready &&
-        axi_ariane_resp[i].r_valid &&
-        axi_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+      if (ace_ariane_req[i].r_ready &&
+        ace_ariane_resp[i].r_valid &&
+        ace_ariane_resp[i].r.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
         $warning("R Response Errored");
       end
-      if (axi_ariane_req[i].b_ready &&
-        axi_ariane_resp[i].b_valid &&
-        axi_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
+      if (ace_ariane_req[i].b_ready &&
+        ace_ariane_resp[i].b_valid &&
+        ace_ariane_resp[i].b.resp inside {axi_pkg::RESP_DECERR, axi_pkg::RESP_SLVERR}) begin
         $warning("B Response Errored");
       end
     end
