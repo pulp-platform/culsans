@@ -658,8 +658,8 @@ module culsans_top #(
   // ---------------
   // CoreS
   // ---------------
-  ariane_ace::req_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
-  ariane_ace::resp_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
+  ariane_ace::m2s_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
+  ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
   ariane_rvfi_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
@@ -670,8 +670,8 @@ module culsans_top #(
 
     ariane #(
       .ArianeCfg  ( culsans_pkg::ArianeSocCfg ),
-      .mst_req_t (ariane_ace::req_t),
-      .mst_resp_t (ariane_ace::resp_t)
+      .mst_req_t (ariane_ace::m2s_t),
+      .mst_resp_t (ariane_ace::s2m_t)
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
