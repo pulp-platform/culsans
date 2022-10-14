@@ -480,7 +480,7 @@ module culsans_top #(
   assign exit_o = (req == 1'b1 && we == 1'b1 && addr == culsans_pkg::exitAddr) ? wdata : '0;
 
   // ---------------
-  // CCU - now only another AXI Xbar
+  // CCU
   // ---------------
 
   ACE_BUS #(
@@ -490,13 +490,8 @@ module culsans_top #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
   ) core_to_CCU[culsans_pkg::NB_CORES - 1 : 0]();
 
-  axi_pkg::xbar_rule_64_t core_addr_map;
-
-  assign core_addr_map = '{ idx: 0,    start_addr: 64'h0000_0000,    end_addr: 64'hFFFF_FFFF       };
-
-  localparam axi_pkg::xbar_cfg_t CORE_AXI_XBAR_CFG = '{
+  localparam ace_pkg::ccu_cfg_t CCU_CFG = '{
     NoSlvPorts: culsans_pkg::NB_CORES,
-    NoMstPorts: 1,
     MaxMstTrans: 2, // Probably requires update
     MaxSlvTrans: 2, // Probably requires update
     FallThrough: 1'b0,
@@ -505,23 +500,18 @@ module culsans_top #(
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
-    AxiDataWidth: AXI_DATA_WIDTH,
-    NoAddrRules: 1
+    AxiDataWidth: AXI_DATA_WIDTH
   };
 
-  ace_xbar_intf #(
+  ace_ccu_top_intf #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH          ),
-    .Cfg            ( CORE_AXI_XBAR_CFG       ),
-    .rule_t         ( axi_pkg::xbar_rule_64_t )
+    .Cfg            ( CCU_CFG       )
   ) i_ccu (
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
     .slv_ports             ( core_to_CCU     ),
-    .mst_ports             ( to_xbar[0:0]  ),
-    .addr_map_i            ( core_addr_map   ),
-    .en_default_mst_port_i ( '0         ),
-    .default_mst_port_i    ( '0         )
+    .mst_ports             ( to_xbar[0]  )
   );
 
   // ---------------
@@ -550,6 +540,7 @@ module culsans_top #(
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
     LatencyMode: axi_pkg::NO_LATENCY,
+    PipelineStages: 1,
     AxiIdWidthSlvPorts: culsans_pkg::IdWidthToXbar,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidthToXbar,
     UniqueIds: 1'b0,

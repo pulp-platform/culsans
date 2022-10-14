@@ -94,7 +94,8 @@ AXI_SRC := src/axi_cut.sv                                                 \
 	          src/axi_intf.sv \
 	          src/ace_intf.sv \
 	          src/axi_xbar.sv \
-	          src/ace_xbar.sv
+	          src/ace_trs_dec.sv \
+	          src/ace_ccu_top.sv
 AXI_SRC := $(addprefix $(AXI_DIR)/, $(AXI_SRC))
 
 AXI_INCDIR := $(AXI_DIR)/include
