@@ -490,6 +490,13 @@ module culsans_top #(
     .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
   ) core_to_CCU[culsans_pkg::NB_CORES - 1 : 0]();
 
+   SNOOP_BUS
+     #(
+       .SNOOP_ADDR_WIDTH (AXI_ADDRESS_WIDTH),
+       .SNOOP_DATA_WIDTH (AXI_DATA_WIDTH)
+       )
+   CCU_to_core[culsans_pkg::NB_CORES-1:0]();
+
   localparam ace_pkg::ccu_cfg_t CCU_CFG = '{
     NoSlvPorts: culsans_pkg::NB_CORES,
     MaxMstTrans: 2, // Probably requires update
@@ -510,7 +517,8 @@ module culsans_top #(
     .clk_i                 ( clk_i      ),
     .rst_ni                ( ndmreset_n ),
     .test_i                ( test_en    ),
-    .slv_ports             ( core_to_CCU     ),
+    .slv_ports             ( core_to_CCU ),
+    .snoop_ports           ( CCU_to_core ),
     .mst_ports             ( to_xbar[0]  )
   );
 
@@ -647,7 +655,7 @@ module culsans_top #(
   uart_bus #(.BAUD_RATE(115200), .PARITY_EN(0)) i_uart_bus (.rx(tx), .tx(rx), .rx_en(1'b1));
 
   // ---------------
-  // CoreS
+  // Cores
   // ---------------
   ariane_ace::m2s_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
   ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
@@ -686,6 +694,8 @@ module culsans_top #(
 
     `ACE_ASSIGN_FROM_REQ(core_to_CCU[i], ace_ariane_req[i])
     `ACE_ASSIGN_TO_RESP(ace_ariane_resp[i], core_to_CCU[i])
+     `SNOOP_ASSIGN_FROM_RESP(CCU_to_core[i], ace_ariane_req[i])
+     `SNOOP_ASSIGN_TO_REQ(ace_ariane_resp[i], CCU_to_core[i])
 
   end
 
