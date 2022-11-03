@@ -37,9 +37,71 @@ sw : libs/libintegr.a
 
 # Compile the RTL
 
-# CVA6
-
+AXI_DIR = ../../modules/axi
 CVA6_DIR = ../../modules/cva6
+
+# Common cells
+
+COMMON_PKG := $(CVA6_DIR)/common/submodules/common_cells/src/cf_math_pkg.sv
+COMMON_SRC := $(CVA6_DIR)/common/submodules/common_cells/src/rstgen_bypass.sv                          \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/rstgen.sv                                 \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_mux.sv                             \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_demux.sv                           \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/exp_backoff.sv                            \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/addr_decode.sv                            \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_register.sv                        \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/unread.sv                                 \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/sync.sv                                   \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/cdc_2phase.sv                             \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/spill_register_flushable.sv               \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/spill_register.sv                         \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/sync_wedge.sv                             \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/edge_detect.sv                            \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_arbiter.sv                         \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_arbiter_flushable.sv               \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/fifo_v1.sv                     \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/fifo_v2.sv                     \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/fifo_v3.sv                                \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/lzc.sv                                    \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/popcount.sv                               \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/rr_arb_tree.sv                            \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/rrarbiter.sv                   \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_delay.sv                           \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr.sv                                   \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_8bit.sv                              \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_16bit.sv                             \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/delta_counter.sv                          \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/counter.sv                                \
+	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv
+
+# AXI
+
+# AXI packages
+AXI_PKG := src/axi_pkg.sv \
+						src/ace_pkg.sv
+AXI_PKG := $(addprefix $(AXI_DIR)/, $(AXI_PKG))
+
+AXI_SRC := src/axi_cut.sv                                                 \
+	          src/axi_join.sv                                                \
+	          src/axi_delayer.sv                                             \
+	          src/axi_to_axi_lite.sv                                         \
+	          src/axi_id_prepend.sv                                          \
+	          src/axi_atop_filter.sv                                         \
+	          src/axi_err_slv.sv                                             \
+	          src/axi_mux.sv                                                 \
+	          src/axi_demux.sv                                               \
+						src/axi_multicut.sv                                            \
+	          src/axi_intf.sv \
+	          src/ace_intf.sv \
+	          src/axi_xbar.sv \
+	          src/ace_trs_dec.sv \
+	          src/ace_ccu_top.sv
+AXI_SRC := $(addprefix $(AXI_DIR)/, $(AXI_SRC))
+
+AXI_INCDIR := $(AXI_DIR)/include
+AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
+
+# CVA6
 
 # CVA6 packages
 CVA6_PKG := core/include/cv64a6_imafdc_sv39_config_pkg.sv
@@ -49,14 +111,12 @@ CVA6_PKG += core/include/riscv_pkg.sv                              \
               core/include/ariane_rvfi_pkg.sv                        \
               core/include/wt_cache_pkg.sv                           \
               core/include/cvxif_pkg.sv                              \
-              corev_apu/axi/src/axi_pkg.sv                           \
               corev_apu/register_interface/src/reg_intf.sv           \
-              core/include/axi_intf.sv                               \
-              corev_apu/tb/rvfi_pkg.sv                               \
+							corev_apu/tb/rvfi_pkg.sv                               \
               core/include/ariane_axi_pkg.sv                         \
+              core/include/ariane_ace_pkg.sv                         \
               core/include/std_cache_pkg.sv                          \
               core/fpu/src/fpnew_pkg.sv                              \
-              common/submodules/common_cells/src/cf_math_pkg.sv      \
               core/cvxif_example/include/cvxif_instr_pkg.sv          \
               core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
 CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
@@ -86,7 +146,7 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(wildcard $(CVA6_DIR)/corev_apu/axi_mem_if/src/*.sv)                                    \
 	        $(wildcard $(CVA6_DIR)/core/pmp/src/*.sv)                                                \
 	        $(wildcard $(CVA6_DIR)/core/cvxif_example/*.sv)                                          \
-			$(wildcard $(CVA6_DIR)/core/mmu_sv39/*.sv)												 \
+					$(wildcard $(CVA6_DIR)/core/mmu_sv39/*.sv)												 \
 	        $(CVA6_DIR)/corev_apu/rv_plic/rtl/rv_plic_target.sv                                      \
 	        $(CVA6_DIR)/corev_apu/rv_plic/rtl/rv_plic_gateway.sv                                     \
 	        $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv                                         \
@@ -100,47 +160,6 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(CVA6_DIR)/corev_apu/riscv-dbg/src/dm_top.sv                                            \
 	        $(CVA6_DIR)/corev_apu/riscv-dbg/debug_rom/debug_rom.sv                                   \
 	        $(CVA6_DIR)/corev_apu/register_interface/src/apb_to_reg.sv                               \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_multicut.sv                                            \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/rstgen_bypass.sv                          \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/rstgen.sv                                 \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_mux.sv                             \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_demux.sv                           \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/exp_backoff.sv                            \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/addr_decode.sv                            \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_register.sv                        \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_cut.sv                                                 \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_join.sv                                                \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_delayer.sv                                             \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_to_axi_lite.sv                                         \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_id_prepend.sv                                          \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_atop_filter.sv                                         \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_err_slv.sv                                             \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_mux.sv                                                 \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_demux.sv                                               \
-	        $(CVA6_DIR)/corev_apu/axi/src/axi_xbar.sv                                                \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/unread.sv                                 \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/sync.sv                                   \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/cdc_2phase.sv                             \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/spill_register_flushable.sv               \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/spill_register.sv                         \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/sync_wedge.sv                             \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/edge_detect.sv                            \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_arbiter.sv                         \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_arbiter_flushable.sv               \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/fifo_v1.sv                     \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/fifo_v2.sv                     \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/fifo_v3.sv                                \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/lzc.sv                                    \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/popcount.sv                               \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/rr_arb_tree.sv                            \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/deprecated/rrarbiter.sv                   \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_delay.sv                           \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr.sv                                   \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_8bit.sv                              \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_16bit.sv                             \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/delta_counter.sv                          \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/counter.sv                                \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv                              \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/deprecated/cluster_clk_cells.sv         \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/deprecated/pulp_clk_cells.sv            \
 	        $(CVA6_DIR)/common/local/util/tc_sram_wrapper.sv                                         \
@@ -171,6 +190,7 @@ TB_SRC := $(wildcard $(TB_DIR)/*.sv)
 
 TOP_LEVEL := culsans_tb
 
+RTL_INCDIR += $(AXI_INCDIR)
 RTL_INCDIR += $(CVA6_INCDIR)
 RTL_INCDIR += $(CULSANS_INCDIR)
 
@@ -182,7 +202,7 @@ VERILATOR_LIB = work_verilate
 VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
-                    $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
+                    $(COMMON_PKG) $(AXI_PKG) $(COMMON_SRC) $(AXI_SRC) $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
                     $(COPRO_SRC)                                                                                 \
                     $(CVA6_DIR)/common/local/util/sram.sv                                                        \
                     $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv                                                 \
@@ -212,6 +232,16 @@ VERILATOR_CMD := $(VERILATOR)                                                   
 $(library):
 	$(VLIB) $(library)
 
+$(VSIM_LIB)/.build-common-srcs: $(library) $(COMMON_PKG) $(COMMON_SRC)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(COMMON_PKG) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(COMMON_SRC) $(RTL_INCDIR)
+	touch $(VSIM_LIB)/.build-common-srcs
+
+$(VSIM_LIB)/.build-axi-srcs: $(library) $(AXI_PKG) $(AXI_SRC)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(AXI_PKG) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(AXI_SRC) $(RTL_INCDIR)
+	touch $(VSIM_LIB)/.build-axi-srcs
+
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
@@ -228,7 +258,7 @@ $(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
 	touch $(VSIM_LIB)/.build-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(library) $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1

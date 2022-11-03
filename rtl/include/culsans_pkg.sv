@@ -127,6 +127,10 @@ package culsans_pkg;
       axi_pkg::region_t region;
       axi_pkg::atop_t   atop;
       user_t            user;
+      ace_pkg::awsnoop_t snoop;
+      ace_pkg::bar_t    bar;
+      ace_pkg::domain_t domain;
+      ace_pkg::awunique_t awunique;
   } aw_chan_t;
 
   // AW Channel - Slave
@@ -143,6 +147,10 @@ package culsans_pkg;
       axi_pkg::region_t region;
       axi_pkg::atop_t   atop;
       user_t            user;
+      ace_pkg::awsnoop_t snoop;
+      ace_pkg::bar_t    bar;
+      ace_pkg::domain_t domain;
+      ace_pkg::awunique_t awunique;
   } aw_chan_slv_t;
 
   // W Channel - AXI4 doesn't define a wid
@@ -180,6 +188,9 @@ package culsans_pkg;
       axi_pkg::qos_t    qos;
       axi_pkg::region_t region;
       user_t            user;
+      ace_pkg::arsnoop_t snoop;
+      ace_pkg::bar_t    bar;
+      ace_pkg::domain_t domain;
   } ar_chan_t;
 
   // AR Channel - Slave
@@ -195,13 +206,16 @@ package culsans_pkg;
       axi_pkg::qos_t    qos;
       axi_pkg::region_t region;
       user_t            user;
+      ace_pkg::arsnoop_t snoop;
+      ace_pkg::bar_t    bar;
+      ace_pkg::domain_t domain;
   } ar_chan_slv_t;
 
   // R Channel
   typedef struct packed {
       id_t            id;
       data_t          data;
-      axi_pkg::resp_t resp;
+      ace_pkg::rresp_t resp;
       logic           last;
       user_t          user;
   } r_chan_t;
@@ -210,7 +224,7 @@ package culsans_pkg;
   typedef struct packed {
       id_slv_t        id;
       data_t          data;
-      axi_pkg::resp_t resp;
+      ace_pkg::rresp_t resp;
       logic           last;
       user_t          user;
   } r_chan_slv_t;
