@@ -306,6 +306,8 @@ module culsans_top #(
     .id_o                  (                           ),
     .critical_word_o       (                           ),
     .critical_word_valid_o (                           ),
+    .dirty_o (),
+    .shared_o(),
     .axi_req_o             ( dm_axi_m_req              ),
     .axi_resp_i            ( dm_axi_m_resp             )
   );
