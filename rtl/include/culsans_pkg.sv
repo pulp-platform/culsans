@@ -87,6 +87,10 @@ package culsans_pkg;
     NrCachedRegionRules:    1,
     CachedRegionAddrBase:  {DRAMBase},
     CachedRegionLength:    {DRAMLength},
+    // shared region
+    NrSharedRegionRules:    0,
+    SharedRegionAddrBase:  {64'h8000_0000},
+    SharedRegionLength:    {64'h40000000},
     //  cache config
     Axi64BitCompliant:      1'b1,
     SwapEndianess:          1'b0,
