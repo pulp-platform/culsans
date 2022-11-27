@@ -23,7 +23,7 @@ package culsans_pkg;
 
   // 4 is recommended by AXI standard, so lets stick to it, do not change
   localparam IdWidth = 4;
-  localparam IdWidthToXbar = IdWidth + $clog2(NB_CORES);
+  localparam IdWidthToXbar = IdWidth + $clog2(NB_CORES) + $clog2(NB_CORES+1);
   localparam IdWidthSlave = IdWidthToXbar + $clog2(NrSlaves);
 
   typedef enum int unsigned {
