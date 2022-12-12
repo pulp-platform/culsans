@@ -1,6 +1,3 @@
 [submodule "modules/cva6"]
 	path = modules/cva6
 	url = git@github.com:planvtech/cva6.git
-[submodule "modules/axi"]
-	path = modules/axi
-	url = https://github.com/planvtech/axi.git

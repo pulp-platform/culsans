@@ -37,8 +37,8 @@ sw : libs/libintegr.a
 
 # Compile the RTL
 
-AXI_DIR = ../../modules/axi
 CVA6_DIR = ../../modules/cva6
+AXI_DIR = $(CVA6_DIR)/corev_apu/axi/
 
 # Common cells
 
