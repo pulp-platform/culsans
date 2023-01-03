@@ -1,0 +1,15 @@
+xilinx/xlnx*/*
+!xilinx/xlnx*/tcl
+!xilinx/Makefile
+!xilinx/common.mk
+!xilinx/*.prj
+*.cache
+*.hw
+*.ip_user_files
+*.runs
+*.sim
+*.xpr
+*.mif
+vivado*
+work-fpga/
+.Xil/
