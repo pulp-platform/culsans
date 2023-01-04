@@ -203,8 +203,8 @@ module culsans_top #(
     end
   end
 
-  culsans_pkg::req_t    dm_axi_m_req;
-  culsans_pkg::resp_t   dm_axi_m_resp;
+  ariane_axi::req_t    dm_axi_m_req;
+  ariane_axi::resp_t   dm_axi_m_resp;
 
   logic                dm_slave_req;
   logic                dm_slave_we;

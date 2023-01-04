@@ -97,6 +97,7 @@ AXI_SRC := src/axi_cut.sv                                                 \
 	          src/snoop_intf.sv \
 	          src/axi_xbar.sv \
 	          src/ace_trs_dec.sv \
+	          src/ccu_fsm.sv \
 	          src/ace_ccu_top.sv
 AXI_SRC := $(addprefix $(AXI_DIR)/, $(AXI_SRC))
 

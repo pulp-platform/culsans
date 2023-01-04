@@ -52,6 +52,9 @@ package culsans_pkg;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h1000;
   localparam logic[63:0] DRAMLength     = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
+
+  localparam logic[63:0] uncachedLength = 64'h30000;
+
   localparam logic[63:0] SRAMLength     = 64'h1800000;  // 24 MByte of SRAM
   // Instantiate AXI protocol checkers
   localparam bit GenProtocolChecker = 1'b0;
@@ -69,6 +72,9 @@ package culsans_pkg;
     DRAMBase     = 64'h8000_0000
   } soc_bus_start_t;
 
+  localparam logic [63:0] sharedOffset = 64'h20000;
+  localparam logic [63:0] sharedLength = 64'h20000;
+
   localparam NrRegion = 1;
   localparam logic [NrRegion-1:0][NB_PERIPHERALS-1:0] ValidRule = {{NrRegion * NB_PERIPHERALS}{1'b1}};
 
@@ -85,12 +91,12 @@ package culsans_pkg;
     ExecuteRegionLength:   {DRAMLength, ROMLength, DebugLength},
     // cached region
     NrCachedRegionRules:    1,
-    CachedRegionAddrBase:  {DRAMBase},
-    CachedRegionLength:    {DRAMLength},
+    CachedRegionAddrBase:  {DRAMBase + uncachedLength},
+    CachedRegionLength:    {DRAMLength - uncachedLength},
     // shared region
-    NrSharedRegionRules:    0,
-    SharedRegionAddrBase:  {64'h8000_0000},
-    SharedRegionLength:    {64'h40000000},
+    NrSharedRegionRules:    1,
+    SharedRegionAddrBase:  {DRAMBase + sharedOffset},
+    SharedRegionLength:    {sharedLength},
     //  cache config
     Axi64BitCompliant:      1'b1,
     SwapEndianess:          1'b0,
@@ -99,7 +105,7 @@ package culsans_pkg;
     NrPMPEntries:           8
   };
 
-  localparam exitOffset = 64'h1000;
+  localparam exitOffset = 64'h0;
   localparam exitAddr = DRAMBase + exitOffset;
 
   // used in axi_adapter.sv
