@@ -1,4 +1,4 @@
-#include "access_nocache_noshare.h"
+#include "read_nocache_noshare.h"
 #include <stdint.h>
 
 extern void exit(int);
@@ -7,11 +7,14 @@ extern void exit(int);
 #define uint128_t __uint128_t
 uint128_t data[4] __attribute__((section(".nocache_noshare_region")));
 
-int access_nocache_noshare(int cid, int nc)
+int read_nocache_noshare(int cid, int nc)
 {
-  // write data
-  data[cid] = cid+1;
-  // readback and throw an error in case of mismatch
+  // core 0 initializes the data
+  if (cid == 0) {
+    for (int i = 0; i < sizeof(data)/sizeof(data[0]); i++)
+      data[i] = i+1;
+  }
+
   if (data[cid] != cid+1)
     exit(cid+1);
 
