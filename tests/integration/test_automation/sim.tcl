@@ -1,6 +1,6 @@
 # include an additional script, which implements testcase-specific functions
 set sim_extensions "sim_ext.tcl"
-if { [file exists $sim_extensions] == 1} {               
+if { [file exists $sim_extensions] == 1} {
     source sim_extensions
 }
 
@@ -17,6 +17,6 @@ add wave /culsans_tb/i_culsans/genblk2[0]/i_ariane/i_cva6/i_cache_subsystem/i_nb
 add wave /culsans_tb/i_culsans/genblk2[0]/i_ariane/i_cva6/issue_stage_i/i_issue_read_operands/i_ariane_regfile/mem
 add wave -position insertpoint sim:/culsans_tb/i_culsans/i_ccu/i_ccu_top/fsm/*
 # set a timeout
-run 50us
+run 30ms
 
 quit
