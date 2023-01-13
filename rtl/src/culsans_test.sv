@@ -360,7 +360,7 @@ module snoop_chan_logger #(
       while (ac_queues.size() != 0 && cr_queues.size() != 0 && cd_queues.size()!=0) begin
         ac_beat = ac_queues.pop_front();
         cr_beat  = cr_queues.pop_front();
-        log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
+        log_name = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
         fd = $fopen(log_name, "a");
         if (fd) begin
           log_string = $sformatf("%0t ns> CR %d RESP: %b, ",
