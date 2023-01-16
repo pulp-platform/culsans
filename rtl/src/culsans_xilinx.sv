@@ -193,7 +193,7 @@ AXI_BUS #(
 logic test_en;
 logic ndmreset;
 logic ndmreset_n;
-logic debug_req_irq;
+logic [culsans_pkg::NB_CORES-1:0] debug_req_irq;
 logic [culsans_pkg::NB_CORES-1:0] ipi;
 logic [culsans_pkg::NB_CORES-1:0] timer_irq;
 
@@ -351,7 +351,7 @@ logic [riscv::XLEN-1:0]    dm_master_r_rdata;
 
 // debug module
 dm_top #(
-    .NrHarts          ( 1                 ),
+    .NrHarts          ( culsans_pkg::NB_CORES ),
     .BusWidth         ( riscv::XLEN      ),
     .SelectableHarts  ( 1'b1              )
 ) i_dm_top (
@@ -720,7 +720,7 @@ end
   `ifdef SPIKE_TANDEM
       .debug_req_i          ( 1'b0                ),
   `else
-      .debug_req_i          ( debug_req_irq       ),
+      .debug_req_i          ( debug_req_irq[i]    ),
   `endif
       .axi_req_o            ( ace_ariane_req[i]   ),
       .axi_resp_i           ( ace_ariane_resp[i]  )

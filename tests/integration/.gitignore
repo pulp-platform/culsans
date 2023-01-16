@@ -4,6 +4,7 @@ main.riscv
 main.vh
 *.hex
 *.log
+*.map
 *.vcd
 *.dasm
 v*_stacktrace.vstf

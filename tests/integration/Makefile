@@ -34,6 +34,9 @@ libs/libintegr.a: $(OBJS) libs
 
 sw : libs/libintegr.a
 	for d in $(TESTLIST); do make -C $$d sw; done
+	
+sw_all : libs/libintegr.a
+	for d in $(TESTLIST); do make -C $$d all; done
 
 # Compile the RTL
 
