@@ -6,10 +6,10 @@ import re
 non_cached_non_shared_beginning = int("0x80000000", 16)
 non_cached_non_shared_end = int("0x8001ffff", 16)
 non_cached_shared_beginning = int("0x80020000", 16)
-non_cached_shared_end = int("0x8002ffff", 16)
-cached_shared_beginning = int("0x80030000", 16)
-cached_shared_end = int("0x8003ffff", 16)
-cached_non_shared_beginning = int("0x80040000", 16)
+non_cached_shared_end = int("0x8003ffff", 16)
+cached_shared_beginning = int("0x80040000", 16)
+cached_shared_end = int("0x8005ffff", 16)
+cached_non_shared_beginning = int("0x80060000", 16)
     
 address_increment = "0x10   "
 

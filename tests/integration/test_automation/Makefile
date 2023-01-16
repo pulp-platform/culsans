@@ -22,7 +22,6 @@ main.hex : main.riscv
 	$(RV_OBJCOPY) -O verilog main.riscv main.vh
 	../../test_automation/vh2hex.py -m main.vh -o main.hex -b 0x80000000 -d 0x80000000 -i 0x80100000
 	rm main.vh
-	../../test_automation/verify_transactions.py
 
 sw : main.hex
 
@@ -55,6 +54,7 @@ ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
+	../../test_automation/verify_transactions.py
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 else
 $(TEST_REPORT): main.riscv

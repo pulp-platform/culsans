@@ -53,7 +53,7 @@ package culsans_pkg;
   localparam logic[63:0] GPIOLength     = 64'h1000;
   localparam logic[63:0] DRAMLength     = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
 
-  localparam logic[63:0] uncachedLength = 64'h30000;
+  localparam logic[63:0] uncachedLength = 64'h60000;
 
   localparam logic[63:0] SRAMLength     = 64'h1800000;  // 24 MByte of SRAM
   // Instantiate AXI protocol checkers
@@ -72,8 +72,8 @@ package culsans_pkg;
     DRAMBase     = 64'h8000_0000
   } soc_bus_start_t;
 
-  localparam logic [63:0] sharedOffset = 64'h20000;
-  localparam logic [63:0] sharedLength = 64'h20000;
+  localparam logic [63:0] sharedOffset = 64'h40000;
+  localparam logic [63:0] sharedLength = 64'h40000;
 
   localparam NrRegion = 1;
   localparam logic [NrRegion-1:0][NB_PERIPHERALS-1:0] ValidRule = {{NrRegion * NB_PERIPHERALS}{1'b1}};
