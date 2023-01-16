@@ -1,0 +1,10 @@
+:iteration
+2048
+:data
+cache_share
+:expected
+read_snoop_slave
+write
+read_snoop_slave
+write
+

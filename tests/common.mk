@@ -35,3 +35,4 @@ endif
 SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
 TEST_REPORT = result.rpt
+VERIFICATION_REPORT = verification_result.txt

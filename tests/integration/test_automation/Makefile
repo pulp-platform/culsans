@@ -22,6 +22,7 @@ main.hex : main.riscv
 	$(RV_OBJCOPY) -O verilog main.riscv main.vh
 	../../test_automation/vh2hex.py -m main.vh -o main.hex -b 0x80000000 -d 0x80000000 -i 0x80100000
 	rm main.vh
+	../../test_automation/verify_transactions.py
 
 sw : main.hex
 
@@ -63,6 +64,7 @@ endif
 
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
+	@cat $(VERIFICATION_REPORT)
 
 clean:
 	rm -rf objs
@@ -75,5 +77,8 @@ clean:
 	rm -rf $(TEST_REPORT)
 	rm -rf transcript
 	rm -rf main.map
+	rm -rf ace_log/
+	rm -rf axi_log/
+	rm -rf $(VERIFICATION_REPORT)
 
 .PHONY: all gui sw dis sw clean

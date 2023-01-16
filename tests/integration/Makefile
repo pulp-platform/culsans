@@ -290,7 +290,7 @@ endif
 
 # run failed or not-executed tests
 rerun: sw rtl
-	for d in $(TESTLIST); do if [ -e $$d/$(TEST_REPORT) ]; then if grep -q FAIL $$d/$(TEST_REPORT) ; then make -C $$d all; fi; else make -C $$d all; fi; done
+	for d in $(TESTLIST); do if [ -e $$d/$(TEST_REPORT) ] and [ -e $$d/$(VERIFICATION_REPORT) ]; then if grep -q FAIL $$d/$(TEST_REPORT) ; then make -C $$d all; fi; else make -C $$d all; fi; done
 
 # Cleanup
 
