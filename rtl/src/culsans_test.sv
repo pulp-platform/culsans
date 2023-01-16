@@ -343,7 +343,7 @@ module snoop_chan_logger #(
     $system(log_name);
 
     // open log files
-    log_name = $sformatf("./ace_log/%s/read.log", LoggerName);
+    log_name = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
     fd = $fopen(log_name, "w");
     if (fd) begin
       $display("File was opened successfully : %0d", fd);
@@ -357,7 +357,7 @@ module snoop_chan_logger #(
       @(posedge clk_i);
 
       // update the read log files
-      while (ac_queues.size() != 0 && cr_queues.size() != 0 && cd_queues.size()!=0) begin
+      while (ac_queues.size() != 0 && cr_queues.size() != 0) begin
         ac_beat = ac_queues.pop_front();
         cr_beat  = cr_queues.pop_front();
         log_name = $sformatf("./ace_log/%s/snoop_read.log", LoggerName);
@@ -367,10 +367,13 @@ module snoop_chan_logger #(
                           $time, no_r_beat, cr_beat);
           $fdisplay(fd, log_string);
           if (cr_beat.dataTransfer && !cr_beat.error) begin
-            cd_beat = cd_queues.pop_front();
-            log_string = $sformatf("%0t ns> CD %d DATA: %h, ",
-                            $time, no_r_beat, cd_beat.data);
-            $fdisplay(fd, log_string);
+            while(cd_queues.size() == 0);
+            while(cd_queues.size() != 0) begin
+              cd_beat = cd_queues.pop_front();
+              log_string = $sformatf("%0t ns> CD %d DATA: %h, ",
+                              $time, no_r_beat, cd_beat.data);
+              $fdisplay(fd, log_string);
+            end
           end
           $fclose(fd);
         end
