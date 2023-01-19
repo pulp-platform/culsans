@@ -6,12 +6,12 @@ import re
 non_cached_non_shared_beginning = int("0x80000000", 16)
 non_cached_non_shared_end = int("0x8001ffff", 16)
 non_cached_shared_beginning = int("0x80020000", 16)
-non_cached_shared_end = int("0x8003ffff", 16)
-cached_shared_beginning = int("0x80040000", 16)
-cached_shared_end = int("0x8005ffff", 16)
-cached_non_shared_beginning = int("0x80060000", 16)
+non_cached_shared_end = int("0x8002ffff", 16)
+cached_shared_beginning = int("0x80030000", 16)
+cached_shared_end = int("0x8003ffff", 16)
+cached_non_shared_beginning = int("0x80040000", 16)
     
-address_increment = "0x10   "
+address_increment = "0x10"
 
 result = ""
 
@@ -94,11 +94,11 @@ if number_of_variables > 0:
             print(address)
         
             # look for the mention of the address in the logs
-            look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--exclude=trace_hart_*', '--exclude=main.map'])
+            look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--exclude=trace_hart_*', '--exclude=main.map', '--exclude=*snoop*'])
             look_for_logs = look_for_logs.splitlines()
             log_entry = []
             for line in look_for_logs:
-                L = re.split(' |> |:', line)
+                L = re.split(' |-|>|:', line)
                 L = list(filter(None, L))
                 if 'master' in L[0]:
                     if 'read' in L[0]:
@@ -112,12 +112,43 @@ if number_of_variables > 0:
                         L[0] = 'slave_write'
                 if 'snoop' in L[0]:
                     if 'read' in L[0]:
-                        L[0] = 'snoope_read'
+                        L[0] = 'snoop_read'
                     if 'write' in L[0]:
                         L[0] = 'snoop_write'
                 log_entry.append(L)
                 
+            # look for the mention of the address in the logs
+            look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--include=*snoop*', '--after-context=10'])
+            look_for_logs = look_for_logs.splitlines()
+            for line in look_for_logs:
+
+                if 'ADDR:' in line and address not in line:
+                    break
+                #print(L)
+                L = re.split(' |-|>|:', line)
+                #print(L)
+                L = list(filter(None, L))
+                if 'master' in L[0]:
+                    if 'read' in L[0]:
+                        L[0] = 'master_read'
+                    if 'write' in L[0]:
+                        L[0] = 'master_write'
+                if 'slave' in L[0]:
+                    if 'read' in L[0]:
+                        L[0] = 'slave_read'
+                    if 'write' in L[0]:
+                        L[0] = 'slave_write'
+                if 'snoop' in L[0]:
+                    if 'read' in L[0]:
+                        L[0] = 'snoop_read'
+                    if 'write' in L[0]:
+                        L[0] = 'snoop_write'
+                log_entry.append(L)
+                #print(L)
+                
             # sort the logs by simulation time
+            #for entry in log_entry:
+            #    print(entry)
             log_entry.sort(key = lambda x: (int(x[2]), x[0]) )
             for entry in log_entry:
                 print(entry)
@@ -170,6 +201,10 @@ if number_of_variables > 0:
                 print("fail 4")
                 print(expected_outcome_copy)
                 print(log_entry)
+                
+            # if the test already failed, there is no need to check subsequent memory addresses    
+            if result == "FAIL":
+                break
             
     else:
         result = "FAIL"
