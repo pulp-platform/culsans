@@ -3,13 +3,13 @@
 import subprocess
 import re
     
-non_cached_non_shared_beginning = int("0x80000000", 16)
-non_cached_non_shared_end = int("0x8001ffff", 16)
-non_cached_shared_beginning = int("0x80020000", 16)
-non_cached_shared_end = int("0x8002ffff", 16)
-cached_shared_beginning = int("0x80030000", 16)
-cached_shared_end = int("0x8003ffff", 16)
-cached_non_shared_beginning = int("0x80040000", 16)
+non_cached_non_shared_beginning = int("0x80020000", 16)
+non_cached_non_shared_end = int("0x8003ffff", 16)
+non_cached_shared_beginning = int("0x80040000", 16)
+non_cached_shared_end = int("0x8005ffff", 16)
+cached_shared_beginning = int("0x80060000", 16)
+cached_shared_end = int("0x8007ffff", 16)
+cached_non_shared_beginning = int("0x80080000", 16)
     
 address_increment = "0x10"
 
@@ -117,34 +117,37 @@ if number_of_variables > 0:
                         L[0] = 'snoop_write'
                 log_entry.append(L)
                 
-            # look for the mention of the address in the logs
-            look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--include=*snoop*', '--after-context=10'])
-            look_for_logs = look_for_logs.splitlines()
-            for line in look_for_logs:
+            # look for the mention of the address in the snoop logs
+            if "read_snoop_slave" in expected_outcome:
+                look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--include=*snoop*', '--after-context=10'])
+                look_for_logs = look_for_logs.splitlines()
+                for line in look_for_logs:
 
-                if 'ADDR:' in line and address not in line:
-                    break
-                #print(L)
-                L = re.split(' |-|>|:', line)
-                #print(L)
-                L = list(filter(None, L))
-                if 'master' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'master_read'
-                    if 'write' in L[0]:
-                        L[0] = 'master_write'
-                if 'slave' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'slave_read'
-                    if 'write' in L[0]:
-                        L[0] = 'slave_write'
-                if 'snoop' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'snoop_read'
-                    if 'write' in L[0]:
-                        L[0] = 'snoop_write'
-                log_entry.append(L)
-                #print(L)
+                    if 'ADDR:' in line and address not in line:
+                        break
+                    #print(L)
+                    L = re.split(' |-|>|:', line)
+                    #print(L)
+                    L = list(filter(None, L))
+                    if 'master' in L[0]:
+                        if 'read' in L[0]:
+                            L[0] = 'master_read'
+                        if 'write' in L[0]:
+                            L[0] = 'master_write'
+                    if 'slave' in L[0]:
+                        if 'read' in L[0]:
+                            L[0] = 'slave_read'
+                        if 'write' in L[0]:
+                            L[0] = 'slave_write'
+                    if 'snoop' in L[0]:
+                        if 'read' in L[0]:
+                            L[0] = 'snoop_read'
+                        if 'write' in L[0]:
+                            L[0] = 'snoop_write'
+                    log_entry.append(L)
+                    #print(L)
+            else:
+                print("no snoop logs")
                 
             # sort the logs by simulation time
             #for entry in log_entry:
@@ -203,8 +206,8 @@ if number_of_variables > 0:
                 print(log_entry)
                 
             # if the test already failed, there is no need to check subsequent memory addresses    
-            if result == "FAIL":
-                break
+            #if result == "FAIL":
+            #    break
             
     else:
         result = "FAIL"

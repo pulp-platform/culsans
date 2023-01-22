@@ -5,5 +5,5 @@ cache_share
 :expected
 read_snoop_slave
 write
-read_snoop_slave
+read_slave
 
