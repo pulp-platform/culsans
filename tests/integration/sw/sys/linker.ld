@@ -38,24 +38,16 @@ SECTIONS
 
   . = 0x80000048;
 
-  .non_cached_region : { *(.non_cached_region) }
-
-  . = 0x80010000;
-  .nocache_noshare_region : { *(.nocache_noshare_region) }
   . = 0x80020000;
-  .nocache_share_region : { *(.nocache_share_region) }
-  . = 0x80030000;
-  .cache_share_region : { *(.cache_share_region) }
+  .nocache_noshare_region : { *(.nocache_noshare_region) }
   . = 0x80040000;
+  .nocache_share_region : { *(.nocache_share_region) }
+  . = 0x80060000;
+  .cache_share_region : { *(.cache_share_region) }
+  . = 0x80080000;
   .cache_noshare_region : { *(.cache_noshare_region) }
 
-  . = 0x80080000;
-
-  .cached_region_1 : { *(.cached_region_1) }
-  
-  . = 0x800C0000;
-  
-    .cached_region_2 : { *(.cached_region_2) }
+  . = 0x800a0000;
 
   /* data segment */
   /*.data : { *(.cached_region) *(.non_cached_region) }*/
