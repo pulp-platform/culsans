@@ -4,7 +4,7 @@
 extern void exit(int);
 
 #define uint128_t __uint128_t
-#define NUM_CACHELINES 256*8
+#define NUM_CACHELINES 256*6
 #define NUM_CORES 4
 uint128_t data[NUM_CACHELINES] __attribute__((section(".cache_share_region")));
 uint128_t data1[NUM_CORES*NUM_CACHELINES] __attribute__((section(".cache_share_region")));
