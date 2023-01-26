@@ -8,9 +8,15 @@ set_property board_part $boardName [current_project]
 
 create_ip -name ila -vendor xilinx.com -library ip -module_name $ipName
 set_property -dict [list  CONFIG.C_NUM_OF_PROBES {8} \
-                          CONFIG.C_PROBE3_WIDTH {4} \
-                          CONFIG.C_PROBE6_WIDTH {4} \
-                          CONFIG.C_DATA_DEPTH {16384}  \
+                        CONFIG.C_PROBE0_WIDTH {32} \
+                        CONFIG.C_PROBE1_WIDTH {32} \
+                        CONFIG.C_PROBE2_WIDTH {32} \
+                        CONFIG.C_PROBE3_WIDTH {32} \
+                        CONFIG.C_PROBE4_WIDTH {32} \
+                        CONFIG.C_PROBE5_WIDTH {32} \
+                        CONFIG.C_PROBE6_WIDTH {32} \
+                        CONFIG.C_PROBE7_WIDTH {32} \
+                          CONFIG.C_DATA_DEPTH {2048}  \
                           CONFIG.C_INPUT_PIPE_STAGES {1} \
                     ] [get_ips $ipName]
 

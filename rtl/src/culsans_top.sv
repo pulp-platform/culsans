@@ -227,8 +227,7 @@ module culsans_top #(
   // debug module
   dm_top #(
     .NrHarts              ( culsans_pkg::NB_CORES       ),
-    .BusWidth             ( AXI_DATA_WIDTH              ),
-    .SelectableHarts      ( 1'b1                        )
+    .BusWidth             ( AXI_DATA_WIDTH              )
   ) i_dm_top (
     .clk_i                ( clk_i                       ),
     .rst_ni               ( rst_ni                      ), // PoR

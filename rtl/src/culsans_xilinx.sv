@@ -352,8 +352,7 @@ logic [riscv::XLEN-1:0]    dm_master_r_rdata;
 // debug module
 dm_top #(
     .NrHarts          ( culsans_pkg::NB_CORES ),
-    .BusWidth         ( riscv::XLEN      ),
-    .SelectableHarts  ( 1'b1              )
+    .BusWidth         ( riscv::XLEN      )
 ) i_dm_top (
     .clk_i            ( clk               ),
     .rst_ni           ( rst_n             ), // PoR
@@ -695,6 +694,20 @@ end
   ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
   ariane_rvfi_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
+   ACE_BUS #(
+             .AXI_ADDR_WIDTH ( AxiAddrWidth   ),
+             .AXI_DATA_WIDTH ( AxiDataWidth      ),
+             .AXI_ID_WIDTH   ( culsans_pkg::IdWidth ),
+             .AXI_USER_WIDTH ( AxiUserWidth      )
+             ) core_to_CCU[culsans_pkg::NB_CORES - 1 : 0]();
+
+   SNOOP_BUS
+     #(
+       .SNOOP_ADDR_WIDTH (AxiAddrWidth),
+       .SNOOP_DATA_WIDTH (AxiDataWidth)
+       )
+   CCU_to_core[culsans_pkg::NB_CORES-1:0]();
+
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
 
   for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
@@ -733,23 +746,22 @@ end
 
   end
 
+   xlnx_ila i_ila
+     (
+      .clk(clk),
+      .probe0(core_to_CCU[1].aw_addr[31:0]),
+      .probe1(core_to_CCU[1].ar_addr[31:0]),
+      .probe2(core_to_CCU[1].r_data[31:0]),
+      .probe3(core_to_CCU[1].w_data[31:0]),
+      .probe4(dm_slave_addr[31:0]),
+      .probe5(dm_slave_wdata[31:0]),
+      .probe6(dm_slave_rdata[31:0]),
+      .probe7({15'b0, core_to_CCU[1].aw_valid, core_to_CCU[1].ar_valid, core_to_CCU[1].w_valid, core_to_CCU[1].r_ready, core_to_CCU[1].r_valid, core_to_CCU[1].w_ready, debug_req_irq[1], dm_slave_req, dm_slave_we, dm_slave_be})
+      );
+
   // ---------------
   // CCU
   // ---------------
-
-  ACE_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth   ),
-    .AXI_DATA_WIDTH ( AxiDataWidth      ),
-    .AXI_ID_WIDTH   ( culsans_pkg::IdWidth ),
-    .AXI_USER_WIDTH ( AxiUserWidth      )
-  ) core_to_CCU[culsans_pkg::NB_CORES - 1 : 0]();
-
-   SNOOP_BUS
-     #(
-       .SNOOP_ADDR_WIDTH (AxiAddrWidth),
-       .SNOOP_DATA_WIDTH (AxiDataWidth)
-       )
-   CCU_to_core[culsans_pkg::NB_CORES-1:0]();
 
   localparam ace_pkg::ccu_cfg_t CCU_CFG = '{
     NoSlvPorts: culsans_pkg::NB_CORES,
