@@ -64,8 +64,8 @@ module ccu_master_logger #(
         log_file = $sformatf("./ace_log/%s/write.log", LoggerName);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> ID: %h AW on channel: ADDR: 0x%h LEN: %d, ATOP: %b",
-                        $time, aw_chan_i.id, aw_chan_i.addr, aw_chan_i.len, aw_chan_i.atop);
+          log_str = $sformatf("%0t> ID: %h AW on channel: ADDR: 0x%h LEN: %d, ATOP: %b, AWSNOOP:%b, AWBAR:%b, AWDOMAIN:%b",
+                        $time, aw_chan_i.id, aw_chan_i.addr, aw_chan_i.len, aw_chan_i.atop, aw_chan_i.snoop, aw_chan_i.bar, aw_chan_i.domain);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -89,12 +89,16 @@ module ccu_master_logger #(
           ar_beat.region = aw_chan_i.region;
           ar_beat.atop   = aw_chan_i.atop;
           ar_beat.user   = aw_chan_i.user;
+          ar_beat.snoop  = aw_chan_i.snoop;
+          ar_beat.bar    = aw_chan_i.bar;
+          ar_beat.domain = aw_chan_i.domain;
+
           ar_queues[aw_chan_i.id].push_back(ar_beat);
           log_file = $sformatf("./ace_log/%s/read_%0h.log", LoggerName, aw_chan_i.id);
           fd = $fopen(log_file, "a");
           if (fd) begin
-            log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d injected ATOP: %b",
-                          $time, ar_beat.id, ar_beat.addr, ar_beat.len, ar_beat.atop);
+            log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d injected ATOP: %b, ARSNOOP:%b, ARBAR:%b, ARDOMAIN:%b",
+                          $time, ar_beat.id, ar_beat.addr, ar_beat.len, ar_beat.atop, ar_beat.snoop, ar_beat.bar, ar_beat.domain);
             $fdisplay(fd, log_str);
             $fclose(fd);
           end
@@ -113,8 +117,8 @@ module ccu_master_logger #(
         log_file = $sformatf("./ace_log/%s/read_%0h.log", LoggerName, ar_chan_i.id);
         fd = $fopen(log_file, "a");
         if (fd) begin
-          log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d",
-                          $time, ar_chan_i.id, ar_chan_i.addr, ar_chan_i.len);
+          log_str = $sformatf("%0t> ID: %h AR on channel: ADDR: 0x%h LEN: %d, ARSNOOP:%b, ARBAR:%b, ARDOMAIN:%b",
+                          $time, ar_chan_i.id, ar_chan_i.addr, ar_chan_i.len, ar_chan_i.snoop, ar_chan_i.bar, ar_chan_i.domain);
           $fdisplay(fd, log_str);
           $fclose(fd);
         end
@@ -130,9 +134,9 @@ module ccu_master_logger #(
         ar_beat.region = ar_chan_i.region;
         ar_beat.atop   = '0;
         ar_beat.user   = ar_chan_i.user;
-        ar_beat.snoop=ar_chan_i.snoop;
-        ar_beat.bar=ar_chan_i.bar;
-        ar_beat.domain=ar_chan_i.domain;
+        ar_beat.snoop  = ar_chan_i.snoop;
+        ar_beat.bar    = ar_chan_i.bar;
+        ar_beat.domain = ar_chan_i.domain;
         ar_queues[ar_chan_i.id].push_back(ar_beat);
       end
       // R channel

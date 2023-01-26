@@ -6,7 +6,7 @@ extern void exit(int);
 // cachelines are 128bit long
 #define uint128_t __uint128_t
 // cache is 32kB: 16B cachelines x 256 entries x 8 ways
-uint128_t data[256*8] __attribute__((section(".cache_share_region")));
+uint128_t data[256*6] __attribute__((section(".cache_share_region")));
 
 int read_cache_share_overlap(int cid, int nc)
 {

@@ -91,7 +91,7 @@ if number_of_variables > 0:
         
             address =  int(start_address,16) + iterator * int(address_increment,16) 
             address = "{0:#0{1}x}".format(address,18)
-            print(address)
+            print(iterator ,' ', address)
         
             # look for the mention of the address in the logs
             look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--exclude=trace_hart_*', '--exclude=main.map', '--exclude=*snoop*'])
@@ -100,21 +100,21 @@ if number_of_variables > 0:
             for line in look_for_logs:
                 L = re.split(' |-|>|:', line)
                 L = list(filter(None, L))
-                if 'master' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'master_read'
-                    if 'write' in L[0]:
-                        L[0] = 'master_write'
-                if 'slave' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'slave_read'
-                    if 'write' in L[0]:
-                        L[0] = 'slave_write'
-                if 'snoop' in L[0]:
-                    if 'read' in L[0]:
-                        L[0] = 'snoop_read'
-                    if 'write' in L[0]:
-                        L[0] = 'snoop_write'
+                #if 'master' in L[0]:
+                #    if 'read' in L[0]:
+                #        L[0] = 'master_read'
+                #    if 'write' in L[0]:
+                #        L[0] = 'master_write'
+                #if 'slave' in L[0]:
+                #    if 'read' in L[0]:
+                #        L[0] = 'slave_read'
+                #    if 'write' in L[0]:
+                #        L[0] = 'slave_write'
+                #if 'snoop' in L[0]:
+                #    if 'read' in L[0]:
+                #        L[0] = 'snoop_read'
+                #    if 'write' in L[0]:
+                #        L[0] = 'snoop_write'
                 log_entry.append(L)
                 
             # look for the mention of the address in the snoop logs
@@ -129,21 +129,21 @@ if number_of_variables > 0:
                     L = re.split(' |-|>|:', line)
                     #print(L)
                     L = list(filter(None, L))
-                    if 'master' in L[0]:
-                        if 'read' in L[0]:
-                            L[0] = 'master_read'
-                        if 'write' in L[0]:
-                            L[0] = 'master_write'
-                    if 'slave' in L[0]:
-                        if 'read' in L[0]:
-                            L[0] = 'slave_read'
-                        if 'write' in L[0]:
-                            L[0] = 'slave_write'
-                    if 'snoop' in L[0]:
-                        if 'read' in L[0]:
-                            L[0] = 'snoop_read'
-                        if 'write' in L[0]:
-                            L[0] = 'snoop_write'
+                    #if 'master' in L[0]:
+                    #    if 'read' in L[0]:
+                    #        L[0] = 'master_read'
+                    #    if 'write' in L[0]:
+                    #        L[0] = 'master_write'
+                    #if 'slave' in L[0]:
+                    #    if 'read' in L[0]:
+                    #        L[0] = 'slave_read'
+                    #    if 'write' in L[0]:
+                    #        L[0] = 'slave_write'
+                    #if 'snoop' in L[0]:
+                    #    if 'read' in L[0]:
+                    #        L[0] = 'snoop_read'
+                    #    if 'write' in L[0]:
+                    #        L[0] = 'snoop_write'
                     log_entry.append(L)
                     #print(L)
             else:
@@ -219,4 +219,5 @@ else: # number of iteration was set to 0, means nothing to check. write pass
 f = open("verification_result.txt", "w")
 f.write(result)
 f.close()
+print(result)
 
