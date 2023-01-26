@@ -37,7 +37,7 @@ SIM_TCL = sim.tcl
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
 VSIM_FLAGS = -t 1ns -64 -coverage -classdebug
-VSIM_FLAGS = -novopt -t 1ns -64 -suppress 12110
+VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -suppress 12110
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
