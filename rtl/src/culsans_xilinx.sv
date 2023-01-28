@@ -154,11 +154,11 @@ module culsans_xilinx (
 );
 // 24 MByte in 8 byte words
 localparam NumWords = (24 * 1024 * 1024) / 8;
-localparam NBSlave = 2; // debug, ariane
+localparam NBSlave = 2; // debug, CCU_to_xbar
 localparam AxiAddrWidth = 64;
 localparam AxiDataWidth = 64;
 localparam AxiIdWidthMaster = 4;
-localparam AxiIdWidthSlaves = AxiIdWidthMaster + $clog2(NBSlave); // 5
+localparam AxiIdWidthSlaves = culsans_pkg::IdWidthToXbar + $clog2(NBSlave);
 localparam AxiUserWidth = ariane_pkg::AXI_USER_WIDTH;
 
 `AXI_TYPEDEF_ALL(axi_slave,
@@ -171,7 +171,7 @@ localparam AxiUserWidth = ariane_pkg::AXI_USER_WIDTH;
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthMaster ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) to_xbar[NBSlave-1:0]();
 
@@ -284,8 +284,8 @@ localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
   FallThrough:        1'b0,
   LatencyMode:        axi_pkg::CUT_ALL_PORTS,
   PipelineStages:     1,
-  AxiIdWidthSlvPorts: AxiIdWidthMaster,
-  AxiIdUsedSlvPorts:  AxiIdWidthMaster,
+  AxiIdWidthSlvPorts: culsans_pkg::IdWidthToXbar,
+  AxiIdUsedSlvPorts:  culsans_pkg::IdWidthToXbar,
   UniqueIds:          1'b0,
   AxiAddrWidth:       AxiAddrWidth,
   AxiDataWidth:       AxiDataWidth,
@@ -745,19 +745,6 @@ end
      `SNOOP_ASSIGN_TO_REQ(ace_ariane_resp[i], CCU_to_core[i])
 
   end
-
-   xlnx_ila i_ila
-     (
-      .clk(clk),
-      .probe0(core_to_CCU[1].aw_addr[31:0]),
-      .probe1(core_to_CCU[1].ar_addr[31:0]),
-      .probe2(core_to_CCU[1].r_data[31:0]),
-      .probe3(core_to_CCU[1].w_data[31:0]),
-      .probe4(dm_slave_addr[31:0]),
-      .probe5(dm_slave_wdata[31:0]),
-      .probe6(dm_slave_rdata[31:0]),
-      .probe7({15'b0, core_to_CCU[1].aw_valid, core_to_CCU[1].ar_valid, core_to_CCU[1].w_valid, core_to_CCU[1].r_ready, core_to_CCU[1].r_valid, core_to_CCU[1].w_ready, debug_req_irq[1], dm_slave_req, dm_slave_we, dm_slave_be})
-      );
 
   // ---------------
   // CCU
