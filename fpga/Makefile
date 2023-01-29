@@ -20,6 +20,12 @@ endif
 VIVADO ?= vivado
 VIVADOFLAGS ?= -nojournal -mode batch -source scripts/prologue.tcl
 
+NB_CORES = 2
+
+ifneq ($(NB_CORES), 2)
+$(error "NB_CORES must be 2")
+endif
+
 # Compile the RTL
 
 CVA6_DIR = ../modules/cva6
@@ -35,7 +41,6 @@ ips := xlnx_axi_clock_converter.xci  \
        xlnx_axi_quad_spi.xci         \
        xlnx_axi_gpio.xci             \
        xlnx_clk_gen.xci              \
-       xlnx_ila.xci              \
        xlnx_mig_7_ddr3.xci
 
 ips := $(addprefix $(work-dir)/, $(ips))
@@ -222,7 +227,22 @@ $(ips): %.xci :
 	@cd $(ip-dir)/$(basename $(@F)) && make clean && make BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CLK_PERIOD_NS=$(CLK_PERIOD_NS)
 	@cp $(ip-dir)/$(basename $(@F))/$(basename $(@F)).srcs/sources_1/ip/$(basename $(@F))/$(@F) $@
 
+# Check that RTL and SW are aligned with the NB_CORES setting
+
+RTL_NBCORES_DEF = "localparam NB_CORES = $(NB_CORES);"
+.PHONY: $(CULSANS_DIR)/include/culsans_pkg.sv
+$(CULSANS_DIR)/include/culsans_pkg.sv:
+	@if ! grep -q $(RTL_NBCORES_DEF) $@; then \
+		sed -i 's/localparam NB_CORES = [0-9]\+;/localparam NB_CORES = $(NB_CORES);/' ../../rtl/include/culsans_pkg.sv; \
+	fi
+
+.PHONY: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
+$(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
+	cd $$(dirname $@); \
+	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
+
 scripts/add_sources.tcl: $(COMMON_PKG) $(CVA6_PKG) $(AXI_PKG) $(CULSANS_PKG) $(COMMON_SRC) $(UART_SRC) $(UTIL) $(AXI_SRC) $(CVA6_SRC) $(CULSANS_SRC) $(COPRO_SRC)
+	make CORES=2 -C $(CVA6_DIR)/corev_apu/bootrom clean all
 	@echo "[FPGA] Generate sources"
 	@echo read_vhdl        {$(UART_SRC)}    > scripts/add_sources.tcl
 	@echo read_verilog -sv {$(COMMON_PKG)} >> scripts/add_sources.tcl

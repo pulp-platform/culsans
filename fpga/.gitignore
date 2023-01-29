@@ -13,3 +13,4 @@ xilinx/xlnx*/*
 vivado*
 work-fpga/
 .Xil/
+reports/
