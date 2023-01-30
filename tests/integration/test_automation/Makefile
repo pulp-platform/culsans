@@ -54,7 +54,7 @@ ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
-	../../test_automation/verify_transactions.py
+	if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 else
 $(TEST_REPORT): main.riscv
@@ -64,7 +64,7 @@ endif
 
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
-	@cat $(VERIFICATION_REPORT)
+	if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
 
 clean:
 	rm -rf objs
