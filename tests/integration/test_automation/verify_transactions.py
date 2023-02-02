@@ -2,6 +2,8 @@
 
 import subprocess
 import re
+
+unique_snoop_bits = []
     
 non_cached_non_shared_beginning = int("0x80020000", 16)
 non_cached_non_shared_end = int("0x8003ffff", 16)
@@ -94,11 +96,18 @@ if number_of_variables > 0:
             print(iterator ,' ', address)
         
             # look for the mention of the address in the logs
-            look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--exclude=trace_hart_*', '--exclude=main.map', '--exclude=*snoop*'])
+            try:
+                look_for_logs = subprocess.check_output(['grep', '-rnwe', address, '--exclude=trace_hart_*', '--exclude=main.map', '--exclude=*snoop*'])
+            except:
+                # if there are only 2 cores active
+                print ("exception caught")
+                if iterator >= number_of_variables/2:
+                    print ("breaking out")
+                    break
             look_for_logs = look_for_logs.splitlines()
             log_entry = []
             for line in look_for_logs:
-                L = re.split(' |-|>|:', line)
+                L = re.split(' |-|>|:|,', line)
                 L = list(filter(None, L))
                 #if 'master' in L[0]:
                 #    if 'read' in L[0]:
@@ -126,7 +135,7 @@ if number_of_variables > 0:
                     if 'ADDR:' in line and address not in line:
                         break
                     #print(L)
-                    L = re.split(' |-|>|:', line)
+                    L = re.split(' |-|>|:|,', line)
                     #print(L)
                     L = list(filter(None, L))
                     #if 'master' in L[0]:
@@ -180,6 +189,12 @@ if number_of_variables > 0:
                     if "read" in log_entry[0][0] and "snoop" in log_entry[1][0]:
                         result = "PASS"
                         while len(log_entry) > 0 and ("read" in log_entry[0][0] or "snoop" in log_entry[0][0]):
+                        
+                            #check for snoop bits
+                            if "snoop" in log_entry[0][0] and "SNOOP" in log_entry[0][6]:
+                                if log_entry[0][7] not in unique_snoop_bits:
+                                    unique_snoop_bits.append(log_entry[0][7])
+                        
                             del log_entry[0]
                         del expected_outcome_copy[0]
                         continue
@@ -206,8 +221,8 @@ if number_of_variables > 0:
                 print(log_entry)
                 
             # if the test already failed, there is no need to check subsequent memory addresses    
-            #if result == "FAIL":
-            #    break
+            if result == "FAIL":
+                break
             
     else:
         result = "FAIL"
@@ -220,4 +235,6 @@ f = open("verification_result.txt", "w")
 f.write(result)
 f.close()
 print(result)
+for x in unique_snoop_bits:
+    print x
 

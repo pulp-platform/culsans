@@ -68,5 +68,4 @@ write
 read_slave
 write
 read_slave
-write
 
