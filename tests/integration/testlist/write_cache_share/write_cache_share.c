@@ -1,4 +1,5 @@
 #include "write_cache_share.h"
+#include "../../sw/include/nb_cores.h"
 #include <stdint.h>
 
 extern void exit(int);
@@ -6,8 +7,8 @@ extern void exit(int);
 // cachelines are 128bit long
 #define uint128_t __uint128_t
 #define NUM_CACHELINES 256*6
-#define NUM_CORES 4
-uint128_t data[NUM_CORES*NUM_CACHELINES] __attribute__((section(".cache_share_region")));
+//#define NUM_CORES 4
+uint128_t data[NB_CORES*NUM_CACHELINES] __attribute__((section(".cache_share_region")));
 
 int write_cache_share(int cid, int nc)
 {

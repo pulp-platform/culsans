@@ -1,5 +1,7 @@
 :iteration
-6144
+1536
+:core_dependent
+yes
 :data
 cache_share
 :expected

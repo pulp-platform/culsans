@@ -18,8 +18,20 @@ address_increment = "0x10"
 result = ""
 
 number_of_variables = 1
+core_dependent = False
 data_restriction = ""
 expected_outcome = []
+
+NB_CORES = 2
+
+f = open("../../sw/include/nb_cores.h", "r")
+for line in f:
+    if "# define NB_CORES" in line:
+        chunks = line.split(" ")
+        NB_CORES = int(chunks[-1])
+        break
+f.close()
+print(NB_CORES)
 
 f = open("verify_truth.txt", "r")
 load = 0
@@ -27,24 +39,32 @@ for line in f:
     if ":" in line:
         if ":iteration" in line:
             load = 1
-        if ":data" in line:
+        if ":core_dependent" in line:
             load = 2
-        if ":expected" in line:
+        if ":data" in line:
             load = 3
+        if ":expected" in line:
+            load = 4
     else:
         if load == 1:
             number_of_variables = int(line)
             print(number_of_variables)
         if load == 2:
+            if "yes" in line:
+                core_dependent = True
+        if load == 3:
             data_restriction = line.strip()
             print(data_restriction)
-        if load == 3:
+        if load == 4:
             if line.strip() != '':
                 expected_outcome.append(line.strip())
 f.close()
 print(expected_outcome)
     
 if number_of_variables > 0:
+
+    if core_dependent:
+        number_of_variables = number_of_variables * NB_CORES;
     
     #if __name__ == "__main__":
     # look for the address in main.map

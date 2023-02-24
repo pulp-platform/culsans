@@ -1,5 +1,7 @@
 :iteration
 128
+:core_dependent
+no
 :data
 cache_share
 :expected

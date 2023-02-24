@@ -1,5 +1,7 @@
 :iteration
-4
+1
+:core_dependent
+yes
 :data
 nocache_noshare
 :expected

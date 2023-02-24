@@ -3,7 +3,7 @@ include ../common.mk
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
-NB_CORES ?= 2
+NB_CORES ?= 4
 
 ifneq ($(NB_CORES), 2)
 ifneq ($(NB_CORES), 4)
@@ -23,6 +23,9 @@ nb_cores:
 	fi
 	@if ! grep -q $(SW_NBCORES_DEF) ./sw/sys/crt.S; then \
 		sed -i 's/\# define NB_CORES [0-9]\+/\# define NB_CORES $(NB_CORES)/' ./sw/sys/crt.S; \
+	fi
+	@if ! grep -q $(SW_NBCORES_DEF) ./sw/include/nb_cores.h; then \
+		sed -i 's/\# define NB_CORES [0-9]\+/\# define NB_CORES $(NB_CORES)/' ./sw/include/nb_cores.h; \
 	fi
 
 # Compile the SW
@@ -329,4 +332,4 @@ clean_tests:
 
 clean: clean_sw clean_rtl clean_tests
 
-.PHONY: all sw rtl rerun clean clean_sw clean_rtl
+.PHONY: all sw sw_all rtl rerun clean clean_sw clean_rtl
