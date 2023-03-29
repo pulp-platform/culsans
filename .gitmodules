@@ -4,3 +4,6 @@
 [submodule "tests/integration/testlist/cva6-litmus"]
 	path = tests/litmus/litmus_src
 	url = git@github.com:planvtech/cva6-litmus.git
+[submodule "tests/litmus/litmus_src"]
+	path = tests/litmus/litmus_src
+	url = git@github.com:planvtech/cva6-litmus.git
