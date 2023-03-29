@@ -1,3 +1,9 @@
+# Common variables
+SPIKE_ROOT ?= /opt/riscv-isa-sim
+RISCV ?= /opt/riscv
+TEST_REPORT = result.rpt
+VERIFICATION_REPORT = verification_result.txt
+
 RV_TOOL_PREFIX = riscv64-unknown-elf-
 RV_GCC := $(RV_TOOL_PREFIX)gcc
 RV_AR := $(RV_TOOL_PREFIX)ar
@@ -31,8 +37,13 @@ ifneq ($(GCC_VERSION), 8)
 $(error "Wrong gcc version - try "scl enable devtoolset-8 bash")
 endif
 
-# Common variables
-SPIKE_ROOT ?= /opt/riscv-isa-sim
-RISCV ?= /opt/riscv
-TEST_REPORT = result.rpt
-VERIFICATION_REPORT = verification_result.txt
+# Check number of cores
+
+NB_CORES ?= 2
+
+ifneq ($(NB_CORES), 2)
+ifneq ($(NB_CORES), 4)
+$(error "NB_CORES must be 2 or 4")
+endif
+endif
+
