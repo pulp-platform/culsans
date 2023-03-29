@@ -51,7 +51,7 @@ package culsans_pkg;
   localparam logic[63:0] SPILength      = 64'h800000;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h1000;
-  localparam logic[63:0] DRAMLength     = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
+  localparam logic[63:0] DRAMLength     = 64'h50000000; // 1GByte of DDR (split between two chips on Genesys2)
 
   localparam logic[63:0] uncachedLength = 64'h60000;
 
@@ -92,11 +92,38 @@ package culsans_pkg;
     // cached region
     NrCachedRegionRules:    1,
     CachedRegionAddrBase:  {DRAMBase + uncachedLength},
-    CachedRegionLength:    {DRAMLength - uncachedLength},
+    CachedRegionLength:    {DRAMLength},
     // shared region
     NrSharedRegionRules:    1,
     SharedRegionAddrBase:  {DRAMBase + sharedOffset},
     SharedRegionLength:    {sharedLength},
+    //  cache config
+    Axi64BitCompliant:      1'b1,
+    SwapEndianess:          1'b0,
+    // debug
+    DmBaseAddress:          DebugBase,
+    NrPMPEntries:           8
+  };
+
+   localparam ariane_pkg::ariane_cfg_t ArianeFpgaSocCfg = '{
+    RASDepth: 2,
+    BTBEntries: 32,
+    BHTEntries: 128,
+    // idempotent region
+    NrNonIdempotentRules:  1,
+    NonIdempotentAddrBase: {64'b0},
+    NonIdempotentLength:   {DRAMBase},
+    NrExecuteRegionRules:  3,
+    ExecuteRegionAddrBase: {DRAMBase,   ROMBase,   DebugBase},
+    ExecuteRegionLength:   {DRAMLength, ROMLength, DebugLength},
+    // cached region
+    NrCachedRegionRules:    1,
+    CachedRegionAddrBase:  {DRAMBase},
+    CachedRegionLength:    {DRAMLength},
+    // shared region
+    NrSharedRegionRules:    1,
+    SharedRegionAddrBase:  {DRAMBase},
+    SharedRegionLength:    {DRAMLength},
     //  cache config
     Axi64BitCompliant:      1'b1,
     SwapEndianess:          1'b0,
