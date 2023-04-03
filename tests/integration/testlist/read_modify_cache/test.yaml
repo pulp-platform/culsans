@@ -1,0 +1,34 @@
+#note when editing this file, you can't use tabs
+test:
+    test_name:  "read_modify_share"
+    test_buffer: "data"
+    number_of_messages: 2
+    groups:
+#test startup    
+        -
+          core: 0
+          start_index: 0
+          end_index: 1535
+          messages:
+            -
+              log: "ace_master_read_0"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"          
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000
+#actual test                             
+        -
+          core: 1
+          start_index: 1536
+          end_index: 3071
+          messages:
+            -
+              log: "ace_master_read_1"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000          
+            -
+              log: "axi_master_read"
