@@ -20,6 +20,12 @@ test:
               log: "ace_master_snoop_1"
               CRRESP: 00000
             -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000           
+            -
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
             -
@@ -36,7 +42,147 @@ test:
               ARSNOOP: "ReadUnique"
             -
               log: "ace_master_snoop_1"
-              CRRESP: 00000          
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000              
             -
               log: "axi_master_read"
+        -
+          core: 1
+          start_index: 1536
+          end_index: 3071
+          messages:
+            -
+              log: "ace_master_read_1"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"          
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000           
+            -
+              log: "ace_master_write_1"
+              AWSNOOP: "WriteBack"
+            -
+              log: "axi_master_write"                
              
+        -
+          core: 1
+          start_index: 1536
+          end_index: 3071
+          test_buffer: "data1"
+          messages:
+            -
+              log: "ace_master_read_1"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000              
+            -
+              log: "axi_master_read"          
+        -
+          core: 2
+          start_index: 3072
+          end_index: 4607
+          messages:
+            -
+              log: "ace_master_read_2"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"          
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000           
+            -
+              log: "ace_master_write_2"
+              AWSNOOP: "WriteBack"
+            -
+              log: "axi_master_write"                
+             
+        -
+          core: 2
+          start_index: 3072
+          end_index: 4067
+          test_buffer: "data1"
+          messages:
+            -
+              log: "ace_master_read_2"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000              
+            -
+              log: "axi_master_read"
+        -
+          core: 3
+          start_index: 4608
+          end_index: 6143
+          messages:
+            -
+              log: "ace_master_read_3"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"          
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000           
+            -
+              log: "ace_master_write_3"
+              AWSNOOP: "WriteBack"
+            -
+              log: "axi_master_write"                
+             
+        -
+          core: 3
+          start_index: 4608
+          end_index: 6143
+          test_buffer: "data1"
+          messages:
+            -
+              log: "ace_master_read_3"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000              
+            -
+              log: "axi_master_read"              
