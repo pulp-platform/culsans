@@ -38,3 +38,24 @@ test:
               ARSNOOP: "ReadNoSnoop"         
             -
               log: "axi_master_read"
+        -
+          core: 2
+          start_index: 2
+          end_index: 2
+          messages:
+            -
+              log: "ace_master_read_2"
+              ARSNOOP: "ReadNoSnoop"         
+            -
+              log: "axi_master_read"
+              
+        -
+          core: 2
+          start_index: 3
+          end_index: 3
+          messages:
+            -
+              log: "ace_master_read_3"
+              ARSNOOP: "ReadNoSnoop"         
+            -
+              log: "axi_master_read"          
