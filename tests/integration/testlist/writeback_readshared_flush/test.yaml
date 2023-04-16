@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readshared_flush"
     test_buffer: "data"
-    test_notes: "Known Failure due inconsistent use of CRRESP"
+    test_notes: "Known Failure due inconsistent use of CRRESP. Also due to unpredictable writebacks. Also scrutise 4c crresp"
     groups:
 #test    
         -
@@ -18,6 +18,12 @@ test:
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000           
             -
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
@@ -35,4 +41,55 @@ test:
             -
               log: "ace_master_snoop_0"
               CRRESP: 9
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000
+            -
+              log: "ace_master_write_1"
+              AWSNOOP: "WriteBack"
+            -
+              log: "axi_master_write"         
+        -
+          core: 2
+          start_index: 0
+          end_index: 1535
+          messages:
+            -
+              log: "ace_master_read_2"
+              ARSNOOP: "ReadShared"          
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 9
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000
+            -
+              log: "ace_master_write_2"
+              AWSNOOP: "WriteBack"
+            -
+              log: "axi_master_write"              
+                          
+        -
+          core: 3
+          start_index: 0
+          end_index: 1535
+          messages:
+            -
+              log: "ace_master_read_3"
+              ARSNOOP: "ReadShared"         
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 0
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 9
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 00000           
 
