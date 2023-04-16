@@ -107,4 +107,4 @@ test:
               log: "ace_master_snoop_0"
               CRRESP: 00000          
             -
-              log: "axi_master_read"
+              log: "axi_master_read"    
