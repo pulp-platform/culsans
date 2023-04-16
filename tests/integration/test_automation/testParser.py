@@ -305,19 +305,19 @@ def get_and_filter_data():
 
 def print_warnings():
     for i in range(0,5):
-        log_file.write( "WARNING !! CRRESP bits checked as a 5 bit word. Not individually checked !!!")
-        log_file.write("WARNING !! TB only supports cacheline aligned accesses !!!")
-
+        log_file.write( "WARNING !! CRRESP bits checked as a 5 bit word. Not individually checked !!! \n")
+        log_file.write("WARNING !! TB only supports cacheline aligned accesses !!! \n")
+        log_file.write("WARNING !! TB ignores addressses in files not specified in Yaml via start/end indexso if Yaml does not include all addresses, it will still flag it as pass !!! \n")
 
 def are_there_any_extra_messages():
 
   
     is_there_extra_messages = False;
-    log_file.write("Checking for extra messages")
+    log_file.write("Checking for extra messages \n")
     for theName, theObject in list_checker_dict.items():
-        log_file.write(theName)
+        log_file.write(theName + "\n")
         if theObject.isListEmpty() != True:
-            log_file.write(theName + " has extra messages" )
+            log_file.write(theName + " has extra messages \n" )
             is_there_extra_messages = True
 
 
@@ -371,6 +371,7 @@ if __name__ == "__main__":
               log_file.write(test_yaml['test']['test_notes'])
               log_file.close()
               file1.close()
+          print(Style.RESET_ALL)
           exit(0)
        
 
@@ -446,21 +447,27 @@ if __name__ == "__main__":
    extra_messages = are_there_any_extra_messages()
    #extra_messages = False
    if early_exit == True or extra_messages == True:
-      print(Fore.RED + "Test FAILED !! ")
-      log_file.write("Test FAILED !!")
+      print(Fore.RED + "Test FAILED !! \n")
+      log_file.write("Test FAILED !! \n")
       if "test_notes" in test_yaml['test']:
            print(Fore.YELLOW + test_yaml['test']['test_notes'])
            log_file.write(test_yaml['test']['test_notes'])           
    else:
-      print(Fore.GREEN + "Test PASSED !! ")
-      log_file.write("Test PASSED !!")
+      print(Fore.GREEN + "Test PASSED !! \n ")
+      log_file.write("Test PASSED !! \n")
    #print(filenames_dict)
    print_warnings() 
    #print(filenames_dict['ace_log/ccu_logger_master_0/read'])
 
    log_file.close()
    file1.close()
-
+   print(Style.RESET_ALL)
+   for tr in ace_master_2_read:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.snoop)
+       print(tr.rwtype)
+       print(tr.srcline)
 
 '''
    print("snoop 0")
