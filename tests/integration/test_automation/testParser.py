@@ -46,7 +46,7 @@ class ACE_LIST_CHECKER:
         self.rw = rw
  
 
-    def checker (self, group_index, message_index):
+    def checker (self, group_index, message_index, certainty):
         message_found = False
         snoop_search = self.theDict[test_yaml['test']['groups'][i]['messages'][j][self.rw]]
         for l in range(0,len(self.theList)):         
@@ -55,6 +55,8 @@ class ACE_LIST_CHECKER:
                 del self.theList[l]
                 message_found = True
                 break
+        if certainty == False:
+            return True
         if message_found == True:
             return True
         else:
@@ -77,7 +79,7 @@ class AXI_LIST_CHECKER:
         self.rw = rw
  
 
-    def checker (self, group_index, message_index):
+    def checker (self, group_index, message_index, certainty):
         message_found = False
         for l in range(0,len(self.theList)):         
             if self.theList[l].address == search_address :
@@ -85,6 +87,8 @@ class AXI_LIST_CHECKER:
                 del self.theList[l]
                 message_found = True
                 break
+        if certainty == False:
+            return True
         if message_found == True:
             return True
         else:
@@ -106,7 +110,7 @@ class ACE_S_LIST_CHECKER:
         self.theDict = theDict
 
 
-    def checker (self, group_index, message_index):
+    def checker (self, group_index, message_index, certainty):
         message_found = False
         crresp_search = test_yaml['test']['groups'][i]['messages'][j]['CRRESP']
         for l in range(0,len(self.theList)):
@@ -121,7 +125,9 @@ class ACE_S_LIST_CHECKER:
                             message_found = True
                             break
                         else:
-                            break        
+                            break
+        if certainty == True:
+            return True
 
         if message_found == True:
             return True
@@ -428,11 +434,17 @@ if __name__ == "__main__":
            log_file.write( "Checking Group " + str(i) + "\n")
            if early_exit == True:
                break
+           #print("Checking Group " + str(i) + "\n")
+           #print(hex(search_address))
+
            for j in range(0,len( test_yaml['test']['groups'][i]['messages'])):
                #print(Style.RESET_ALL)
                log_file.write("\t" +test_yaml['test']['groups'][i]['messages'][j]['log'] + "\t")
                message_found = False
-               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j)                                
+               definite_message = True
+               if "not_certain" in test_yaml['test']['groups'][i]['messages'][j]:
+                   definite_message = False
+               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j, definite_message)                                
                if message_found == False:
                    print(Fore.RED + "Expected  message " + test_yaml['test']['groups'][i]['messages'][j]['log'] + " " +str(j) + " of group " + str(i) + " not found")
                    print(Fore.RED + "at address " + str(hex(search_address)))

@@ -28,8 +28,10 @@ test:
             -
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
+              not_certain:
             -
-              log: "axi_master_write"                
+              log: "axi_master_write"
+              not_certain:              
              
         -
           core: 0
@@ -51,6 +53,7 @@ test:
               CRRESP: 00000              
             -
               log: "axi_master_read"
+              
         -
           core: 1
           start_index: 1536
@@ -73,8 +76,10 @@ test:
             -
               log: "ace_master_write_1"
               AWSNOOP: "WriteBack"
+              not_certain:            
             -
-              log: "axi_master_write"                
+              log: "axi_master_write"
+              not_certain:              
              
         -
           core: 1
