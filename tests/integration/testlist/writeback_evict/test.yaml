@@ -36,7 +36,7 @@ test:
         -
           core: 0
           start_index: 0
-          end_index: 1535
+          end_index: 511
           test_buffer: "data1"
           messages:
             -
@@ -83,8 +83,8 @@ test:
              
         -
           core: 1
-          start_index: 1536
-          end_index: 3071
+          start_index: 512
+          end_index: 1023
           test_buffer: "data1"
           messages:
             -
@@ -123,13 +123,15 @@ test:
             -
               log: "ace_master_write_2"
               AWSNOOP: "WriteBack"
+              not_certain:            
             -
-              log: "axi_master_write"                
+              log: "axi_master_write"
+              not_certain:               
              
         -
           core: 2
-          start_index: 3072
-          end_index: 4067
+          start_index: 1024
+          end_index: 1535
           test_buffer: "data1"
           messages:
             -
@@ -168,13 +170,15 @@ test:
             -
               log: "ace_master_write_3"
               AWSNOOP: "WriteBack"
+              not_certain:            
             -
-              log: "axi_master_write"                
+              log: "axi_master_write"
+              not_certain:               
              
         -
           core: 3
-          start_index: 4608
-          end_index: 6143
+          start_index: 1536
+          end_index: 2047
           test_buffer: "data1"
           messages:
             -
