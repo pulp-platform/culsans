@@ -61,15 +61,15 @@ RUN_LOG = $(RESULTS)/run.log
 $(RUN_LOG): run
 	@for t in $(RESULTS)/*.log; \
 	do \
-		if [[ "$$t" != *"_sim"* ]] && [[ "$$t" != "$(RUN_LOG)" ]]; then \
+		if [[ "$$t" != *"_sim"* ]] && [[ "$$t" != "$(RUN_LOG)" ]] && [[ "$$t" != "$(HERD_EXP)" ]] ; then \
 			if grep -q Time $$t; then \
 				cat $$t >> $(RUN_LOG); \
-				echo "" >> $dest; \
+				echo "" >> $(RUN_LOG); \
 			fi; \
 		fi; \
 	done
 
-$(COMPARE_LOG): $(HERD_EXP) $(RUN_LOG)
+$(COMPARE_LOG): $(RUN_LOG) $(HERD_EXP)
 	mcompare7 -nohash $(RUN_LOG) $(HERD_EXP) > $(COMPARE_LOG)
 
 # run a single test

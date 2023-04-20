@@ -21,5 +21,6 @@ with open(infile) as fi:
             m = endPattern.match(line)
             if m != None:
                 copy = False
+                fo.write('')
         fo.close()
     fi.close()

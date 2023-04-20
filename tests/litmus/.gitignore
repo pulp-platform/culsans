@@ -6,3 +6,5 @@ axi_log
 uart*
 vsim.wlf
 main.hex
+.build-litmus-srcs
+work/
