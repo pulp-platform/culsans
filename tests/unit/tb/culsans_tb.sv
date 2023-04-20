@@ -346,11 +346,11 @@ module culsans_tb
                 fork 
                     begin
                         genWrReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hDEAD));
-                        `WAIT_CYC(clk, 2)
-                        genWrReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hABBA));
                     end
                     begin
                         genWrReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hBEEF));
+                        `WAIT_CYC(clk, 2)
+                        genWrReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hABBA));
                     end
                 join
 
