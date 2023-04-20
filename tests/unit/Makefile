@@ -216,7 +216,8 @@ CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
 TB_DIR = ./tb
-TB_PKG := $(TB_DIR)/culsans_tb_pkg.sv
+#TB_PKG := $(TB_DIR)/culsans_tb_pkg.sv
+TB_PKG := 
 TB_SRC := $(filter-out $(TB_PKG), $(wildcard $(TB_DIR)/*.sv))
 TOP_LEVEL := culsans_tb
 
