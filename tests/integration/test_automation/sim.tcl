@@ -19,7 +19,9 @@ add wave /culsans_tb/i_culsans/genblk2[0]/i_ariane/i_cva6/issue_stage_i/i_issue_
 add wave -position insertpoint sim:/culsans_tb/i_culsans/i_ccu/i_ccu_top/fsm/*
 add wave /culsans_tb/i_culsans/genblk2[1]/i_ariane/i_cva6/i_cache_subsystem/i_nbdcache/i_snoop_cache_ctrl/*
 add wave /culsans_tb/i_culsans/genblk2[1]/i_ariane/i_cva6/i_cache_subsystem/i_nbdcache/i_miss_handler/*
+add wave /culsans_tb/i_culsans/genblk2[2]/i_ariane/*
+add wave /culsans_tb/i_culsans/genblk2[3]/i_ariane/*  
 # set a timeout
-run 30ms
+run 100ms
 
 quit
