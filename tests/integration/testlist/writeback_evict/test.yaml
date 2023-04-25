@@ -53,6 +53,13 @@ test:
               CRRESP: 00000              
             -
               log: "axi_master_read"
+            -
+              log: "ace_master_write_0"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:              
               
         -
           core: 1
@@ -100,7 +107,14 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000              
             -
-              log: "axi_master_read"          
+              log: "axi_master_read"
+            -
+              log: "ace_master_write_1"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:              
         -
           core: 2
           start_index: 3072
@@ -148,6 +162,13 @@ test:
               CRRESP: 00000              
             -
               log: "axi_master_read"
+            -
+              log: "ace_master_write_2"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:              
         -
           core: 3
           start_index: 4608
@@ -194,4 +215,11 @@ test:
               log: "ace_master_snoop_0"
               CRRESP: 00000              
             -
-              log: "axi_master_read"              
+              log: "axi_master_read"
+            -
+              log: "ace_master_write_3"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:              
