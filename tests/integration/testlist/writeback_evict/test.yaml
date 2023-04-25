@@ -2,8 +2,6 @@
 test:
     test_name:  "writeback_evict"
     test_buffer: "data"
-    number_of_messages: 2
-    test_notes: "Known Failure due to unpredictable write_evicts"
     groups:
 #test    
         -
