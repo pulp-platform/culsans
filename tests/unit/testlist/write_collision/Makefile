@@ -35,9 +35,12 @@ VERILATOR_LIB = ../../work_verilate
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
+VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
+VSIM_FLAGS += -classdebug
+VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of teh real interface
+#VSIM_FLAGS += -coverage
+
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
-VSIM_FLAGS = -t 1ns -64 -coverage -classdebug
-VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -suppress 12110
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
@@ -57,7 +60,7 @@ $(TEST_REPORT):
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
-	@grep "\*\* Error" sim.log  | tee $(TEST_REPORT)
+	@grep "\*\* Error" sim.log | tee $(TEST_REPORT)
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
