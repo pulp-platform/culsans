@@ -1,7 +1,10 @@
 `include "ace/assign.svh"
-module culsans_tb 
-  import ariane_pkg::*; 
-//  import culsans_tb_pkg::*; 
+module culsans_tb
+    import ariane_pkg::*;
+    import snoop_test::*;
+//    import axi_test::*;
+    import ace_test::*;
+    import culsans_tb_pkg::*;
 #()();
 
     `define WAIT_CYC(CLK, N)            \
@@ -21,7 +24,8 @@ module culsans_tb
     parameter  int unsigned AxiDataWidth = 32'd64;
     localparam int unsigned AxiUserWidth = 32'd1;
 
-    localparam CLK_PERIOD = 10ns;
+    localparam              CLK_PERIOD       = 10ns;
+    localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
 
 
     localparam ariane_cfg_t ArianeCfg = culsans_pkg::ArianeSocCfg;
@@ -31,165 +35,44 @@ module culsans_tb
     //--------------------------------------------------------------------------
 
     // TB signals
-
-    dcache_req_i_t           [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_i;
-    dcache_req_o_t           [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_o;
-    ariane_ace::snoop_resp_t [culsans_pkg::NB_CORES-1:0]      snoop_port_o;
-    ariane_ace::snoop_req_t  [culsans_pkg::NB_CORES-1:0]      snoop_port_i;
-
-    logic                                                     clk;
-    logic                                                     rst_n;
+    dcache_req_i_t [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_i;
+    dcache_req_o_t [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_o;
+    logic                                           clk;
+    logic                                           rst_n;
+    logic                                           rtc;
 
 
+    dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
+    culsans_tb_sram_if      sram_if          [culsans_pkg::NB_CORES-1:0](clk);
 
-    //--------------------------------------------------------------------------
-    // Tasks and functions
-    //--------------------------------------------------------------------------
+    dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
+    dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
 
+    mailbox #(dcache_req)   dcache_req_mbox  [culsans_pkg::NB_CORES-1:0][2:0];
+    mailbox #(dcache_resp)  dcache_resp_mbox [culsans_pkg::NB_CORES-1:0][2:0];
 
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // get tag from address
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-    function logic [DCACHE_TAG_WIDTH-1:0] addr2tag (logic[63:0] addr);
-        return addr[DCACHE_TAG_WIDTH+DCACHE_INDEX_WIDTH-1:DCACHE_INDEX_WIDTH];
-    endfunction
+    dcache_checker #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
+        .AXI_DATA_WIDTH ( AxiDataWidth       ),
+        .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
+        .AXI_USER_WIDTH ( AxiUserWidth       )
+    ) dcache_chk [culsans_pkg::NB_CORES-1:0];
 
+    // ACE mailboxes
+    mailbox aw_mbx [culsans_pkg::NB_CORES-1:0];
+    mailbox w_mbx  [culsans_pkg::NB_CORES-1:0];
+    mailbox b_mbx  [culsans_pkg::NB_CORES-1:0];
+    mailbox ar_mbx [culsans_pkg::NB_CORES-1:0];
+    mailbox r_mbx  [culsans_pkg::NB_CORES-1:0];
 
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // get index from address
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    function logic [DCACHE_INDEX_WIDTH-1:0] addr2index (logic[63:0] addr);
-        return addr[DCACHE_INDEX_WIDTH-1:0];
-    endfunction
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // read request
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    task automatic genRdReq (
-        input int          core      = 0,
-        input int          port      = 0,
-        input logic [63:0] addr      = '0,
-        input bit          rand_core = 0,
-        input bit          rand_port = 0,
-        input bit          rand_addr = 0
-    );
-        logic [63:0] addr_int;
-        int          port_int;
-        int          core_int;
-
-        if (rand_core) begin
-            core_int = $urandom_range(culsans_pkg::NB_CORES-1);
-        end else begin
-            core_int = core;
-        end
-
-        if (rand_port) begin
-            port_int = $urandom_range(2);
-        end else begin
-            port_int = port;
-        end
-
-        if (rand_addr) begin
-            addr_int = $urandom_range(32'h8000);
-            if ($urandom_range(1)) begin
-                addr_int = addr_int + ArianeCfg.CachedRegionAddrBase[0];
-            end
-        end else begin
-            addr_int = addr;
-        end
-
-        `WAIT_CYC(clk, 1)
-        #0.1;
-        dcache_req_ports_i[core_int][port_int].data_req      = 1'b1;
-        dcache_req_ports_i[core_int][port_int].data_size     = 2'b11;
-        dcache_req_ports_i[core_int][port_int].address_tag   = addr2tag(addr_int);
-        dcache_req_ports_i[core_int][port_int].address_index = addr2index(addr_int);
-
-        `WAIT_SIG(clk, dcache_req_ports_o[core_int][port_int].data_gnt)
-        #0.1;
-        dcache_req_ports_i[core_int][port_int].data_req  = 1'b0;
-        dcache_req_ports_i[core_int][port_int].tag_valid = 1'b1;
-
-        `WAIT_CYC(clk,1)
-        #0.1;
-        dcache_req_ports_i[core_int][port_int] = '0;
-
-        `WAIT_CYC(clk,1)
-        #0.1;
-    endtask
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    // write request
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    task automatic genWrReq (
-        input int          data      = 0,
-        input int          core      = 0,
-        input int          port      = 0,
-        input logic [63:0] addr      = '0,
-        input bit          rand_data = 0,
-        input bit          rand_core = 0,
-        input bit          rand_port = 0,
-        input bit          rand_addr = 0
-    );
-        logic [63:0] addr_int;
-        int          port_int;
-        int          core_int;
-        int          data_int;
-
-        if (rand_core) begin
-            core_int = $urandom_range(culsans_pkg::NB_CORES-1);
-        end else begin
-            core_int = core;
-        end
-
-        if (rand_port) begin
-            port_int = $urandom_range(2);
-        end else begin
-            port_int = port;
-        end
-
-        if (rand_addr) begin
-            addr_int = $urandom_range(32'h8000);
-            if ($urandom_range(1)) begin
-                addr_int = addr_int + ArianeCfg.CachedRegionAddrBase[0];
-            end
-        end else begin
-            addr_int = addr;
-        end
-
-        if (rand_data) begin
-            data_int = $urandom;
-        end else begin
-            data_int = data;
-        end
-
-
-        `WAIT_CYC(clk, 1)
-        #0.1;
-        dcache_req_ports_i[core_int][port_int].data_req      = 1'b1;
-        dcache_req_ports_i[core_int][port_int].data_we       = 1'b1;
-        dcache_req_ports_i[core_int][port_int].data_be       = '1;
-        dcache_req_ports_i[core_int][port_int].data_size     = 2'b11;
-        dcache_req_ports_i[core_int][port_int].data_wdata    = data;
-        dcache_req_ports_i[core_int][port_int].address_tag   = addr2tag(addr_int);
-        dcache_req_ports_i[core_int][port_int].tag_valid     = 1'b1;
-        dcache_req_ports_i[core_int][port_int].address_index = addr2index(addr_int);
-
-        `WAIT_SIG(clk, dcache_req_ports_o[core_int][port_int].data_gnt)
-        #0.1;
-        dcache_req_ports_i[core_int][port_int] = '0;
-
-        `WAIT_CYC(clk,1)
-        #0.1;
-    endtask
-
-
-
+    // Snoop mailboxes
+    mailbox ac_mbx [culsans_pkg::NB_CORES-1:0];
+    mailbox cd_mbx [culsans_pkg::NB_CORES-1:0];
+    mailbox cr_mbx [culsans_pkg::NB_CORES-1:0];
 
     //--------------------------------------------------------------------------
     // Clock & reset generation
     //--------------------------------------------------------------------------
-
 
     initial begin
         clk   = 1'b0;
@@ -203,11 +86,9 @@ module culsans_tb
         forever begin
             #(CLK_PERIOD/2) clk = ~clk;
         end
+
     end
 
-    logic rtc;
-
-    localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
 
     initial begin
         forever begin
@@ -233,46 +114,146 @@ module culsans_tb
     );
 
     //--------------------------------------------------------------------------
-    // AXI bus interfaces
+    // AXI/ACE bus interfaces
     //--------------------------------------------------------------------------
+
     ACE_BUS #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
         .AXI_DATA_WIDTH ( AxiDataWidth       ),
         .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
         .AXI_USER_WIDTH ( AxiUserWidth       )
-    ) axi_bus [culsans_pkg::NB_CORES] ();
-      
-    // AXI bus monitor interfaces
+    ) ace_bus [culsans_pkg::NB_CORES] ();
+
     ACE_BUS_DV #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
         .AXI_DATA_WIDTH ( AxiDataWidth       ),
         .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
         .AXI_USER_WIDTH ( AxiUserWidth       )
-    )  axi_bus_dv [culsans_pkg::NB_CORES] (clk);
+    ) ace_bus_dv [culsans_pkg::NB_CORES] (clk);
+
+    ace_monitor #(
+        .IW ( AxiIdWidth + 32'd1 ),
+        .AW ( AxiAddrWidth       ),
+        .DW ( AxiDataWidth       ),
+        .UW ( AxiUserWidth       )
+    ) ace_mon [culsans_pkg::NB_CORES];
 
 
-    for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : G
+    SNOOP_BUS #(
+        .SNOOP_ADDR_WIDTH( AxiAddrWidth ),
+        .SNOOP_DATA_WIDTH( AxiDataWidth )
+    ) snoop_bus  [culsans_pkg::NB_CORES-1:0] ();
+
+    SNOOP_BUS_DV #(
+        .SNOOP_ADDR_WIDTH( AxiAddrWidth ),
+        .SNOOP_DATA_WIDTH( AxiDataWidth )
+    ) snoop_bus_dv  [culsans_pkg::NB_CORES-1:0] (clk);
+
+    snoop_monitor #(
+        .AW ( AxiAddrWidth ),
+        .DW ( AxiDataWidth )
+    ) snoop_mon [culsans_pkg::NB_CORES];
+
+
+    //--------------------------------------------------------------------------
+    // Create environment
+    //--------------------------------------------------------------------------
+
+    for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
 
         // connect signals to interface
-        `ACE_ASSIGN_FROM_REQ   (axi_bus[core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
-        `ACE_ASSIGN_FROM_RESP  (axi_bus[core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
+        `ACE_ASSIGN_FROM_REQ    (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
+        `ACE_ASSIGN_FROM_RESP   (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
+
+        `SNOOP_ASSIGN_FROM_REQ  (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
+        `SNOOP_ASSIGN_FROM_RESP (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
 
         // connect interfaces
-        `ACE_ASSIGN_MONITOR (axi_bus_dv[core_idx], axi_bus[core_idx])
+        `ACE_ASSIGN_MONITOR   (ace_bus_dv   [core_idx], ace_bus   [core_idx])
+        `SNOOP_ASSIGN_MONITOR (snoop_bus_dv [core_idx], snoop_bus [core_idx])
+
+        initial begin : ACE_MON
+            aw_mbx [core_idx] = new();
+            w_mbx  [core_idx] = new();
+            b_mbx  [core_idx] = new();
+            ar_mbx [core_idx] = new();
+            r_mbx  [core_idx] = new();
+
+            ace_mon[core_idx] = new(ace_bus_dv[core_idx]);
+
+            ace_mon[core_idx].aw_mbx = aw_mbx [core_idx];
+            ace_mon[core_idx].w_mbx  = w_mbx  [core_idx];
+            ace_mon[core_idx].b_mbx  = b_mbx  [core_idx];
+            ace_mon[core_idx].ar_mbx = ar_mbx [core_idx];
+            ace_mon[core_idx].r_mbx  = r_mbx  [core_idx];
+
+            ace_mon[core_idx].monitor();
+        end
+
+        initial begin : SNOOP_MON
+            ac_mbx [core_idx] = new();
+            cd_mbx [core_idx] = new();
+            cr_mbx [core_idx] = new();
+
+            snoop_mon[core_idx] = new(snoop_bus_dv[core_idx]);
+
+            snoop_mon[core_idx].ac_mbx = ac_mbx[core_idx];
+            snoop_mon[core_idx].cd_mbx = cd_mbx[core_idx];
+            snoop_mon[core_idx].cr_mbx = cr_mbx[core_idx];
+
+            snoop_mon[core_idx].monitor();
+        end
+
+        // assign SRAM IF
+        assign sram_if[core_idx].vld_sram = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+        for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
+            assign sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign sram_if[core_idx].data_sram[i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+        end
 
 
-        assign snoop_port_i[core_idx].ac        = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i.ac;
-        assign snoop_port_i[core_idx].ac_valid  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i.ac_valid;
-        assign snoop_port_i[core_idx].cr_ready  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i.cr_ready;
-        assign snoop_port_i[core_idx].cd_ready  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i.cd_ready;
-        assign snoop_port_o[core_idx].ac_ready  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o.ac_ready;
-        assign snoop_port_o[core_idx].cr_valid  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o.cr_valid;
-        assign snoop_port_o[core_idx].cr_resp   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o.cr_resp;
-        assign snoop_port_o[core_idx].cd_valid  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o.cd_valid;
-        assign snoop_port_o[core_idx].cd        = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o.cd;
+        for (genvar port=0; port<=2; port++) begin : PORT
+            // assign dcache request/response to dcache_if
+            assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_ex_cache[port] = dcache_if[core_idx][port].req;
+            assign dcache_if[core_idx][port].resp   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_cache_ex[port];
+            assign dcache_if[core_idx][port].wr_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[port+2];
 
-        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_ex_cache = dcache_req_ports_i[core_idx];
-        assign dcache_req_ports_o[core_idx] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_cache_ex;
+            initial begin : DCACHE_MON
+                dcache_req_mbox  [core_idx][port] = new();
+                dcache_resp_mbox [core_idx][port] = new();
+
+                dcache_mon[core_idx][port] = new(dcache_if[core_idx][port], port, $sformatf("%s[%0d][%0d]","dcache_monitor",core_idx, port));
+
+                dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[ core_idx][port];
+                dcache_mon[core_idx][port].resp_mbox = dcache_resp_mbox[core_idx][port];
+                
+                dcache_mon[core_idx][port].monitor();
+            end
+
+            initial begin : DCACHE_DRV
+                dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
+            end
+
+        end
+
+        initial begin : CACHE_CHK
+            dcache_chk[core_idx] = new(sram_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
+
+            dcache_chk[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
+            dcache_chk[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
+
+            dcache_chk[core_idx].aw_mbx           = aw_mbx           [core_idx];
+            dcache_chk[core_idx].w_mbx            = w_mbx            [core_idx];
+            dcache_chk[core_idx].b_mbx            = b_mbx            [core_idx];
+            dcache_chk[core_idx].ar_mbx           = ar_mbx           [core_idx];
+            dcache_chk[core_idx].r_mbx            = r_mbx            [core_idx];
+
+            dcache_chk[core_idx].ac_mbx           = ac_mbx           [core_idx];
+            dcache_chk[core_idx].cd_mbx           = cd_mbx           [core_idx];
+            dcache_chk[core_idx].cr_mbx           = cr_mbx           [core_idx];
+
+            dcache_chk[core_idx].run();
+        end
 
     end
 
@@ -285,8 +266,7 @@ module culsans_tb
     int test_id = -1;
 
     initial begin : TESTS
-        int start_idx;
-        int end_idx;
+        logic [63:0] addr;
 
         fork
 
@@ -296,63 +276,132 @@ module culsans_tb
             begin
 
                 `WAIT_SIG(clk, rst_n)
-/*
+
+                `WAIT_CYC(clk, 300)
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 // Test 0 - 8 consecutive read misses in the same cache set
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 test_id = 0;
-                dcache_req_ports_i  = '0;
+
+                $display("--------------------------------------------------------------------------");
+                $display("Running test %0d", test_id);
+                $display("--------------------------------------------------------------------------");
+                addr = ArianeCfg.CachedRegionAddrBase[0];
 
                 // write to address 0-7 and then some more
                 for (int i=0; i<16; i++) begin
-                    genWrReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0] + (i << DCACHE_INDEX_WIDTH)), .data(i)) ;
+                    dcache_drv[0][2].wr(.addr(addr + (i << DCACHE_INDEX_WIDTH)), .data(i));
                 end
 
                 // read miss x 8 - fill cache 0
                 for (int i=0; i<8; i++) begin
-                    genRdReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0] + (i<<DCACHE_INDEX_WIDTH)));
+                    dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
                 end
 
                 `WAIT_CYC(clk, 100)
-*/
+
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                // Test 1 - write conflicts
+                // Test 1 - write conflicts to single address
                 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 test_id = 1;
-                dcache_req_ports_i  = '0;
-/*
-                // write to address 0-7 and then some more
-                for (int i=0; i<16; i++) begin
-                    genWrReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0] + (i << DCACHE_INDEX_WIDTH)), .data(i)) ;
-                end
+                $display("--------------------------------------------------------------------------");
+                $display("Running test %0d", test_id);
+                $display("--------------------------------------------------------------------------");
+                addr = ArianeCfg.CachedRegionAddrBase[0];
 
-                // read miss x 8 - fill cache 0 in core 0
-                for (int i=0; i<8; i++) begin
-                    genRdReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0] + (i<<DCACHE_INDEX_WIDTH)));
-                end
-
-                // read miss x 8 - fill cache 0 in core 1
-                for (int i=0; i<8; i++) begin
-                    genRdReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0] + (i<<DCACHE_INDEX_WIDTH)));
-                end
-*/
                 // make sure data 0 is in cache
-                genRdReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]));
+                dcache_drv[0][0].rd(.addr(addr));
                 `WAIT_CYC(clk, 100)
-                genRdReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]));
+                dcache_drv[1][0].rd(.addr(addr));
                 `WAIT_CYC(clk, 100)
 
                 // simultaneous writes to same address
-                fork 
-                    begin
-                        genWrReq(.core(0), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hDEAD));
-                    end
-                    begin
-                        genWrReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hBEEF));
-                        `WAIT_CYC(clk, 2)
-                        genWrReq(.core(1), .port(0), .addr(ArianeCfg.CachedRegionAddrBase[0]), .data(16'hABBA));
-                    end
-                join
+                for (int i=0; i<10; i++) begin
+                    fork
+                        begin
+                            dcache_drv[0][2].wr(.addr(addr), .data(32'hBEEFCAFE));
+                            `WAIT_CYC(clk, 5)
+                            dcache_drv[0][2].wr(.addr(addr), .data(32'hBEEFCAFE));
+                        end
+                        begin
+                            dcache_drv[1][2].wr(.addr(addr), .data(32'hBAADF00D));
+                            `WAIT_CYC(clk, i)
+                            dcache_drv[1][2].wr(.addr(addr), .data(32'hDEADABBA));
+                        end
+                    join
+                end
+
+                `WAIT_CYC(clk, 100)
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Test 2 - write and read conflicts to single address
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                test_id = 2;
+                $display("--------------------------------------------------------------------------");
+                $display("Running test %0d", test_id);
+                $display("--------------------------------------------------------------------------");
+                addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                // make sure data 0 is in cache
+                dcache_drv[0][0].rd(.addr(addr));
+                `WAIT_CYC(clk, 100)
+                dcache_drv[1][0].rd(.addr(addr));
+                `WAIT_CYC(clk, 100)
+
+                // simultaneous writes and read to same address
+                for (int i=0; i<10; i++) begin
+                    fork
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[0][0].rd(.addr(addr));
+                        end
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[0][1].rd(.addr(addr));
+                        end
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[0][2].wr(.addr(addr), .data(32'hBEEFCAFE));
+                        end
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[1][0].rd(.addr(addr));
+                        end
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[1][1].rd(.addr(addr));
+                        end
+                        begin
+                            `WAIT_CYC(clk, $urandom_range(5))
+                            dcache_drv[1][2].wr(.addr(addr), .data(32'hBAADF00D));
+                        end
+                    join
+                end
+
+                `WAIT_CYC(clk, 100)
+
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                // Test 99 - trigger issue described in JIRA issue
+                // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                test_id = 99;
+                $display("--------------------------------------------------------------------------");
+                $display("Running test %0d", test_id);
+                $display("--------------------------------------------------------------------------");
+                addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                // make sure data[0] is in cache
+                dcache_drv[0][0].rd(.addr(addr));
+                `WAIT_CYC(clk, 100)
+
+                // read followed by 2 writes (here with 1 cc inbetween, could be back-to-back too)
+                dcache_drv[0][0].rd(.addr(addr));
+                dcache_drv[0][0].wr(.addr(addr), .data(32'hBBBBBBBB));
+                `WAIT_CYC(clk, 1)
+                dcache_drv[0][0].wr(.addr(addr), .data(32'hCCCCCCCC));
+                `WAIT_CYC(clk, 1)
+                // read 0 again to visualize in waveforms that the value 0xCCCCCCCC is not stored
+                dcache_drv[0][0].rd(.addr(addr));
 
 
                 `WAIT_CYC(clk, 100)
@@ -360,7 +409,7 @@ module culsans_tb
                 //--------------------------------------------------------------
                 // end of tests
                 //--------------------------------------------------------------
-                `WAIT_CYC(clk, 1000)
+                `WAIT_CYC(clk, 100)
                 $display("Test done");
                 $finish();
 
