@@ -16,6 +16,10 @@ interface culsans_tb_sram_if (input logic clk);
     vld_sram_t  vld_sram;
 endinterface
 
+interface culsans_tb_gnt_if (input logic clk);
+    logic [4:0] gnt;
+endinterface
+
 package culsans_tb_pkg;
     import ariane_pkg::*;
     import snoop_test::*;
@@ -354,7 +358,7 @@ package culsans_tb_pkg;
         mailbox #(r_ace_beat_t)  r_beat_to_cache_update;
 
         mailbox #(dcache_req)    req_to_cache_check;
-        mailbox #(ace_ac_beat_t) snoop_to_cache_check;
+        mailbox #(ace_ac_beat_t) snoop_to_cache_update;
 
 
 
@@ -365,6 +369,7 @@ package culsans_tb_pkg;
         mailbox ac_mbx = new, cd_mbx = new, cr_mbx = new;
 
         virtual culsans_tb_sram_if sram_vif;
+        virtual culsans_tb_gnt_if  gnt_vif;
 
         string       name;
         ariane_cfg_t ArianeCfg;
@@ -376,10 +381,12 @@ package culsans_tb_pkg;
 
         function new (
             virtual culsans_tb_sram_if sram_vif,
+            virtual culsans_tb_gnt_if  gnt_vif,
             ariane_cfg_t               cfg,
             string                     name="dcache_checker"
         );
             this.sram_vif             = sram_vif;
+            this.gnt_vif              = gnt_vif;
             this.name                 = name;
             this.ArianeCfg            = cfg;
 
@@ -393,7 +400,7 @@ package culsans_tb_pkg;
             req_to_cache_update = new();
             r_beat_to_cache_update = new();
             req_to_cache_check = new();
-            snoop_to_cache_check = new();
+            snoop_to_cache_update = new();
         endfunction
 
 
@@ -509,7 +516,10 @@ package culsans_tb_pkg;
         endfunction
 
         // Check cache contents against real memory
-        function automatic bit checkCache (input logic [63:0] addr);
+        function automatic bit checkCache (
+            input logic [63:0] addr,
+            input string       origin = ""
+        );
             logic [DCACHE_INDEX_WIDTH-DCACHE_BYTE_OFFSET-1:0] mem_idx_v;
             logic [DCACHE_INDEX_WIDTH-1:0]                    idx_v;
             logic [DCACHE_TAG_WIDTH-1:0]                      tag_v;
@@ -523,22 +533,22 @@ package culsans_tb_pkg;
             // check the target_way
             if (cache_status[mem_idx_v][target_way].dirty != sram_vif.vld_sram[mem_idx_v][8*target_way]) begin
                 OK = 1'b0;
-                $error("%s: Cache mismatch index %h tag %h way %h - dirty bit: expected %d, actual %d", name, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].dirty, sram_vif.vld_sram[mem_idx_v][8*target_way]);
+                $error("%s: Cache mismatch index %h tag %h way %h - dirty bit: expected %d, actual %d", {name,".",origin}, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].dirty, sram_vif.vld_sram[mem_idx_v][8*target_way]);
             end
             if (cache_status[mem_idx_v][target_way].valid != sram_vif.vld_sram[mem_idx_v][8*target_way+1]) begin
                 OK = 1'b0;
-                $error("%s: Cache mismatch index %h tag %h way %h - valid bit: expected %d, actual %d", name, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].valid, sram_vif.vld_sram[mem_idx_v][8*target_way+1]);
+                $error("%s: Cache mismatch index %h tag %h way %h - valid bit: expected %d, actual %d", {name,".",origin}, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].valid, sram_vif.vld_sram[mem_idx_v][8*target_way+1]);
             end
             if (cache_status[mem_idx_v][target_way].shared != sram_vif.vld_sram[mem_idx_v][8*target_way+2]) begin
                 OK = 1'b0;
-                $error("%s: Cache mismatch index %h tag %h way %h - shared bit: expected %d, actual %d", name, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].shared, sram_vif.vld_sram[mem_idx_v][8*target_way+2]);
+                $error("%s: Cache mismatch index %h tag %h way %h - shared bit: expected %d, actual %d", {name,".",origin}, idx_v, tag_v, target_way, cache_status[mem_idx_v][target_way].shared, sram_vif.vld_sram[mem_idx_v][8*target_way+2]);
             end
 
             // check tags
             for (int w=0;w<DCACHE_SET_ASSOC; w++) begin
                 if (cache_status[mem_idx_v][w].tag != sram_vif.tag_sram[w][mem_idx_v][47:0]) begin
                     OK = 1'b0;
-                    $error("%s: Cache mismatch index %h tag %h way %0h - tag: expected %h, actual %h", name, idx_v, tag_v, w, cache_status[mem_idx_v][w].tag, sram_vif.tag_sram[w][mem_idx_v][47:0]);
+                    $error("%s: Cache mismatch index %h tag %h way %0h - tag: expected %h, actual %h", {name,".",origin}, idx_v, tag_v, w, cache_status[mem_idx_v][w].tag, sram_vif.tag_sram[w][mem_idx_v][47:0]);
                 end
             end
             return OK;
@@ -613,15 +623,20 @@ package culsans_tb_pkg;
             logic [DCACHE_SET_ASSOC-1:0]                      valid_v;
             logic [DCACHE_INDEX_WIDTH-DCACHE_BYTE_OFFSET-1:0] mem_idx_v;
             logic                                             hit_v;
-
+            bit                                               CheckOK;
             ace_ac_beat_t ac;
 
             forever begin
-                snoop_to_cache_check.get(ac);
+                snoop_to_cache_update.get(ac);
 
-                // actual cache update takes 3 more cycles
-                repeat (3)
+                // actual cache update takes 3 more cycles with grant                
+                repeat (3) begin
+                    while (!gnt_vif.gnt[1]) begin
+                        $display("%t ns skipping cycle without grant",$time);
+                        @(posedge sram_vif.clk); // skip cycles without grant
+                    end
                     @(posedge sram_vif.clk);
+                end
                 $display("%t ns %s updating cache status from snoop",$time, name);
 
                 mem_idx_v = addr2mem_idx(ac.ac_addr);
@@ -666,6 +681,9 @@ package culsans_tb_pkg;
                 end
                 if (!hit_v)
                     $display("No hit for addr %8h", ac.ac_addr);
+
+                CheckOK = checkCache(ac.ac_addr,"update_cache_from_snoop");
+
             end
         endtask
 
@@ -676,7 +694,7 @@ package culsans_tb_pkg;
             logic [DCACHE_SET_ASSOC-1:0]                      valid_v;
             logic [DCACHE_INDEX_WIDTH-DCACHE_BYTE_OFFSET-1:0] mem_idx_v;
             logic [63:0]                                      addr_v;
-
+            bit                                               CheckOK;
             dcache_req   req;
             r_ace_beat_t r_beat;
 
@@ -743,6 +761,8 @@ package culsans_tb_pkg;
                 );
 
 
+                CheckOK = checkCache(addr_v, "update_cache_from_req");
+
             end
         endtask
 
@@ -767,63 +787,66 @@ package culsans_tb_pkg;
                 $display("%t ns %s got expected response PassDirty : %1b, DataTransfer : %1b, Error : %1b",$time, name, cr_exp.cr_resp.passDirty, cr_exp.cr_resp.dataTransfer, cr_exp.cr_resp.error);
 
                 if (is_inside_cacheable_regions(ArianeCfg, ac.ac_addr)) begin
-                    snoop_to_cache_check.put(ac);
+                    snoop_to_cache_update.put(ac);
                 end
 
-                fork // TODO: is fork really necessary?
-
-                    /*
+                fork
                     begin
-                        // actual cache update takes 3 more cycles
-                        if (is_inside_cacheable_regions(ArianeCfg, ac.ac_addr)) begin
-                            repeat (3)
-                                @(posedge sram_vif.clk);
-                            $display("%t ns %s updating cache status from snoop",$time, name);
-                            update_cache_from_snoop(ac);
-                        end
-                    end
-                    */
 
-                    begin
-                        // expect a writeback on CLEAN_INVALID
-                        if (isHit(ac.ac_addr) && isDirty(ac.ac_addr) && ac.ac_snoop == snoop_pkg::CLEAN_INVALID) begin
-                            // writebacks use the bypass port
-                            repeat(2) begin
-                                aw_mbx.get(aw_beat);       
-                                if (!isWriteBack(aw_beat))
-                                    $error("Error WRITEBACK request expected after CLEAN_INVALID");
-                                b_mbx.get(b_beat);       
+
+                        fork // TODO: is fork really necessary?
+
+                            begin
+                                // expect a writeback on CLEAN_INVALID
+                                if (isHit(ac.ac_addr) && isDirty(ac.ac_addr) && ac.ac_snoop == snoop_pkg::CLEAN_INVALID) begin
+                                    // writebacks use the bypass port
+                                    repeat(2) begin
+                                        aw_mbx.get(aw_beat);
+                                        if (!isWriteBack(aw_beat))
+                                            $error("%s : WRITEBACK request expected after CLEAN_INVALID",name);
+                                        b_mbx.get(b_beat);
+                                    end
+                                end
                             end
-                        end
-                    end
 
-                    begin
-                        // wait for the response
-                        cr_mbx.get(cr);
-                        $display("%t ns %s got snoop response 0b%5b (WasUnique : %1b, isShared : %1b, PassDirty : %1b, Error : %1b, DataTransfer : %1b)",$time, name, cr.cr_resp, cr.cr_resp[4],cr.cr_resp[3],cr.cr_resp[2],cr.cr_resp[1],cr.cr_resp[0]);
+                            begin
+                                // wait for the response
+                                cr_mbx.get(cr);
+                                $display("%t ns %s got snoop response 0b%5b (WasUnique : %1b, isShared : %1b, PassDirty : %1b, Error : %1b, DataTransfer : %1b)",$time, name, cr.cr_resp, cr.cr_resp[4],cr.cr_resp[3],cr.cr_resp[2],cr.cr_resp[1],cr.cr_resp[0]);
 
-                        checkCRResp(.req(ac), .exp(cr_exp), .resp(cr));
 
-                        // expect the data
-                        if (isHit(ac.ac_addr) && (ac.ac_snoop == snoop_pkg::READ_UNIQUE || 
-                                                  ac.ac_snoop == snoop_pkg::READ_ONCE   || 
-                                                  ac.ac_snoop == snoop_pkg::READ_SHARED)
-                        ) begin
-                            cd = new();
-                            cd.cd_last = 1'b0;
-                            while (!cd.cd_last) begin
-                                cd_mbx.get(cd);
-                                $display("%t ns %s got snoop data 0x%64h, last = %0d",$time, name, cd.cd_data,cd.cd_last);
+
+                                checkCRResp(.req(ac), .exp(cr_exp), .resp(cr));
+
+                                // expect the data
+                                if (isHit(ac.ac_addr) && (ac.ac_snoop == snoop_pkg::READ_UNIQUE ||
+                                        ac.ac_snoop == snoop_pkg::READ_ONCE   ||
+                                        ac.ac_snoop == snoop_pkg::READ_SHARED)
+                                ) begin
+                                    cd = new();
+                                    cd.cd_last = 1'b0;
+                                    while (!cd.cd_last) begin
+                                        cd_mbx.get(cd);
+                                        $display("%t ns %s got snoop data 0x%64h, last = %0d",$time, name, cd.cd_data,cd.cd_last);
+                                    end
+                                end
                             end
-                        end
+
+                        join
+
+//                        CheckOK = checkCache(ac.ac_addr);
 
                     end
 
-                join
+                    // timeout
+                    begin
+                        repeat (100) @(posedge sram_vif.clk);
+                        $error("%s : Timeout in check_snoop", name);
+                    end
+                join_any
+                disable fork;
 
-                CheckOK = checkCache(ac.ac_addr);
-
-            end
+            end // forever
         endtask
 
 
@@ -872,98 +895,125 @@ package culsans_tb_pkg;
 
             forever begin
                 msg = new();
-                dcache_req_mbox_prio.get(msg);             
+                dcache_req_mbox_prio.get(msg);
 
-                // add 1 cycle delay after dcache messages to have same delay as AXI / ACE monitors   
+                // add 1 cycle delay after dcache messages to have same delay as AXI / ACE monitors
                 @(posedge sram_vif.clk);
 
                 $display("%t ns %s got dcache message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.req_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
                 addr_v = tag_index2addr(.tag(msg.address_tag), .index(msg.address_index));
 
-                // bypass
-                if (!is_inside_cacheable_regions(ArianeCfg, addr_v)) begin
-                    if (msg.req_type == WR_REQ) begin
-                        aw_mbx.get(aw_beat);       
-                        if (is_inside_shareable_regions(ArianeCfg, addr_v)) begin
-                            if (!isWriteUnique(aw_beat))
-                                $error("Error WRITE_UNIQUE request expected");
-                        end else begin
-                            if (!isWriteNoSnoop(aw_beat))
-                                $error("Error WRITE_NO_SNOOP request expected");
-                        end
-                        b_mbx.get(b_beat);       
-                    end else begin
-                        ar_mbx.get(ar_beat);       
-                        if (is_inside_shareable_regions(ArianeCfg, addr_v)) begin
-                            if (!isReadOnce(ar_beat))
-                                $error("Error READ_ONCE request expected");
-                        end else begin
-                            if (!isReadNoSnoop(ar_beat))
-                                $error("Error READ_NO_SNOOP request expected");
-                        end
-                        r_beat = new();
-                        while (!r_beat.r_last)
-                            r_mbx.get(r_beat);       
-                    end
-                end
-                // cacheable
-                else begin
-
-                    // Cache hit
-                    if (isHit(addr_v)) begin
-                        if (msg.req_type == WR_REQ) begin
-
-                            if (isShared(addr_v)) begin
+                fork
+                    begin
+                        // bypass
+                        if (!is_inside_cacheable_regions(ArianeCfg, addr_v)) begin
+                            if (msg.req_type == WR_REQ) begin
+                                aw_mbx.get(aw_beat);
+                                if (is_inside_shareable_regions(ArianeCfg, addr_v)) begin
+                                    if (!isWriteUnique(aw_beat))
+                                        $error("%s : WRITE_UNIQUE request expected",name);
+                                end else begin
+                                    if (!isWriteNoSnoop(aw_beat))
+                                        $error("%s : WRITE_NO_SNOOP request expected",name);
+                                end
+                                b_mbx.get(b_beat);
+                            end else begin
                                 ar_mbx.get(ar_beat);
-                                if (!isCleanUnique(ar_beat))
-                                    $error("%s Error CLEAN_UNIQUE expected", name);
-
-                                // await response
+                                if (is_inside_shareable_regions(ArianeCfg, addr_v)) begin
+                                    if (!isReadOnce(ar_beat))
+                                        $error("%s : READ_ONCE request expected",name);
+                                end else begin
+                                    if (!isReadNoSnoop(ar_beat))
+                                        $error("%s : READ_NO_SNOOP request expected",name);
+                                end
                                 r_beat = new();
                                 while (!r_beat.r_last)
                                     r_mbx.get(r_beat);
+                            end
+                        end
+                        // cacheable
+                        else begin
+
+                            // Cache hit
+                            if (isHit(addr_v)) begin
+                                if (msg.req_type == WR_REQ) begin
+
+                                    if (isShared(addr_v)) begin
+                                        ar_mbx.get(ar_beat);
+                                        if (!isCleanUnique(ar_beat))
+                                            $error("%s Error CLEAN_UNIQUE expected", name);
+
+                                        // await response
+                                        r_beat = new();
+                                        while (!r_beat.r_last)
+                                            r_mbx.get(r_beat);
+
+                                    end
+                                end else begin
+                                    // otherwise wait only for the response from the port
+                                    // TODO: how to check this?
+                                    //  `WAIT_SIG(clk_i, axi_req_o.ar_valid)
+                                    //  $error("AR_VALID error, expected 0");
+                                end
+                            end
+
+                            // Cache miss (check again even if it was just hit, could have been changed during CLEAN_UNIQUE)
+                            if (!isHit(addr_v)) begin
+                                // check if eviction is necessary
+                                if (mustEvict(addr_v)) begin
+                                    aw_mbx.get(aw_beat);
+                                    if (!isWriteBack(aw_beat))
+                                        $error("%s : WRITEBACK request expected after eviction",name);
+                                end
+
+                                fork
+                                    begin
+                                        ar_mbx.get(ar_beat);
+                                        if (msg.req_type == WR_REQ) begin
+                                            if (!isReadUnique(ar_beat))
+                                                $error("%s : READ_UNIQUE request expected",name);
+                                        end else begin
+                                            if (!isReadShared(ar_beat))
+                                                $error("%s : READ_SHARED request expected",name);
+                                        end
+
+                                        r_beat = new();
+                                        while (!r_beat.r_last)
+                                            r_mbx.get(r_beat);
+                                    end
+                                    begin
+                                        // check if hit status changes, could be result of miss handler writeback
+                                        // in that case stop waiting for an AR beat
+                                        while (!isHit(addr_v)) begin
+                                            @(posedge sram_vif.clk);
+                                        end
+                                        $display("%t ns %s Cache status changed from miss to hit, abort waiting for AR", $time, name);
+                                    end
+                                join_any
+                                disable fork;
 
                             end
-                        end else begin
-                        // otherwise wait only for the response from the port
-                        // TODO: how to check this?
-                        //  `WAIT_SIG(clk_i, axi_req_o.ar_valid)
-                        //  $error("AR_VALID error, expected 0");
                         end
+
+                        if (is_inside_cacheable_regions(ArianeCfg, addr_v)) begin
+                            // send to cache update
+                            req_to_cache_update.put(msg);
+                            r_beat_to_cache_update.put(r_beat);
+
+                            // send to cache check
+                            req_to_cache_check.put(msg);
+                        end
+
                     end
 
-                    // Cache miss (check again even if it was just hit, could have been changed during CLEAN_UNIQUE)
-                    if (!isHit(addr_v)) begin
-                        // check if eviction is necessary
-                        if (mustEvict(addr_v)) begin
-                            aw_mbx.get(aw_beat);       
-                            if (!isWriteBack(aw_beat))
-                                $error("Error WRITEBACK request expected after eviction");
-                        end
-
-                        ar_mbx.get(ar_beat);
-                        if (msg.req_type == WR_REQ) begin
-                            if (!isReadUnique(ar_beat))
-                                $error("Error READ_UNIQUE request expected");
-                        end else begin
-                            if (!isReadShared(ar_beat))
-                                $error("Error READ_SHARED request expected");
-                        end
-                        r_beat = new();
-                        while (!r_beat.r_last)
-                            r_mbx.get(r_beat);
+                    // timeout
+                    begin
+                        repeat (100) @(posedge sram_vif.clk);
+                        $error("%s : Timeout in check_cache_msg", name);
+                    end
         
-                    end
-                end
-
-                if (is_inside_cacheable_regions(ArianeCfg, addr_v)) begin
-                    // send to cache update
-                    req_to_cache_update.put(msg);
-                    r_beat_to_cache_update.put(r_beat);
-
-                    // send to cache check
-                    req_to_cache_check.put(msg);
-                end
+                join_any
+                disable fork;
 
             end // forever
 
@@ -975,7 +1025,7 @@ package culsans_tb_pkg;
                 check_cache_msg();
                 check_snoop();
                 update_cache_from_req();
-                check_cache_from_req();
+//                check_cache_from_req();
                 update_cache_from_snoop();
             join
         endtask

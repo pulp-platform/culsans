@@ -44,6 +44,7 @@ module culsans_tb
 
     dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
     culsans_tb_sram_if      sram_if          [culsans_pkg::NB_CORES-1:0](clk);
+    culsans_tb_gnt_if       gnt_if           [culsans_pkg::NB_CORES-1:0](clk);
 
     dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
     dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
@@ -211,6 +212,12 @@ module culsans_tb
             assign sram_if[core_idx].data_sram[i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         end
 
+        // assign Grant IF
+        assign gnt_if[core_idx].gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[0];
+        assign gnt_if[core_idx].gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[1] && !(|i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.updating_cache);
+        assign gnt_if[core_idx].gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[2];
+        assign gnt_if[core_idx].gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[3];
+        assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[4];
 
         for (genvar port=0; port<=2; port++) begin : PORT
             // assign dcache request/response to dcache_if
@@ -237,7 +244,7 @@ module culsans_tb
         end
 
         initial begin : CACHE_CHK
-            dcache_chk[core_idx] = new(sram_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
+            dcache_chk[core_idx] = new(sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
 
             dcache_chk[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
             dcache_chk[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
