@@ -60,7 +60,8 @@ $(TEST_REPORT):
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
-	@grep "\*\* Error" sim.log | tee $(TEST_REPORT)
+	@$(shell grep "\*\* Error" sim.log)  > $(TEST_REPORT)
+	@$(shell grep "\*\* Fatal" sim.log) >> $(TEST_REPORT)
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
