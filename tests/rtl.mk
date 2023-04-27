@@ -1,51 +1,17 @@
-BOARD          ?= genesys2
+# Check that RTL is aligned with the NB_CORES setting
 
-# setting additional xilinx board parameters for the selected board
-ifeq ($(BOARD), genesys2)
-	XILINX_PART              := xc7k325tffg900-2
-	XILINX_BOARD             := digilentinc.com:genesys2:part0:1.1
-	CLK_PERIOD_NS            := 20
-else ifeq ($(BOARD), kc705)
-	XILINX_PART              := xc7k325tffg900-2
-	XILINX_BOARD             := xilinx.com:kc705:part0:1.5
-	CLK_PERIOD_NS            := 20
-else ifeq ($(BOARD), vc707)
-	XILINX_PART              := xc7vx485tffg1761-2
-	XILINX_BOARD             := xilinx.com:vc707:part0:1.3
-	CLK_PERIOD_NS            := 20
-else
-$(error Unknown board - please specify a supported FPGA board)
-endif
+RTL_NBCORES_DEF = "localparam NB_CORES = $(NB_CORES);"
 
-VIVADO ?= vivado
-VIVADOFLAGS ?= -nojournal -mode batch -source scripts/prologue.tcl
-
-NB_CORES = 2
-
-ifneq ($(NB_CORES), 2)
-$(error "NB_CORES must be 2")
-endif
+.PHONY: nb_cores_rtl
+nb_cores_rtl:
+	@if ! grep -q $(RTL_NBCORES_DEF) ../../rtl/include/culsans_pkg.sv; then \
+		sed -i 's/localparam NB_CORES = [0-9]\+;/localparam NB_CORES = $(NB_CORES);/' ../../rtl/include/culsans_pkg.sv; \
+	fi
 
 # Compile the RTL
 
-CVA6_DIR = ../modules/cva6
+CVA6_DIR = ../../modules/cva6
 AXI_DIR = $(CVA6_DIR)/corev_apu/axi/
-
-work-dir := work-fpga
-bit := $(work-dir)/culsans_xilinx.bit
-ip-dir := $(CVA6_DIR)/corev_apu/fpga/xilinx
-ips := xlnx_axi_clock_converter.xci  \
-       xlnx_axi_dwidth_converter.xci \
-       xlnx_axi_dwidth_converter_dm_master.xci \
-       xlnx_axi_dwidth_converter_dm_slave.xci \
-       xlnx_axi_quad_spi.xci         \
-       xlnx_axi_gpio.xci             \
-       xlnx_clk_gen.xci              \
-       xlnx_ila.xci              \
-       xlnx_mig_7_ddr3.xci
-
-ips := $(addprefix $(work-dir)/, $(ips))
-ips-target := $(join $(addsuffix /ip/, $(addprefix $(ip-dir)/, $(basename $(ips)))), $(ips))
 
 # Common cells
 
@@ -108,8 +74,8 @@ AXI_SRC := src/axi_cut.sv                                                 \
 	          src/ace_ccu_top.sv
 AXI_SRC := $(addprefix $(AXI_DIR)/, $(AXI_SRC))
 
-#AXI_INCDIR := $(AXI_DIR)/include
-#AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
+AXI_INCDIR := $(AXI_DIR)/include
+AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
 
 # CVA6
 
@@ -128,8 +94,7 @@ CVA6_PKG += core/include/riscv_pkg.sv                              \
               core/include/std_cache_pkg.sv                          \
               core/fpu/src/fpnew_pkg.sv                              \
               core/cvxif_example/include/cvxif_instr_pkg.sv          \
-              core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv \
-							corev_apu/tb/ariane_soc_pkg.sv
+              core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
 CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
 
 # utility modules
@@ -186,79 +151,102 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 COPRO_SRC := $(CVA6_DIR)/core/cvxif_example/include/cvxif_instr_pkg.sv \
              $(wildcard $(CVA6_DIR)/core/cvxif_example/*.sv)
 
-UART_SRC := $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/apb_uart/src/*.vhd)
+CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ corev_apu/register_interface/include/
+CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
+CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
-#CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ corev_apu/register_interface/include/
-#CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
-#CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
-
-FPGA_SRC :=  $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/*.sv) $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/bootrom/*.sv) $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/ariane-ethernet/*.sv) $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/fpga/tc_sram_xilinx.sv $(CVA6_DIR)/common/local/util/tc_sram_xilinx_wrapper.sv
-
-CULSANS_DIR := ../rtl
+CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
-CULSANS_SRC := $(wildcard $(CULSANS_DIR)/src/*.sv)
-#CULSANS_INCDIR := $(CULSANS_DIR)/include
-#CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
+CULSANS_SRC := $(filter-out $(CULSANS_DIR)/src/culsans_xilinx.sv, $(wildcard $(CULSANS_DIR)/src/*.sv))
+CULSANS_INCDIR := $(CULSANS_DIR)/include
+CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
-FPGA_FILTER := $(addprefix $(CVA6_DIR), corev_apu/bootrom/bootrom.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), core/include/instr_tracer_pkg.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), src/util/ex_trace_item.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), src/util/instr_trace_item.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), common/local/util/instr_tracer_if.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), common/local/util/instr_tracer.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), corev_apu/src/tech_cells_generic/src/rtl/tc_sram.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), common/local/util/tc_sram_wrapper.sv)
-FPGA_FILTER += $(addprefix $(CVA6_DIR), corev_apu/fpga/src/ariane_xilinx.sv)
+TB_DIR = ./tb
+TB_SRC := $(wildcard $(TB_DIR)/*.sv)
 
-TOP_LEVEL := culsans_xilinx
+TOP_LEVEL := culsans_tb
 
-all: $(bit)
+RTL_INCDIR += $(AXI_INCDIR)
+RTL_INCDIR += $(CVA6_INCDIR)
+RTL_INCDIR += $(CULSANS_INCDIR)
 
-$(bit): $(ips) scripts/add_sources.tcl
-	@echo "[FPGA] Generate Bitstream"
-	@mkdir -p $(work-dir)
-	@cp -r $(ip-dir) .
-	export BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CLK_PERIOD_NS=$(CLK_PERIOD_NS); \
-	$(VIVADO) $(VIVADOFLAGS) -source scripts/run.tcl
-	#cp ariane.runs/impl_1/culsans_xilinx* ./$(work-dir)
+VSIM_LIB = work
+VERILATOR_LIB = work_verilate
 
-$(ips): %.xci :
-	mkdir -p $(work-dir)
-	@echo Generating $(@F)
-	@cd $(ip-dir)/$(basename $(@F)) && make clean && make BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CLK_PERIOD_NS=$(CLK_PERIOD_NS)
-	@cp $(ip-dir)/$(basename $(@F))/$(basename $(@F)).srcs/sources_1/ip/$(basename $(@F))/$(@F) $@
+#VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+#VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
+VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
 
-# Check that RTL and SW are aligned with the NB_CORES setting
+VERILATOR_CMD := $(VERILATOR)                                                                                 \
+                    $(COMMON_PKG) $(AXI_PKG) $(COMMON_SRC) $(AXI_SRC) $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
+                    $(COPRO_SRC)                                                                                 \
+                    $(CVA6_DIR)/common/local/util/sram.sv                                                        \
+                    $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv                                                 \
+                    +incdir+$(CVA6_DIR)/corev_apu/axi_node                                                       \
+                    --unroll-count 256                                                                           \
+                    -Werror-PINMISSING                                                                           \
+                    -Werror-IMPLICIT                                                                             \
+                    -Wno-fatal                                                                                   \
+                    -Wno-PINCONNECTEMPTY                                                                         \
+                    -Wno-ASSIGNDLY                                                                               \
+                    -Wno-DECLFILENAME                                                                            \
+                    -Wno-UNUSED                                                                                  \
+                    -Wno-UNOPTFLAT                                                                               \
+                    -Wno-BLKANDNBLK                                                                              \
+                    -Wno-style                                                                                   \
+                    --trace                                                                     \
+                    -LDFLAGS "-L$(RISCV)/lib -L$(SPIKE_ROOT)/lib -Wl,-rpath,$(RISCV)/lib -Wl,-rpath,$(SPIKE_ROOT)/lib -lfesvr -lpthread" \
+                    -CFLAGS "-I$(RISCV)/include -I$(SPIKE_ROOT) -I$(SPIKE_ROOT)/include -std=c++11 -I$(SPIKE_ROOT)/include -I$(CVA6_DIR)/corev_apu/tb/dpi -O3 -DVL_DEBUG"       \
+                    -Wall --cc  --vpi                                                                            \
+                    $(RTL_INCDIR) --top-module culsans_top                                         \
+					--threads-dpi none 																			 \
+                    --Mdir $(VERILATOR_LIB) -O3                                                                    \
+                    --exe ./tb/culsans_tb.cpp 
+#                    $(CVA6_DIR)/corev_apu/tb/dpi/SimDTM.cc $(CVA6_DIR)/corev_apu/tb/dpi/SimJTAG.cc \
+#                    $(CVA6_DIR)/corev_apu/tb/dpi/remote_bitbang.cc $(CVA6_DIR)/corev_apu/tb/dpi/msim_helper.cc 
 
-RTL_NBCORES_DEF = "localparam NB_CORES = $(NB_CORES);"
-.PHONY: $(CULSANS_DIR)/include/culsans_pkg.sv
-$(CULSANS_DIR)/include/culsans_pkg.sv:
-	@if ! grep -q $(RTL_NBCORES_DEF) $@; then \
-		sed -i 's/localparam NB_CORES = [0-9]\+;/localparam NB_CORES = $(NB_CORES);/' ../../rtl/include/culsans_pkg.sv; \
-	fi
+$(library):
+	@$(VLIB) $(library)
 
-.PHONY: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
-$(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
-	cd $$(dirname $@); \
-	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
+$(VSIM_LIB)/.build-common-srcs: $(library) $(COMMON_PKG) $(COMMON_SRC)
+	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(COMMON_PKG) $(RTL_INCDIR)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(COMMON_SRC) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-common-srcs
 
-scripts/add_sources.tcl: $(COMMON_PKG) $(CVA6_PKG) $(AXI_PKG) $(CULSANS_PKG) $(COMMON_SRC) $(UART_SRC) $(UTIL) $(AXI_SRC) $(CVA6_SRC) $(CULSANS_SRC) $(COPRO_SRC)
-	make CORES=2 -C $(CVA6_DIR)/corev_apu/bootrom clean all
-	@echo "[FPGA] Generate sources"
-	@echo read_vhdl        {$(UART_SRC)}    > scripts/add_sources.tcl
-	@echo read_verilog -sv {$(COMMON_PKG)} >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(CVA6_PKG)} >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(AXI_PKG)} >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(CULSANS_PKG)} >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(COMMON_SRC))} 	   >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(UTIL))}     >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(COPRO_SRC))} >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(CVA6_SRC))} 	   >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(AXI_SRC))} 	   >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(filter-out $(FPGA_FILTER), $(CULSANS_SRC))} 	   >> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(FPGA_SRC)}   >> scripts/add_sources.tcl
+$(VSIM_LIB)/.build-axi-srcs: $(library) $(AXI_PKG) $(AXI_SRC)
+	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(AXI_PKG) $(RTL_INCDIR)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(AXI_SRC) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-axi-srcs
 
+$(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
+	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-cva6-srcs
 
-.PHONY:	clean
-clean:
-	rm -rf *.log *.jou *.str *.mif *.xpr $(work-dir) *.cache *.hw *.ip_user_files *.runs *.sim scripts/vivado*
+$(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cores_rtl
+	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-culsans-srcs
+
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-tb
+
+ifeq ($(VERILATE), 0)
+rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+#	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
+else
+VERILATOR_JOBS = 1
+rtl:
+	$(VERILATOR_CMD)
+	cd $(VERILATOR_LIB) && $(MAKE) -j${VERILATOR_JOBS} -f Vculsans_top.mk
+endif
+
+# Cleanup
+
+clean_rtl:
+	rm -rf $(VSIM_LIB)
+	rm -rf $(VERILATOR_LIB)
+
+.PHONY: rtl clean_rtl

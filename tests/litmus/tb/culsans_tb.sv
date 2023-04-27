@@ -39,26 +39,9 @@ module culsans_tb ();
     logic [31:0] exit_val;
 
     initial begin
-        
-        int fd;
-
         forever begin
-
             wait (exit_val[0]);
-
-            fd = $fopen("result.rpt", "w");
-
-            if ((exit_val >> 1)) begin
-                $error("*** FAILED *** (tohost = %0d)", (exit_val >> 1));
-                $fdisplay(fd, "FAIL");
-                $fdisplay(fd, "return code: 0x%x", (exit_val >> 1));
-            end else begin
-                $info("*** SUCCESS *** (tohost = %0d)", (exit_val >> 1));
-                $fdisplay(fd, "PASS");
-            end
-
-            $fclose(fd);
-
+            #(CLK_PERIOD*1000)
             $finish();
         end
     end
@@ -90,7 +73,7 @@ module culsans_tb ();
     culsans_top #(
         .InclSimDTM (1'b0),
         .NUM_WORDS  (80*1024*1024), // 4Kwords
-        .BootAddress (culsans_pkg::DRAMBase + 64'h100000)
+        .BootAddress (culsans_pkg::DRAMBase + 64'h60000)
     ) i_culsans (
         .clk_i (clk),
         .rtc_i (rtc),

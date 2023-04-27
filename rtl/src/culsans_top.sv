@@ -350,7 +350,7 @@ module culsans_top #(
     .rdata_o    ( rom_rdata )
   );
 `else
-  bootrom i_bootrom (
+  bootrom_64 i_bootrom (
     .clk_i      ( clk_i     ),
     .req_i      ( rom_req   ),
     .addr_i     ( rom_addr  ),
@@ -668,6 +668,15 @@ module culsans_top #(
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
 
+   logic [culsans_pkg::NB_CORES-1:0] reset;
+
+   assign reset[0] = ndmreset_n;
+   initial begin
+      reset[1] = 0;
+      repeat (30) @(posedge clk_i);
+      reset[1] = ndmreset_n;
+   end
+
   for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_ariane
 
     assign hart_id[i] = i;
@@ -678,7 +687,7 @@ module culsans_top #(
       .mst_resp_t (ariane_ace::s2m_t)
     ) i_ariane (
       .clk_i                ( clk_i               ),
-      .rst_ni               ( ndmreset_n          ),
+      .rst_ni               ( reset[i]          ),
       .boot_addr_i          ( BootAddress         ),
       .hart_id_i            ( {56'h0, hart_id[i]} ),
       .irq_i                ( irqs[2*i+1:2*i]     ),
