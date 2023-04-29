@@ -126,6 +126,10 @@ class ACE_S_LIST_CHECKER:
                     #print(j)
                     log_file.write(self.theList[l].srcline)
                     k = l
+                    #print(self.theList[l].msgtype)
+                    #if self.theList[l].msgtype == 2:
+                        #del self.theList[l]
+                        #return True
                     if len(self.theList) != 0:
                         if self.theList[l+1].crresp == crresp_search :
                             log_file.write("\t\t" + self.theList[l+1].srcline)
@@ -237,8 +241,11 @@ def tr_snoop(file_lines, transactions):
             for addr in  buffer_address_list:
                 if int(split_line[list_address_index ],16) >= addr.min_address and int(split_line[ list_address_index ],16) <= addr.max_address:
                     timestamp = split_line[0].strip('>')
+                    message_type = 1
                     snoop_in_line = True
-                    tr = SNOOP(timestamp, int(split_line[list_address_index ],16), 7777, 1, line)
+                    if int(split_line[list_address_index + 2].strip(','),2) == 9:
+                        message_type = 2
+                    tr = SNOOP(timestamp, int(split_line[list_address_index ],16), 7777, message_type, line)
                     transactions.append(tr)
               
 def get_and_filter_data():
@@ -486,7 +493,20 @@ if __name__ == "__main__":
    log_file.close()
    file1.close()
    print(Style.RESET_ALL)
-   
+   print("snoop 3")
+   for tr in ace_master_3_snoop:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.crresp)
+       print(tr.msgtype)
+       print(tr.srcline)
+   print("snoop 1")
+   for tr in ace_master_1_snoop:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.crresp)
+       print(tr.msgtype)
+       print(tr.srcline)     
 
 ''' 
    print("snoop 0")

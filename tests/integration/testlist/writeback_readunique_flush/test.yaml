@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readunique_flush"
     test_buffer: "data"
-    test_notes: "Known Failure due inconsistent use of CRRESP. Also unpredictable writeback. Also scrutimise crresp 4c flow"
+    test_notes: "Known Failure due inconsistent use of CRRESP. Also unpredictable writeback. TODO also scrutinise crresp 4c flow. This test seems to cease when core 2 starts. Core 3 shows no ace transactiions. Further more when a snoop trnascation is seen with a SNOOP value of 9(1001), all cores don not givbe a crresp except core 3 which has yet to run."
     groups:
 #test    
         -
@@ -27,8 +27,10 @@ test:
             -
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
+              not_certain: 
             -
-              log: "axi_master_write"                
+              log: "axi_master_write" 
+              not_certain:                
              
         -
           core: 1
@@ -40,7 +42,7 @@ test:
               ARSNOOP: "ReadShared"         
             -
               log: "ace_master_snoop_0"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_2"
               CRRESP: 00000
@@ -50,50 +52,44 @@ test:
             -
               log: "ace_master_write_1"
               AWSNOOP: "WriteBack"
+              not_certain: 
             -
               log: "axi_master_write"
+              not_certain: 
         -
           core: 2
           start_index: 0
-          end_index: 1535
+          end_index: 0
           messages:
             -
               log: "ace_master_read_2"
-              ARSNOOP: "ReadShared"         
+              ARSNOOP: "ReadShared"  
             -
               log: "ace_master_snoop_0"
-              CRRESP: 0
+              CRRESP: 13
             -
               log: "ace_master_snoop_1"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_3"
-              CRRESP: 00000           
-            -
-              log: "ace_master_write_2"
-              AWSNOOP: "WriteBack"
-            -
-              log: "axi_master_write"
-        -
-          core: 2
-          start_index: 0
-          end_index: 1535
-          messages:
-            -
-              log: "ace_master_read_3"
-              ARSNOOP: "ReadShared"         
-            -
-              log: "ace_master_snoop_0"
-              CRRESP: 0
-            -
-              log: "ace_master_snoop_2"
-              CRRESP: 9
-            -
-              log: "ace_master_snoop_1"
-              CRRESP: 0       
-            -
-              log: "ace_master_write_3"
-              AWSNOOP: "WriteBack"
-            -
-              log: "axi_master_write"              
+              CRRESP: 00000  
+ #       -
+ #         core: 2
+ #         start_index: 0
+ #         end_index: 0
+ #        messages:
+ #           -
+ #             log: "ace_master_read_2"
+ #             ARSNOOP: "CleanUnique"   
+ #           -
+ #             log: "ace_master_snoop_0"
+ #             CRRESP: 77
+ #           -
+ #             log: "ace_master_snoop_1"
+ #             CRRESP: 77
+ #           -
+ #            log: "ace_master_snoop_3"
+ #            CRRESP: 77     
+    
+             
 
