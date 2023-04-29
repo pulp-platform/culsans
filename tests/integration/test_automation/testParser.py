@@ -116,7 +116,14 @@ class ACE_S_LIST_CHECKER:
         k = 0
         for l in range(0,len(self.theList)):
             if l <= len(self.theList) - 1:
+                #print("length is " + str(len(self.theList)))
+                #print("address " + str(hex(search_address)))
+                #print(self.theList[l].srcline)
                 if self.theList[l].address == search_address:
+
+                    #print(self.theList[l].srcline)
+                    #print(self.theList[l+1].srcline) 
+                    #print(j)
                     log_file.write(self.theList[l].srcline)
                     k = l
                     if len(self.theList) != 0:
@@ -125,8 +132,8 @@ class ACE_S_LIST_CHECKER:
                             message_found = True
                             break
                         else:
-                            print(crresp_search)
-                            print(self.theList[l+1].crresp)
+                            print("Test sequence " + str(crresp_search))
+                            print("Logs " + str(self.theList[l+1].crresp))
                             print(certainty)
                          
                             break
@@ -135,7 +142,7 @@ class ACE_S_LIST_CHECKER:
 
         if message_found == True:
             del self.theList[k]
-            del self.theList[k + 1]
+            del self.theList[k]
             return True
         else:
             return False
@@ -421,8 +428,6 @@ if __name__ == "__main__":
    
    test_buffer_address = getIndexLists()
    get_and_filter_data()
-
-   
    early_exit = False
    for i in range(0, len(test_yaml['test']['groups'])):
        if early_exit == True:

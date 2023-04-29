@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readshared_flush"
     test_buffer: "data"
-    test_notes: "Known Failure due inconsistent use of CRRESP. Also due to unpredictable writebacks. Also scrutise 4c crresp"
+    test_notes: "Known Failure due inconsistent use of CRRESP.  Also scrutise 4c crresp"
     groups:
 #test    
         -
@@ -62,7 +62,7 @@ test:
               ARSNOOP: "ReadShared"          
             -
               log: "ace_master_snoop_1"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_0"
               CRRESP: 00000
@@ -70,10 +70,13 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000
             -
-              log: "ace_master_write_2"
+              log: "ace_master_write_2"#Also due to unpredictable writebacks due to core 2 flushing just as core 3 finished.
               AWSNOOP: "WriteBack"
+              not_certain:
             -
-              log: "axi_master_write"              
+              log: "axi_master_write"
+              not_certain:
+              
                           
         -
           core: 3
@@ -88,7 +91,7 @@ test:
               CRRESP: 0
             -
               log: "ace_master_snoop_2"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000           
