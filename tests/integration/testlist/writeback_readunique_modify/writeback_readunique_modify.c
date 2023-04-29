@@ -9,12 +9,13 @@ extern void exit(int);
 //#define NUM_CORES 4
 uint128_t data[NUM_CACHELINES] __attribute__((section(".cache_share_region")));
 uint128_t data1[NB_CORES*NUM_CACHELINES] __attribute__((section(".cache_share_region")));
+uint64_t i __attribute__((section(".nocache_share_region")));
 
 int writeback_readunique_modify(int cid, int nc)
 {
   // core 0 initializes the cachelines
   if (cid == 0) {
-    for (int i = 0; i < NUM_CACHELINES; i++) {
+    for ( i = 0; i < NUM_CACHELINES; i++) {
       data[i] = i+1;
       if (data[i] != i+1)
         exit(i+1);
@@ -22,12 +23,12 @@ int writeback_readunique_modify(int cid, int nc)
   }
   else {
     // read the shared data
-    for (int i = 0; i < NUM_CACHELINES; i++) {
+    for ( i = 0; i < NUM_CACHELINES; i++) {
       if (data[i] != i+1)
         exit(i+1);
     }
     // fill the cache with new data
-    for (int i = 0; i < NUM_CACHELINES; i++) {
+    for ( i = 0; i < NUM_CACHELINES; i++) {
       data1[cid*NUM_CACHELINES+i] = (cid+1)*i+1;
       if (data1[cid*NUM_CACHELINES+i] != (cid+1)*i+1)
         exit((cid+1)*i+1);

@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readunique_modify"
     test_buffer: "data"
-    test_notes: "Known Failure due to unpredictable write_evicts. Also inconsisten crresp use. Check 4c crresp flow"
+    test_notes: "Known Failure due to unpredictable write_evicts. Unpredictable writes affects expected snoop ccresp, as crresp will be different dependent on whether the cache is evicted prior. Also inconsisten crresp use. Check 4c crresp flow"
     groups:
 #test    
         -
@@ -23,8 +23,39 @@ test:
               CRRESP: 00000
             -
               log: "ace_master_snoop_3"
-              CRRESP: 00000           
-               
+              CRRESP: 00000
+                     
+        -
+          core: 0,1,2,3
+          start_index: 0
+          end_index: 1535
+          messages:
+
+            - 
+              log: "ace_master_write_0"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            - 
+              log: "ace_master_write_1"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            - 
+              log: "ace_master_write_2"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            - 
+              log: "ace_master_write_3"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain: #one for each core ace_master_write  
+            -
+              log: "axi_master_write"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:           
         -
           core: 1
           start_index: 0
@@ -35,7 +66,7 @@ test:
               ARSNOOP: "ReadShared"
             -
               log: "ace_master_snoop_0"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_2"
               CRRESP: 00000
@@ -43,10 +74,33 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000           
 
-            - log: "ace_master_write_1"
+        -
+          core: 1
+          start_index: 1536
+          end_index: 3071
+          test_buffer: "data1"
+          messages:            
+            -
+              log: "ace_master_read_1"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"  
+            -
+              log: "ace_master_snoop_0"
+              CRRESP: 0
+            -
+              log: "ace_master_snoop_2"
+              CRRESP: 00000
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000
+            - 
+              log: "ace_master_write_1"
               AWSNOOP: "WriteBack"
+              not_certain:
             -
               log: "axi_master_write"
+              not_certain:
         -
           core: 2
           start_index: 0
@@ -57,18 +111,40 @@ test:
               ARSNOOP: "ReadShared"
             -
               log: "ace_master_snoop_0"
+              CRRESP: 13
+            -
+              log: "ace_master_snoop_1"
+              CRRESP: 0
+            -
+              log: "ace_master_snoop_3"
+              CRRESP: 00000  
+        -         
+          core: 2
+          start_index: 3072
+          end_index: 4607
+          test_buffer: "data1"
+          messages:            
+            -
+              log: "ace_master_read_2"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"  
+            -
+              log: "ace_master_snoop_0"
               CRRESP: 0
             -
               log: "ace_master_snoop_1"
-              CRRESP: 9
+              CRRESP: 00000
             -
               log: "ace_master_snoop_3"
-              CRRESP: 00000           
-
-            - log: "ace_master_write_2"
+              CRRESP: 00000
+            - 
+              log: "ace_master_write_2"
               AWSNOOP: "WriteBack"
+              not_certain:
             -
               log: "axi_master_write"
+              not_certain:
         -
           core: 3
           start_index: 0
@@ -82,13 +158,26 @@ test:
               CRRESP: 0
             -
               log: "ace_master_snoop_2"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_1"
-              CRRESP: 00000           
-
-            - log: "ace_master_write_3"
-              AWSNOOP: "WriteBack"
+              CRRESP: 13          
+        -
+          core: 3
+          start_index: 4608
+          end_index: 6143
+          test_buffer: "data1"
+          messages:            
             -
-              log: "axi_master_write"              
+              log: "ace_master_read_3"
+              ARSNOOP: "ReadUnique"
+            -
+              log: "axi_master_read"          
+            - 
+              log: "ace_master_write_3"
+              AWSNOOP: "WriteBack"
+              not_certain:
+            -
+              log: "axi_master_write"
+              not_certain:          
 

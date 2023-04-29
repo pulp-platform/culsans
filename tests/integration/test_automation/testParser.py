@@ -113,23 +113,29 @@ class ACE_S_LIST_CHECKER:
     def checker (self, group_index, message_index, certainty):
         message_found = False
         crresp_search = test_yaml['test']['groups'][i]['messages'][j]['CRRESP']
+        k = 0
         for l in range(0,len(self.theList)):
             if l <= len(self.theList) - 1:
                 if self.theList[l].address == search_address:
                     log_file.write(self.theList[l].srcline)
-                    del self.theList[l]
+                    k = l
                     if len(self.theList) != 0:
-                        if self.theList[l].crresp == crresp_search :
-                            log_file.write("\t\t" + self.theList[l].srcline)
-                            del self.theList[l]
+                        if self.theList[l+1].crresp == crresp_search :
+                            log_file.write("\t\t" + self.theList[l+1].srcline)
                             message_found = True
                             break
                         else:
+                            print(crresp_search)
+                            print(self.theList[l+1].crresp)
+                            print(certainty)
+                         
                             break
-        if certainty == True:
+        if certainty == False:
             return True
 
         if message_found == True:
+            del self.theList[k]
+            del self.theList[k + 1]
             return True
         else:
             return False
@@ -449,8 +455,9 @@ if __name__ == "__main__":
                    print(Fore.RED + "Expected  message " + test_yaml['test']['groups'][i]['messages'][j]['log'] + " " +str(j) + " of group " + str(i) + " not found")
                    print(Fore.RED + "at address " + str(hex(search_address)))
                    for i in range(0, len(test_yaml['test']['groups'])):
-                      print("next group ")
-                      print(test_yaml['test']['groups'][i])
+                      print("next group " + str(i))
+                      for k in range(0, len(test_yaml['test']['groups'][i]['messages'])):
+                         print(test_yaml['test']['groups'][i]['messages'][k])
                    early_exit = True
                    break              
 
@@ -474,8 +481,31 @@ if __name__ == "__main__":
    log_file.close()
    file1.close()
    print(Style.RESET_ALL)
+   
 
-'''   
+''' 
+   print("snoop 0")
+   for tr in ace_master_0_snoop:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.crresp)
+       print(tr.msgtype)
+       print(tr.srcline)
+   print("snoop 0")
+   for tr in ace_master_0_snoop:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.crresp)
+       print(tr.msgtype)
+       print(tr.srcline)
+
+   for tr in axi_slave_write:
+       print(tr.address)
+       print(tr.time_stamp)
+       print(tr.rwtype)
+       print(tr.srcline)   
+
+  
    for tr in ace_master_2_read:
        print(tr.address)
        print(tr.time_stamp)
