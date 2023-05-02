@@ -359,7 +359,7 @@ if __name__ == "__main__":
    #awsnoop dictionary defs from from IHI0022H_c_amba_axi_protocol_spec.pdf table D3.8
    awsnoop_dict = {'WriteNoSnoop':0,'WriteUnique':0,'WriteLineUnique':1,'WriteClean':2,'WriteBack':3,'Evict':4,'WriteEvict':5}
    #acsnoop dictionary defs from from IHI0022H_c_amba_axi_protocol_spec.pdf table D3.19
-   acsnoop_dict = {'ReadOnce':0,'ReadShared':1,'ReadClean':2,'ReadNotSharedDirty':3,'ReadUnique':7,'CleanShared':8,'CleanInvalid':5}   
+   acsnoop_dict = {'ReadOnce':0,'ReadShared':1,'ReadClean':2,'ReadNotSharedDirty':3,'ReadUnique':7,'CleanShared':8,'CleanInvalid':9}   
    ace_master_0_read = []   
    ace_master_1_read = []
    ace_master_2_read = []
