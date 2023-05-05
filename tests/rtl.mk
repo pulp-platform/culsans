@@ -45,14 +45,19 @@ COMMON_SRC := $(CVA6_DIR)/common/submodules/common_cells/src/rstgen_bypass.sv   
 	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_16bit.sv                             \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/delta_counter.sv                          \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/counter.sv                                \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv
+	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv                              \
+                $(CVA6_DIR)/corev_apu/tb/common_verification/src/rand_id_queue.sv
 
 # AXI
 
 # AXI packages
 AXI_PKG := src/axi_pkg.sv \
-						src/ace_pkg.sv \
-						src/snoop_pkg.sv
+           src/ace_pkg.sv \
+           src/snoop_pkg.sv \
+           src/axi_test.sv \
+           src/ace_test.sv \
+           src/snoop_test.sv
+
 AXI_PKG := $(addprefix $(AXI_DIR)/, $(AXI_PKG))
 
 AXI_SRC := src/axi_cut.sv                                                 \
@@ -118,6 +123,7 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/axi2apb/src/*.sv)                              \
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/apb_timer/*.sv)                                \
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/axi_slice/src/*.sv)                            \
+	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/bootrom/*.sv)                              \
 	        $(wildcard $(CVA6_DIR)/corev_apu/src/axi_riscv_atomics/src/*.sv)                         \
 	        $(wildcard $(CVA6_DIR)/corev_apu/axi_mem_if/src/*.sv)                                    \
 	        $(wildcard $(CVA6_DIR)/core/pmp/src/*.sv)                                                \
@@ -162,7 +168,8 @@ CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
 TB_DIR = ./tb
-TB_SRC := $(wildcard $(TB_DIR)/*.sv)
+TB_PKG := $(wildcard $(TB_DIR)/*_pkg.sv)
+TB_SRC := $(filter-out $(TB_PKG), $(wildcard $(TB_DIR)/*.sv))
 
 TOP_LEVEL := culsans_tb
 
@@ -172,10 +179,14 @@ RTL_INCDIR += $(CULSANS_INCDIR)
 
 VSIM_LIB = work
 VERILATOR_LIB = work_verilate
+DEFINES = 
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
+ifneq ($(DEFINES), "")
+VLOG_FLAGS += $(foreach def, $(DEFINES), +define+$(def))
+endif
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
                     $(COMMON_PKG) $(AXI_PKG) $(COMMON_SRC) $(AXI_SRC) $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
@@ -229,7 +240,8 @@ $(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cor
 	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC) $(TB_PKG)
+	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_PKG) $(RTL_INCDIR)
 	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-tb
 
