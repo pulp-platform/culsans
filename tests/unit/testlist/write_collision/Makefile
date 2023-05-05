@@ -60,8 +60,9 @@ $(TEST_REPORT):
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
-	@$(shell grep "\*\* Error" sim.log)  > $(TEST_REPORT)
-	@$(shell grep "\*\* Fatal" sim.log) >> $(TEST_REPORT)
+	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
+	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
+
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
@@ -85,6 +86,7 @@ clean:
 	rm -rf main.map
 	rm -rf ace_log/
 	rm -rf axi_log/
+	rm -rf vsim.wlf
 	rm -rf $(VERIFICATION_REPORT)
 
 .PHONY: all gui sw dis sw clean
