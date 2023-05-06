@@ -46,7 +46,7 @@ test:
         -
           core: 2
           start_index: 3072
-          end_index: 4067
+          end_index: 4607
           messages:
             -
               log: "ace_master_read_2"
@@ -64,7 +64,7 @@ test:
               CRRESP: 00000           
         -
           core: 3
-          start_index: 4068
+          start_index: 4608
           end_index: 6143
           messages:
             -

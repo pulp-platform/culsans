@@ -2,7 +2,7 @@
 test:
     test_name:  "read_cache_share_overlap"
     test_buffer: "data"
-    test_notes: "Known fail because core CRRESP use not consistent !! Also need to scrutinise 4C flow"
+    test_notes: "Known fail because core CRRESP use not consistent !! Also need to scrutinise 4C flow. This can be set to a false pass if msg 1 of gropu 1 is 5 instead of 9 and msg2 of group 2 is 5 instead of 9"
     groups:
 #test startup    
         -

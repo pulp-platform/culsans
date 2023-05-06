@@ -2,7 +2,7 @@
 test:
     test_name:  "read_modify_cache_share"
     test_buffer: "data"
-    test_notes: "Known fail because core CRRESP use not consistent !! Also check 4c flow"    
+    test_notes: "Known fail because core CRRESP use not consistent !! Also check 4c flow. This can be set to achieve a false pass if msg 1 of greoup 1 and msg 2 of group 2 is 5 instead of 9."    
     groups:
 #test startup    
         -
@@ -56,7 +56,7 @@ test:
               CRRESP: 13 #01001   is
             -
               log: "ace_master_snoop_1"
-              CRRESP: 5
+              CRRESP: 9
             -
               log: "ace_master_snoop_3"
               CRRESP: 00000

@@ -1,8 +1,7 @@
 #note when editing this file, you can't use tabs
 test:
-    test_name:  "read_modify_share"
+    test_name:  "read_modify_cache"
     test_buffer: "data"
-    number_of_messages: 2
     groups:
 #test startup    
         -

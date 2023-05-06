@@ -493,6 +493,7 @@ if __name__ == "__main__":
    log_file.close()
    file1.close()
    print(Style.RESET_ALL)
+'''
    print("snoop 3")
    for tr in ace_master_3_snoop:
        print(tr.address)
@@ -508,7 +509,7 @@ if __name__ == "__main__":
        print(tr.msgtype)
        print(tr.srcline)     
 
-''' 
+ 
    print("snoop 0")
    for tr in ace_master_0_snoop:
        print(tr.address)
