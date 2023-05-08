@@ -215,7 +215,8 @@ module culsans_tb
         assign sram_if[core_idx].vld_sram = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
             assign sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
-            assign sram_if[core_idx].data_sram[i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign sram_if[core_idx].data_sram[i][0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign sram_if[core_idx].data_sram[i][1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[1].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         end
 
         // assign Grant IF
@@ -309,17 +310,29 @@ module culsans_tb
 
     end
 
-
     //--------------------------------------------------------------------------
     // Tests
     //--------------------------------------------------------------------------
 
-    localparam timeout = 1000000;
+    task test_header (string testname, string description="");
+        $display("--------------------------------------------------------------------------");
+        $display("Running test %s", testname);
+        $display("%s", description);
+        $display("--------------------------------------------------------------------------");
+    endtask
+
+    localparam timeout = 100000;
     int test_id = -1;
     int rep_cnt;
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
+
+        string testname="";
+        if (!$value$plusargs("TESTNAME=%s", testname)) begin
+            $error("No TESTNAME plusarg given");
+        end
+
 
         fork
 
@@ -332,523 +345,497 @@ module culsans_tb
 
                 `WAIT_CYC(clk, 300)
 
+                case (testname)
 
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("8 consecutive read misses in the same cache set");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "read_miss" : begin
+                        test_header(testname, "8 consecutive read misses in the same cache set");
 
-                // write to address 0-7 and then some more
-                for (int i=0; i<16; i++) begin
-                    dcache_drv[0][2].wr(.addr(addr + (i << DCACHE_INDEX_WIDTH)), .data(i));
-                end
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
 
-                // read miss x 8 - fill cache 0
-                for (int i=0; i<8; i++) begin
-                    dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
-                end
-  
-                `WAIT_CYC(clk, 100)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Write conflicts to single address");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
-
-                // make sure data 0 is in cache
-                dcache_drv[0][0].rd(.addr(addr));
-                `WAIT_CYC(clk, 100)
-                dcache_drv[1][0].rd(.addr(addr));
-                `WAIT_CYC(clk, 100)
-
-                // simultaneous writes to same address
-                for (int i=0; i<100; i++) begin
-                    fork
-                        begin
-                            dcache_drv[0][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
-                            `WAIT_CYC(clk, 10)
-                            dcache_drv[0][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i));
+                        // write to address 0-7 and then some more
+                        for (int i=0; i<16; i++) begin
+                            dcache_drv[0][2].wr(.addr(addr + (i << DCACHE_INDEX_WIDTH)), .data(i));
                         end
-                        begin
-                            dcache_drv[1][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
-                            `WAIT_CYC(clk, (i%19))
-                            dcache_drv[1][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i));
+
+                        // read miss x 8 - fill cache 0
+                        for (int i=0; i<8; i++) begin
+                            dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
                         end
-                    join
-                end
-
-                `WAIT_CYC(clk, 100)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Write conflicts to addresses in the same cache set");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
-
-                // read x 8 - fill cache set 0 in CPU 0
-                for (int i=0; i<8; i++) begin
-                    dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
-                end
-
-                // simultaneous writes to same set
-                for (int i=0; i<100; i++) begin
-                    fork
-                        begin
-                            dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
-                            `WAIT_CYC(clk, 10)
-                            dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
-                        end
-                        begin
-                            dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBAADF00D0000 + i));
-                            `WAIT_CYC(clk, i%19)
-                            dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hDEADABBA0000 + i));
-                        end
-                    join
-                end
-
-                `WAIT_CYC(clk, 100)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Write + read conflicts to single address");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
-                // make sure data 0 is in cache
-                dcache_drv[0][0].rd(.addr(addr));
-                `WAIT_CYC(clk, 100)
-                dcache_drv[1][0].rd(.addr(addr));
-                `WAIT_CYC(clk, 100)
-
-                // simultaneous writes and read to same address
-                for (int i=0; i<100; i++) begin
-                    fork
-                        begin                            
-                            `WAIT_CYC(clk, $urandom_range(5))
-                            dcache_drv[0][0].rd(.addr(addr));
-                        end
-                        begin
-                            `WAIT_CYC(clk, $urandom_range(5))
-                            dcache_drv[1][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
-                        end
-                    join
-                end
-
-                `WAIT_CYC(clk, 100)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Write + read conflicts to addresses in the same cache set");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
-
-                // read x 8 - fill cache set 0 in CPU 0
-                for (int i=0; i<8; i++) begin
-                    dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
-                end
-
-                // simultaneous writes to same set
-                for (int i=0; i<500; i++) begin
-                    fork
-                        begin
-                            dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
-                            `WAIT_CYC(clk, 10)
-                            dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
-                        end
-                        begin
-                            dcache_drv[1][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)));
-                            `WAIT_CYC(clk, i%19)
-                            dcache_drv[1][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8));
-                        end
-                    join
-                end
-
-                `WAIT_CYC(clk, 100)
-*/
-
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("AMO reads and writes to single address");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
-
-                // simultaneous writes to same address
-                for (int i=0; i<10; i++) begin
-                    fork
-                        begin
-                            amo_drv[0].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
-                            `WAIT_CYC(clk, 5)
-                            amo_drv[0].rd(.addr(addr));
-                        end
-                        begin
-                            amo_drv[1].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
-                            `WAIT_CYC(clk, (i))
-                            amo_drv[1].rd(.addr(addr));
-                        end
-                    join
-                end
-
-                `WAIT_CYC(clk, 100)
-*/
-
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("AMO write while other core is active");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
-                fork
-                    begin
-                        `WAIT_CYC(clk, rep_cnt*10)
-                        amo_drv[0].wr(.addr(base_addr), .data(64'hBEEFCAFE0000));
-                        `WAIT_CYC(clk, 5)
-                        amo_drv[0].rd(.addr(base_addr));
+          
+                        `WAIT_CYC(clk, 100)
                     end
-                    begin
-                        automatic int port;
-                        automatic int offset;
-                        for (int i=0; i<rep_cnt; i++) begin
-                            port   = $urandom_range(2);
-                            offset = $urandom_range(1024);
-                            if (port == 2) begin
-                                dcache_drv[1][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                            end else begin
-                                dcache_drv[1][port].rd_wait(.addr(base_addr + offset));
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "write_collision" : begin
+                        test_header(testname, "Part 1 : Write conflicts to single address");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // make sure data 0 is in cache
+                        dcache_drv[0][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
+                        dcache_drv[1][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
+
+                        // simultaneous writes to same address
+                        for (int i=0; i<100; i++) begin
+                            fork
+                                begin
+                                    dcache_drv[0][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
+                                    `WAIT_CYC(clk, 10)
+                                    dcache_drv[0][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i));
+                                end
+                                begin
+                                    dcache_drv[1][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
+                                    `WAIT_CYC(clk, (i%19))
+                                    dcache_drv[1][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i));
+                                end
+                            join
+                        end
+
+                        `WAIT_CYC(clk, 100)
+
+                        test_header(testname, "Part 2 : Write conflicts to addresses in the same cache set");
+
+                        // simultaneous writes to same set
+                        for (int i=0; i<100; i++) begin
+                            fork
+                                begin
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
+                                    `WAIT_CYC(clk, 10)
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
+                                end
+                                begin
+                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBAADF00D0000 + i));
+                                    `WAIT_CYC(clk, i%19)
+                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hDEADABBA0000 + i));
+                                end
+                            join
+                        end
+
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "read_write_collision" : begin
+                        test_header(testname, "Part 1 : Write + read conflicts to single address");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // make sure data 0 is in cache
+                        dcache_drv[0][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
+                        dcache_drv[1][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
+
+                        // simultaneous writes and read to same address
+                        for (int i=0; i<100; i++) begin
+                            fork
+                                begin                            
+                                    `WAIT_CYC(clk, $urandom_range(5))
+                                    dcache_drv[0][0].rd(.addr(addr));
+                                end
+                                begin
+                                    `WAIT_CYC(clk, $urandom_range(5))
+                                    dcache_drv[1][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
+                                end
+                            join
+                        end
+
+                        `WAIT_CYC(clk, 100)
+
+                        test_header(testname, "Part 1 : Write + read conflicts to addresses in the same cache set");
+
+                        // read x 8 - fill cache set 0 in CPU 0
+                        for (int i=0; i<8; i++) begin
+                            dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
+                        end
+
+                        // simultaneous writes to same set
+                        for (int i=0; i<500; i++) begin
+                            fork
+                                begin
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
+                                    `WAIT_CYC(clk, 10)
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
+                                end
+                                begin
+                                    dcache_drv[1][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)));
+                                    `WAIT_CYC(clk, i%19)
+                                    dcache_drv[1][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8));
+                                end
+                            join
+                        end
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_read_write" : begin
+                        test_header(testname, "AMO reads and writes to single address");
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // simultaneous writes to same address
+                        for (int i=0; i<10; i++) begin
+                            fork
+                                begin
+                                    amo_drv[0].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
+                                    `WAIT_CYC(clk, 5)
+                                    amo_drv[0].rd(.addr(addr));
+                                end
+                                begin
+                                    amo_drv[1].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
+                                    `WAIT_CYC(clk, (i))
+                                    amo_drv[1].rd(.addr(addr));
+                                end
+                            join
+                        end
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_read_write_collision" : begin
+                        test_header(testname, "AMO write and read while other core is active");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
+                        fork
+                            begin
+                                `WAIT_CYC(clk, rep_cnt*10)
+                                amo_drv[0].wr(.addr(base_addr), .data(64'hBEEFCAFE0000));
+                                `WAIT_CYC(clk, 5)
+                                amo_drv[0].rd(.addr(base_addr));
                             end
-                        end
-                    end
-                join
-
-
-                `WAIT_CYC(clk, 100)
-*/
-
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random cacheable addresses ");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
-
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                if ($urandom_range(99) < 99) begin
+                            begin
+                                automatic int port;
+                                automatic int offset;
+                                for (int i=0; i<rep_cnt; i++) begin
                                     port   = $urandom_range(2);
                                     offset = $urandom_range(1024);
                                     if (port == 2) begin
-                                        dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        dcache_drv[1][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                     end else begin
-                                        dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
-                                    end
-                                end else begin
-                                    if ($urandom_range(1) > 0) begin
-                                        amo_drv[my_core_idx].wr(.addr(base_addr+offset), .data(64'hBEEFCAFE00000000 + offset));
-                                    end else begin
-                                        amo_drv[my_core_idx].rd(.addr(base_addr+offset));
+                                        dcache_drv[1][port].rd_wait(.addr(base_addr + offset));
                                     end
                                 end
                             end
+                        join
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_cached" : begin
+                        test_header(testname, "Writes and reads to random cacheable addresses ");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
+
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                                
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        if ($urandom_range(99) < 99) begin
+                                            port   = $urandom_range(2);
+                                            offset = $urandom_range(1024);
+                                            if (port == 2) begin
+                                                dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            end else begin
+                                                dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                            end
+                                        end else begin
+                                            if ($urandom_range(1) > 0) begin
+                                                amo_drv[my_core_idx].wr(.addr(base_addr+offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            end else begin
+                                                amo_drv[my_core_idx].rd(.addr(base_addr+offset));
+                                            end
+                                        end
+                                    end
+                                end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
+                        `WAIT_CYC(clk, 100)
+                    end
 
-                `WAIT_CYC(clk, 100)
-/*
-*/
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_shared" : begin
+                        test_header(testname, "Writes and reads to random shareable addresses");
 
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random shareable addresses ");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                rep_cnt   = 1000;
+                        base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                        rep_cnt   = 1000;
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                            
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port   = $urandom_range(2);
+                                        offset = $urandom_range(1024);
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
+                                end
+
+                            join_none
+                        end
+                        wait fork;
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_non-shared" : begin
+                        test_header(testname, "Writes and reads to random non-shareable addresses");
+
+                        base_addr = 0;
+                        rep_cnt   = 1500;
+
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
                         
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port   = $urandom_range(2);
-                                offset = $urandom_range(1024);
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port   = $urandom_range(2);
+                                        offset = $urandom_range(1024);
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
                                 end
-                            end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
+                        `WAIT_CYC(clk, 100)
+                    end
 
-                `WAIT_CYC(clk, 100)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random non-shareable addresses ");
-                $display("--------------------------------------------------------------------------");
-                base_addr = 0;
-                rep_cnt   = 1500;
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port   = $urandom_range(2);
-                                offset = $urandom_range(1024);
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                    //******************************************************************************
+                    //*** NOTE: this test currently fails at it hits bug described in PROJ-149
+                    //******************************************************************************
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_cached_shared" : begin
+                        test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  shareable, non-cacheable");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
+
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                                automatic int addr_region;
+
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port        = $urandom_range(2);
+                                        offset      = $urandom_range(1024);
+                                        addr_region = $urandom_range(1);
+
+                                        case (addr_region)
+                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                            default : base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                        endcase
+
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
                                 end
-                            end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
+                        `WAIT_CYC(clk, 100)
+                    end
 
-                `WAIT_CYC(clk, 100)
-*/
 
-                // NOTE: this test currently fails at it hits bug described in PROJ-149
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random addresses:");
-                $display("  cacheable");
-                $display("  shareable, non-cacheable");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
+                    //******************************************************************************
+                    // NOTE: this test currently fails at it hits bug described in PROJ-149
+                    //******************************************************************************
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_cached_non-shared" : begin
+                        test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  non-shareable, non-cacheable");
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        automatic int addr_region;
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
 
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port        = $urandom_range(2);
-                                offset      = $urandom_range(1024);
-                                addr_region = $urandom_range(1);
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                                automatic int addr_region;
 
-                                case (addr_region)
-                                    0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                    default : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                endcase
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port        = $urandom_range(2);
+                                        offset      = $urandom_range(1024);
+                                        addr_region = $urandom_range(1);
 
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        case (addr_region)
+                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                            default : base_addr = 0;
+                                        endcase
+
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
                                 end
-                            end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
+                        `WAIT_CYC(clk, 1000)
+                    end
 
-                `WAIT_CYC(clk, 100)
-*/
 
-                // NOTE: this test currently fails at it hits bug described in PROJ-149
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random addresses:");
-                $display("  cacheable");
-                $display("  non-shareable, non-cacheable");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_shared_non-shared" : begin
+                        test_header(testname, "Writes and reads to random addresses:\n  shareable, non-cacheable\n  non-shareable, non-cacheable");
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        automatic int addr_region;
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
 
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port        = $urandom_range(2);
-                                offset      = $urandom_range(1024);
-                                addr_region = $urandom_range(1);
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                                automatic int addr_region;
 
-                                case (addr_region)
-                                    0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                    default : base_addr = 0;
-                                endcase
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port        = $urandom_range(2);
+                                        offset      = $urandom_range(1024);
+                                        addr_region = $urandom_range(1);
 
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        case (addr_region)
+                                            0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                            default : base_addr = 0;
+                                        endcase
+
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
                                 end
-                            end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
+                        `WAIT_CYC(clk, 100)
+                    end
 
-                `WAIT_CYC(clk, 1000)
-*/
-/*
-                test_id++;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("Writes and reads to random addresses:");
-                $display("  shareable, non-cacheable");
-                $display("  non-shareable, non-cacheable");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        automatic int addr_region;
+                    //******************************************************************************
+                    // This test triggers issue described in JIRA Issue PROJ-149
+                    //******************************************************************************
+                    "random_all" : begin
+                        test_header(testname, "Writes and reads to random addresses in all address areas");
 
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port        = $urandom_range(2);
-                                offset      = $urandom_range(1024);
-                                addr_region = $urandom_range(1);
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
 
-                                case (addr_region)
-                                    0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                    default : base_addr = 0;
-                                endcase
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+                                automatic int addr_region;
 
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port        = $urandom_range(2);
+                                        offset      = $urandom_range(1024);
+                                        addr_region = $urandom_range(2);
+
+                                        case (addr_region)
+                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                            1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                            default : base_addr = 0;
+                                        endcase
+
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
                                 end
-                            end
+
+                            join_none
                         end
+                        wait fork;
 
-                    join_none
-                end
-                wait fork;
-
-                `WAIT_CYC(clk, 100)
-*/
+                        `WAIT_CYC(clk, 100)
+                    end
 
 
-/*
-                // This test triggers issue described in JIRA Issue PROJ-149
-                test_id = 98;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("writes and reads to random addresses in all address areas");
-                $display("--------------------------------------------------------------------------");
-                base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                rep_cnt   = 1000;
+                    //******************************************************************************
+                    // This test triggers issue described in JIRA Issue PROJ-147
+                    //******************************************************************************
+                    "read_two_writes_back_to_back" : begin
+                        test_header(testname, "Single read followed by two writes back to back\nTrigger issue described in JIRA issue PROJ-147");
 
-                for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                    fork
-                        automatic int my_core_idx = core_idx;
-                        automatic int port;
-                        automatic int offset;
-                        automatic int addr_region;
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
 
-                        begin
-                            for (int i=0; i<rep_cnt; i++) begin
-                                port        = $urandom_range(2);
-                                offset      = $urandom_range(1024);
-                                addr_region = $urandom_range(2);
+                        // make sure data[0] is in cache
+                        dcache_drv[0][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
 
-                                case (addr_region)
-                                    0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                    1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                    default : base_addr = 0;
-                                endcase
+                        // read followed by 2 writes (here with 1 cc inbetween, could be back-to-back too)
+                        dcache_drv[0][0].rd(.addr(addr));
+                        dcache_drv[0][0].wr(.addr(addr), .data(32'hBBBBBBBB));
+                        `WAIT_CYC(clk, 1)
+                        dcache_drv[0][0].wr(.addr(addr), .data(32'hCCCCCCCC));
+                        `WAIT_CYC(clk, 1)
+                        // read 0 again to visualize in waveforms that the value 0xCCCCCCCC is not stored
+                        dcache_drv[0][0].rd(.addr(addr));
 
-                                if (port == 2) begin
-                                    dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                end else begin
-                                    dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
-                                end
-                            end
-                        end
-
-                    join_none
-                end
-                wait fork;
-
-                `WAIT_CYC(clk, 100)
-*/
+                        `WAIT_CYC(clk, 100)
+                    end
 
 
-/*
-                test_id = 99;
-                $display("--------------------------------------------------------------------------");
-                $display("Running test %0d", test_id);
-                $display("rigger issue described in JIRA issue PROJ-147");
-                $display("--------------------------------------------------------------------------");
-                addr = ArianeCfg.CachedRegionAddrBase[0];
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    default : $error("Unknown test name %s",testname);
 
-                // make sure data[0] is in cache
-                dcache_drv[0][0].rd(.addr(addr));
-                `WAIT_CYC(clk, 100)
+                endcase
 
-                // read followed by 2 writes (here with 1 cc inbetween, could be back-to-back too)
-                dcache_drv[0][0].rd(.addr(addr));
-                dcache_drv[0][0].wr(.addr(addr), .data(32'hBBBBBBBB));
-                `WAIT_CYC(clk, 1)
-                dcache_drv[0][0].wr(.addr(addr), .data(32'hCCCCCCCC));
-                `WAIT_CYC(clk, 1)
-                // read 0 again to visualize in waveforms that the value 0xCCCCCCCC is not stored
-                dcache_drv[0][0].rd(.addr(addr));
-
-                `WAIT_CYC(clk, 100)
-*/
 
                 //--------------------------------------------------------------
                 // end of tests

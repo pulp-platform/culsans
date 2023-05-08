@@ -12,7 +12,7 @@ interface culsans_tb_sram_if (input logic clk);
     typedef tag_t                            tag_sram_t  [DCACHE_NUM_WORDS-1:0];
     typedef vld_t                            vld_sram_t  [DCACHE_NUM_WORDS-1:0];
 
-    data_sram_t data_sram [DCACHE_SET_ASSOC-1:0];
+    data_sram_t data_sram [DCACHE_SET_ASSOC-1:0][1:0];
     tag_sram_t  tag_sram  [DCACHE_SET_ASSOC-1:0];
     vld_sram_t  vld_sram;
 endinterface

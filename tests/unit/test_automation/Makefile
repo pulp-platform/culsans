@@ -1,8 +1,11 @@
-include ../../../common.mk
+ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+include $(ROOT_DIR)/../../common.mk
 
-SYS_DIR = ../../sw/sys
-LIB_DIR = ../../libs
-INC_DIR = ../../sw/include
+
+
+SYS_DIR = $(ROOT_DIR)/../sw/sys
+LIB_DIR = $(ROOT_DIR)/../libs
+INC_DIR = $(ROOT_DIR)/../sw/include
 INCLUDES = $(foreach d, $(INC_DIR), -I$d)
 INCLUDES += $(foreach d, $(SYS_DIR), -I$d)
 
@@ -29,15 +32,19 @@ TEST_SRCS += $(shell find . -name "*.c" -exec basename {} \;)
 
 GUI ?= 0
 
-VSIM_LIB = ../../work
-VERILATOR_LIB = ../../work_verilate
+VSIM_LIB = $(ROOT_DIR)/../work
+VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
+VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
+VSIM_FLAGS += -classdebug
+VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of teh real interface
+VSIM_FLAGS += +TESTNAME=$(TESTNAME)
+#VSIM_FLAGS += -coverage
+
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
-VSIM_FLAGS = -t 1ns -64 -coverage -classdebug
-VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -suppress 12110
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
@@ -57,7 +64,9 @@ $(TEST_REPORT):
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
-	@grep "\*\* Error" sim.log  | tee $(TEST_REPORT)
+	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
+	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
+
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
@@ -81,6 +90,7 @@ clean:
 	rm -rf main.map
 	rm -rf ace_log/
 	rm -rf axi_log/
+	rm -rf vsim.wlf
 	rm -rf $(VERIFICATION_REPORT)
 
-.PHONY: all gui sw dis sw clean
+.PHONY: all gui sw dis sw clean $(TEST_REPORT)
