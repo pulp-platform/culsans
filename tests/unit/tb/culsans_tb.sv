@@ -220,19 +220,19 @@ module culsans_tb
         end
 
         // assign Grant IF
-        assign gnt_if[core_idx].gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[0] && 
+        assign gnt_if[core_idx].gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[0] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.we[0];
 
-        assign gnt_if[core_idx].gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[1] && 
+        assign gnt_if[core_idx].gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[1] &&
             !(|i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.updating_cache);
 
-        assign gnt_if[core_idx].gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[2] && 
+        assign gnt_if[core_idx].gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[2] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.we[2];
 
-        assign gnt_if[core_idx].gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[3] && 
+        assign gnt_if[core_idx].gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[3] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.we[3];
 
-        assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[4] && 
+        assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.gnt[4] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.we[4];
 
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
@@ -254,7 +254,7 @@ module culsans_tb
 
                 dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[ core_idx][port];
                 dcache_mon[core_idx][port].resp_mbox = dcache_resp_mbox[core_idx][port];
-                
+
                 dcache_mon[core_idx][port].monitor();
             end
 
@@ -277,7 +277,7 @@ module culsans_tb
 
             amo_mon[core_idx].req_mbox  = amo_req_mbox[core_idx];
             amo_mon[core_idx].resp_mbox = amo_resp_mbox[core_idx];
-                
+
             amo_mon[core_idx].monitor();
         end
 
@@ -321,7 +321,7 @@ module culsans_tb
         $display("--------------------------------------------------------------------------");
     endtask
 
-    localparam timeout = 100000;
+    int timeout = 100000; // default
     int test_id = -1;
     int rep_cnt;
 
@@ -362,7 +362,7 @@ module culsans_tb
                         for (int i=0; i<8; i++) begin
                             dcache_drv[0][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
                         end
-          
+
                         `WAIT_CYC(clk, 100)
                     end
 
@@ -432,7 +432,7 @@ module culsans_tb
                         // simultaneous writes and read to same address
                         for (int i=0; i<100; i++) begin
                             fork
-                                begin                            
+                                begin
                                     `WAIT_CYC(clk, $urandom_range(5))
                                     dcache_drv[0][0].rd(.addr(addr));
                                 end
@@ -527,6 +527,33 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_snoop_single_collision" : begin
+                        // This test is targeted towards triggering bug PROJ-150:
+                        // "AMO request skips cache flush if snoop_cache_ctrl is busy" specifically
+                        test_header(testname, "Single AMO request while receiving snoop");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+                        fork
+                            begin
+                                // make sure there is something dirty in the cache of core 0
+                                dcache_drv[0][2].wr(.addr(addr));
+                                // allow snoop from core 1 to propagate
+                                `WAIT_CYC(clk, 15)
+                                // AMO request, should cause flush and writeback of data in cache
+                                amo_drv[0].rd(.addr(addr));
+                                // another request outside cacheable regions will trigger the AW beat and detect the mismatch
+                                dcache_drv[0][2].wr(.addr(ArianeCfg.SharedRegionAddrBase[0]));
+                            end
+                            begin
+                                // read cache in core 1 to trigger a snoop transaction towards other cores
+                                dcache_drv[1][0].rd(.addr(addr+1));
+                            end
+                        join
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached" : begin
@@ -540,7 +567,7 @@ module culsans_tb
                                 automatic int my_core_idx = core_idx;
                                 automatic int port;
                                 automatic int offset;
-                                
+
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
@@ -580,7 +607,7 @@ module culsans_tb
                                 automatic int my_core_idx = core_idx;
                                 automatic int port;
                                 automatic int offset;
-                            
+
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
@@ -612,7 +639,7 @@ module culsans_tb
                                 automatic int my_core_idx = core_idx;
                                 automatic int port;
                                 automatic int offset;
-                        
+
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
@@ -807,6 +834,35 @@ module culsans_tb
 
 
                     //******************************************************************************
+                    // This test triggers issue described in JIRA Issue PROJ-149
+                    //******************************************************************************
+                    "snoop_non-cached_collision" : begin
+                        test_header(testname, "CLEAN_INVALID from core 1 colliding with bypass read in core 0.\nTrigger issue described in JIRA issue PROJ-149");
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // make cache entry is dirty in cache 0
+                        dcache_drv[0][2].wr(.addr(addr));
+                        // make cache entry shared in cache 1
+                        dcache_drv[1][0].rd(.addr(addr));
+                        `WAIT_CYC(clk, 100)
+
+                        fork
+                            begin
+                                // core 0 : read from shared region
+                                `WAIT_CYC(clk, 3)
+                                dcache_drv[0][0].rd(.addr(ArianeCfg.SharedRegionAddrBase[0]));
+                            end
+                            begin
+                                // core 1 : write to dirty cache entry, causing CLEAN_INVALID
+                                dcache_drv[1][2].wr(.addr(addr));
+                            end
+                        join
+
+                        `WAIT_CYC(clk, 10000) // make sure timeout gets triggered
+                    end
+
+
+                    //******************************************************************************
                     // This test triggers issue described in JIRA Issue PROJ-147
                     //******************************************************************************
                     "read_two_writes_back_to_back" : begin
@@ -850,7 +906,10 @@ module culsans_tb
             // Timeout
             //------------------------------------------------------------------
             begin
-                `WAIT_CYC(clk, timeout)
+                while (timeout > 0) begin
+                    timeout--;
+                    `WAIT_CYC(clk, 1)
+                end
                 $error("Timeout");
                 $finish();
             end
