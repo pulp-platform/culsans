@@ -861,14 +861,18 @@ package culsans_tb_pkg;
                 resp.cr_resp.error = 1'b1;
             end
 
-            // if (isDirty(req.ac_addr) && req.ac_snoop != snoop_pkg::CLEAN_INVALID) begin
-            if (isDirty(req.ac_addr) && req.ac_snoop == snoop_pkg::READ_UNIQUE) begin
+            if (isDirty(req.ac_addr) && (req.ac_snoop == snoop_pkg::READ_UNIQUE || req.ac_snoop == snoop_pkg::CLEAN_INVALID)) begin
                 resp.cr_resp.passDirty = 1'b1;
             end
 
-            if (isHit(req.ac_addr) && req.ac_snoop != snoop_pkg::CLEAN_INVALID) begin
+            if (isHit(req.ac_addr) && (req.ac_snoop != snoop_pkg::CLEAN_INVALID)) begin
                 resp.cr_resp.dataTransfer = 1'b1;
             end
+
+            if (isDirty(req.ac_addr) && (req.ac_snoop == snoop_pkg::CLEAN_INVALID)) begin
+                resp.cr_resp.dataTransfer = 1'b1;
+            end
+
             return resp;
 
         endfunction
@@ -886,8 +890,8 @@ package culsans_tb_pkg;
             e = acsnoop_enum'(req.ac_snoop);
             OK = 1'b1;
 
-            if (exp.cr_resp.error && !resp.cr_resp.error) begin
-                $error("CR.resp.error expected for snoop request %s", e.name());
+            if (exp.cr_resp.error != resp.cr_resp.error) begin
+                $error("%s: CR.resp.error mismatch: expected %h, actual %h", name, exp.cr_resp.error, resp.cr_resp.error);
                 OK = 1'b0;
             end
 
@@ -902,7 +906,7 @@ package culsans_tb_pkg;
             end
 
             if(exp.cr_resp.dataTransfer != resp.cr_resp.dataTransfer && resp.cr_resp.error == 1'b0) begin
-                $error("%s: CR.resp.dataTransfer mismatch: expected %h, actual %h", name, resp.cr_resp.dataTransfer, resp.cr_resp.dataTransfer);
+                $error("%s: CR.resp.dataTransfer mismatch: expected %h, actual %h", name, exp.cr_resp.dataTransfer, resp.cr_resp.dataTransfer);
                 OK = 1'b0;
             end
 
@@ -1130,14 +1134,14 @@ package culsans_tb_pkg;
                             begin
                                 // expect a writeback on CLEAN_INVALID
                                 if (isHit(ac.ac_addr) && isDirty(ac.ac_addr) && ac.ac_snoop == snoop_pkg::CLEAN_INVALID) begin
-                                    // writebacks use the bypass port
-                                    repeat(2) begin
+// writeback is done by the CCU
+/*                                    repeat(2) begin
                                         aw_mbx.get(aw_beat);
                                         if (!isWriteBack(aw_beat))
                                             $error("%s.check_snoop : WRITEBACK request expected after CLEAN_INVALID",name);
                                         b_mbx.get(b_beat);
                                     end
-                                end
+*/                                end
                             end
 
                             begin

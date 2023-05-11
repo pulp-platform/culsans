@@ -327,8 +327,7 @@ module culsans_tb
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
-
-        string testname="";
+        automatic string testname="";        
         if (!$value$plusargs("TESTNAME=%s", testname)) begin
             $error("No TESTNAME plusarg given");
         end
@@ -556,10 +555,67 @@ module culsans_tb
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    "random_cached" : begin
-                        test_header(testname, "Writes and reads to random cacheable addresses ");
+                    "random_cached", "random_shared", "random_non-shared" : begin
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        case (testname)
+                            "random_cached" : begin
+                                test_header(testname, "Writes and reads to random cacheable addresses, excluding AMO requests");
+                                base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                            end
+                            "random_shared" : begin
+                                test_header(testname, "Writes and reads to random shareable addresses, excluding AMO requests");
+                                base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                            end
+                            "random_non-shared" : begin
+                                test_header(testname, "Writes and reads to random non-shareable addresses, excluding AMO requests");
+                                base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                            end
+                        endcase
+
+                        rep_cnt   = 1000;
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        port   = $urandom_range(2);
+                                        offset = $urandom_range(1024);
+                                        if (port == 2) begin
+                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                        end else begin
+                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                        end
+                                    end
+                                end
+
+                            join_none
+                        end
+                        wait fork;
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_cached_amo", "random_shared_amo", "random_non-shared_amo" : begin
+                        case (testname)
+                            "random_cached_amo" : begin
+                                test_header(testname, "Writes and reads to random cacheable addresses, including AMO requests");
+                                base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                            end
+                            "random_shared_amo" : begin
+                                test_header(testname, "Writes and reads to random shareable addresses, including AMO requests");
+                                base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                            end
+                            "random_non-shared_amo" : begin
+                                test_header(testname, "Writes and reads to random non-shareable addresses, including AMO requests");
+                                base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                            end
+                        endcase
+
                         rep_cnt   = 1000;
 
                         for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
@@ -595,74 +651,6 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    "random_shared" : begin
-                        test_header(testname, "Writes and reads to random shareable addresses");
-
-                        base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                        rep_cnt   = 1000;
-
-                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                            fork
-                                automatic int my_core_idx = core_idx;
-                                automatic int port;
-                                automatic int offset;
-
-                                begin
-                                    for (int i=0; i<rep_cnt; i++) begin
-                                        port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
-                                        if (port == 2) begin
-                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                        end else begin
-                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
-                                        end
-                                    end
-                                end
-
-                            join_none
-                        end
-                        wait fork;
-
-                        `WAIT_CYC(clk, 100)
-                    end
-
-                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    "random_non-shared" : begin
-                        test_header(testname, "Writes and reads to random non-shareable addresses");
-
-                        base_addr = 0;
-                        rep_cnt   = 1500;
-
-                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
-                            fork
-                                automatic int my_core_idx = core_idx;
-                                automatic int port;
-                                automatic int offset;
-
-                                begin
-                                    for (int i=0; i<rep_cnt; i++) begin
-                                        port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
-                                        if (port == 2) begin
-                                            dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                        end else begin
-                                            dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
-                                        end
-                                    end
-                                end
-
-                            join_none
-                        end
-                        wait fork;
-
-                        `WAIT_CYC(clk, 100)
-                    end
-
-
-                    //******************************************************************************
-                    //*** NOTE: this test currently fails at it hits bug described in PROJ-149
-                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached_shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  shareable, non-cacheable");
@@ -703,10 +691,6 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-
-                    //******************************************************************************
-                    // NOTE: this test currently fails at it hits bug described in PROJ-149
-                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  non-shareable, non-cacheable");
@@ -788,10 +772,6 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-
-                    //******************************************************************************
-                    // This test triggers issue described in JIRA Issue PROJ-149
-                    //******************************************************************************
                     "random_all" : begin
                         test_header(testname, "Writes and reads to random addresses in all address areas");
 
@@ -833,9 +813,7 @@ module culsans_tb
                     end
 
 
-                    //******************************************************************************
                     // This test triggers issue described in JIRA Issue PROJ-149
-                    //******************************************************************************
                     "snoop_non-cached_collision" : begin
                         test_header(testname, "CLEAN_INVALID from core 1 colliding with bypass read in core 0.\nTrigger issue described in JIRA issue PROJ-149");
                         addr = ArianeCfg.CachedRegionAddrBase[0];
@@ -862,9 +840,7 @@ module culsans_tb
                     end
 
 
-                    //******************************************************************************
                     // This test triggers issue described in JIRA Issue PROJ-147
-                    //******************************************************************************
                     "read_two_writes_back_to_back" : begin
                         test_header(testname, "Single read followed by two writes back to back\nTrigger issue described in JIRA issue PROJ-147");
 
