@@ -879,18 +879,19 @@ package culsans_tb_pkg;
                 $error("%s: Cache mismatch index %h tag %h way %h - shared bit: expected %d, actual %d", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].shared, sram_vif.vld_sram[mem_idx_v][8*way+2]);
             end
 
-            if (cache_status[mem_idx_v][way].valid && (cache_status[mem_idx_v][way].data != {sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]})) begin
-                OK = 1'b0;
-                $error("%s: Cache mismatch index %h tag %h way %h - data: expected 0x%16h_%16h, actual 0x%16h_%16h", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].data[127:64], cache_status[mem_idx_v][way].data[63:0], sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]);
-            end
-
-            // check tags for valid entries
+            // check tags and data for valid entries
             for (int w=0;w<DCACHE_SET_ASSOC; w++) begin
                 if (cache_status[mem_idx_v][w].valid) begin
                     if (cache_status[mem_idx_v][w].tag != sram_vif.tag_sram[w][mem_idx_v][47:0]) begin
                         OK = 1'b0;
                         $error("%s: Cache mismatch index %h tag %h way %0h - tag: expected %h, actual %h", {name,".",origin}, idx_v, tag_v, w, cache_status[mem_idx_v][w].tag, sram_vif.tag_sram[w][mem_idx_v][47:0]);
                     end
+
+                    if (cache_status[mem_idx_v][w].data != {sram_vif.data_sram[1][w][mem_idx_v], sram_vif.data_sram[0][w][mem_idx_v]}) begin
+                        OK = 1'b0;
+                        $error("%s: Cache mismatch index %h tag %h way %h - data: expected 0x%16h_%16h, actual 0x%16h_%16h", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].data[127:64], cache_status[mem_idx_v][way].data[63:0], sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]);
+                    end
+
                 end else if (sram_vif.vld_sram[mem_idx_v][8*w+1]) begin
                     OK = 1'b0;
                     $error("%s: Cache mismatch index %h tag %h way %0h - valid: expected %h, actual %h", {name,".",origin}, idx_v, tag_v, w, cache_status[mem_idx_v][w].valid, sram_vif.vld_sram[mem_idx_v][8*w+1]);
