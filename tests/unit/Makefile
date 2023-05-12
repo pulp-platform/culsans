@@ -28,6 +28,8 @@ help:
 
 TEST ?= all
 
+DEFINES := CULSANS_TB_UNIT_TEST
+
 # run all the tests
 ifeq ($(TEST), all)
 all: rtl
