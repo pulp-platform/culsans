@@ -40,7 +40,7 @@ SIM_TCL = sim.tcl
 
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -classdebug
-VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of teh real interface
+VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 #VSIM_FLAGS += -coverage
 
@@ -58,7 +58,6 @@ endif
 VSIM_CMD = -do $(SIM_TCL)
 
 ifeq ($(VERILATE), 0)
-#$(TEST_REPORT): main.hex
 $(TEST_REPORT):
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
@@ -76,7 +75,6 @@ $(TEST_REPORT): main.riscv
 endif
 
 all: $(TEST_REPORT)
-	@cat $(TEST_REPORT)
 	if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
 
 clean:
@@ -95,4 +93,4 @@ clean:
 	rm -rf vsim.wlf
 	rm -rf $(VERIFICATION_REPORT)
 
-.PHONY: all gui sw dis sw clean $(TEST_REPORT)
+.PHONY: all gui sw dis sw clean
