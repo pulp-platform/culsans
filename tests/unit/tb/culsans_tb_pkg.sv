@@ -881,7 +881,7 @@ package culsans_tb_pkg;
 
             if (cache_status[mem_idx_v][way].valid && (cache_status[mem_idx_v][way].data != {sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]})) begin
                 OK = 1'b0;
-                $error("%s: Cache mismatch index %h tag %h way %h - data: expected 0x%16h, actual 0x%16h", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].data, {sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]});
+                $error("%s: Cache mismatch index %h tag %h way %h - data: expected 0x%16h_%16h, actual 0x%16h_%16h", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].data[127:64], cache_status[mem_idx_v][way].data[63:0], sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]);
             end
 
             // check tags for valid entries
