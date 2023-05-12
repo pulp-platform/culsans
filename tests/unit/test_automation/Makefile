@@ -65,8 +65,6 @@ $(TEST_REPORT):
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
 	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
-	(! grep -n "Error:" $@)
-	(! grep -n "Fatal:" $@)
 
 else
 $(TEST_REPORT): main.riscv
@@ -75,7 +73,9 @@ $(TEST_REPORT): main.riscv
 endif
 
 all: $(TEST_REPORT)
-	if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
+	(! grep -n "Error:" $(TEST_REPORT))
+	(! grep -n "Fatal:" $(TEST_REPORT))
+	@if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
 
 clean:
 	rm -rf objs
@@ -93,4 +93,4 @@ clean:
 	rm -rf vsim.wlf
 	rm -rf $(VERIFICATION_REPORT)
 
-.PHONY: all gui sw dis sw clean
+.PHONY: all gui sw dis sw clean $(TEST_REPORT)

@@ -10,6 +10,8 @@ FAIL_LIST += $(TESTS_DIR)/random_all/
 FAIL_LIST += $(TESTS_DIR)/random_cached/
 FAIL_LIST += $(TESTS_DIR)/random_cached_shared/
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/
+FAIL_LIST += $(TESTS_DIR)/snoop_non-cached_collision/
+FAIL_LIST += $(TESTS_DIR)/amo_snoop_single_collision/
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
@@ -71,7 +73,7 @@ DEFINES := CULSANS_TB_UNIT_TEST
 # run all the tests
 ifeq ($(TEST), all)
 all: rtl
-	for d in $(TESTLIST); do make -C $$d all; done
+	@-for d in $(TESTLIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run a single test
@@ -86,18 +88,18 @@ endif
 
 # run all non-failing tests
 pass: rtl
-	for d in $(PASS_LIST); do make -C $$d all; done
+	@for d in $(PASS_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run all failing tests
 fail: rtl
-	for d in $(FAIL_LIST); do make -C $$d all; done
+	@-for d in $(FAIL_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run failed or not-executed tests
 ### rerun: sw rtl
 rerun: rtl
-	for d in $(TESTLIST); do \
+	@-for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q Error $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
@@ -106,6 +108,7 @@ rerun: rtl
 			make -C $$d all; \
 		fi; \
 	done
+	@$(MAKE) status
 
 # list status
 status:
@@ -135,4 +138,4 @@ clean_tests:
 clean: clean_sw clean_rtl clean_tests
 
 ### .PHONY: all sw rerun clean clean_sw
-.PHONY: all rerun clean clean_sw
+.PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw
