@@ -215,8 +215,8 @@ module culsans_tb
         assign sram_if[core_idx].vld_sram = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
             assign sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
-            assign sram_if[core_idx].data_sram[i][0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
-            assign sram_if[core_idx].data_sram[i][1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[1].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign sram_if[core_idx].data_sram[0][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign sram_if[core_idx].data_sram[1][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[1].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         end
 
         // assign Grant IF
@@ -555,6 +555,30 @@ module culsans_tb
                     end
 
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_snoop_single_collision" : begin
+                        // This test is targeted towards triggering bug PROJ-150 "AMO request skips cache flush if snoop_cache_ctrl is busy" specifically
+                        test_header(testname, "Single AMO request while receiving snoop");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        fork
+                            begin
+                                // make sure there is something dirty in the cache of core 0
+                                dcache_drv[0][2].wr(.addr(base_addr));
+                            end
+                            begin
+                                // read cache in core 1 to trigger a snoop transaction towards other cores
+                                dcache_drv[1][0].rd(.addr(base_addr+1));
+                            end
+                        join
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
+                    //******************************************************************************
+                    //*** NOTE: this test currently fails at it hits bug described in PROJ-150
+                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached" : begin
                         test_header(testname, "Writes and reads to random cacheable addresses ");
