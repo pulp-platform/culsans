@@ -40,7 +40,7 @@ SIM_TCL = sim.tcl
 
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -classdebug
-VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of teh real interface
+VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 #VSIM_FLAGS += -coverage
 
@@ -58,7 +58,6 @@ endif
 VSIM_CMD = -do $(SIM_TCL)
 
 ifeq ($(VERILATE), 0)
-#$(TEST_REPORT): main.hex
 $(TEST_REPORT):
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
@@ -66,8 +65,6 @@ $(TEST_REPORT):
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
 	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
-	(! grep -n "Error:" $@)
-	(! grep -n "Fatal:" $@)
 
 else
 $(TEST_REPORT): main.riscv
@@ -76,8 +73,9 @@ $(TEST_REPORT): main.riscv
 endif
 
 all: $(TEST_REPORT)
-	@cat $(TEST_REPORT)
-	if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
+	(! grep -n "Error:" $(TEST_REPORT))
+	(! grep -n "Fatal:" $(TEST_REPORT))
+	@if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
 
 clean:
 	rm -rf objs

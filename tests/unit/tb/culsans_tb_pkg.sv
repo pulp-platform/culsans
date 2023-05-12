@@ -12,8 +12,8 @@ interface culsans_tb_sram_if (input logic clk);
     typedef tag_t                            tag_sram_t  [DCACHE_NUM_WORDS-1:0];
     typedef vld_t                            vld_sram_t  [DCACHE_NUM_WORDS-1:0];
 
-    data_sram_t data_sram [DCACHE_SET_ASSOC-1:0][1:0];
-    tag_sram_t  tag_sram  [DCACHE_SET_ASSOC-1:0];
+    data_sram_t data_sram [1:0][DCACHE_SET_ASSOC-1:0];
+    tag_sram_t  tag_sram       [DCACHE_SET_ASSOC-1:0];
     vld_sram_t  vld_sram;
 endinterface
 
@@ -31,7 +31,7 @@ package culsans_tb_pkg;
     import std_cache_pkg::*;
 
     // definitions for dcache request and response
-    typedef enum {WR_REQ, RD_REQ, RD_RESP, WR_RESP, EVICT} dcache_trans_t;
+    typedef enum {WR_REQ, RD_REQ, RD_RESP, WR_RESP, EVICT, READBACK} dcache_trans_t;
 
     // definitions for amo request and response
     typedef enum {AMO_WR_REQ, AMO_RD_REQ, AMO_RD_RESP} amo_trans_t;
@@ -74,6 +74,30 @@ package culsans_tb_pkg;
     );
         return {tag, index};
     endfunction
+
+    // update part of cache line with data at offset
+    function automatic void update_cache_line (
+        inout logic [DCACHE_LINE_WIDTH-1:0] cache_line,
+        input riscv::xlen_t                 data,
+        input int unsigned                  offset // in units of data width
+    );
+        logic [riscv::XLEN-1:0]       data_mask;
+        logic [DCACHE_LINE_WIDTH-1:0] line_mask;
+
+        data_mask = '1;
+        line_mask = data_mask; // zero-extend
+
+        cache_line = ((line_mask & data) << (offset * riscv::XLEN)) | (cache_line & ~(line_mask << (offset * riscv::XLEN)));
+    endfunction
+
+
+
+
+
+
+
+
+
 
 
     //--------------------------------------------------------------------------
@@ -146,7 +170,7 @@ package culsans_tb_pkg;
             end while (!vif.resp.ack);
 
             if (verbosity > 0) begin
-                $display("%t ns %s got ack for read address 0x%8h",$time, name, addr_int);
+                $display("%t ns %s got ack for read address 0x%8h", $time, name, addr_int);
             end
 
             #0;
@@ -191,7 +215,7 @@ package culsans_tb_pkg;
             end while (!vif.resp.ack);
 
             if (verbosity > 0) begin
-                $display("%t ns %s got ack for write to address 0x%8h",$time, name, addr_int);
+                $display("%t ns %s got ack for write to address 0x%8h", $time, name, addr_int);
             end
 
             #0;
@@ -223,7 +247,7 @@ package culsans_tb_pkg;
 
         // get read requests and responses
         local task mon_rd;
-            $display("%t ns %s monitoring read requests and responses",$time, name);
+            $display("%t ns %s monitoring read requests and responses", $time, name);
             forever begin
                 if (vif.req.req && (vif.req.amo_op == AMO_LR) && vif.gnt) begin // got read request
                     amo_req  rd_req;
@@ -234,7 +258,7 @@ package culsans_tb_pkg;
                     rd_req.addr          = vif.req.operand_a;
 
                     if (verbosity > 0) begin
-                        $display("%t ns %s got request for read",$time, name);
+                        $display("%t ns %s got request for read", $time, name);
                     end
                     req_mbox.put(rd_req);
 
@@ -249,7 +273,7 @@ package culsans_tb_pkg;
 
                     #0; // add zero delay here to make sure read response is repoerted after read request if it gets served immediately
                     if (verbosity > 0) begin
-                        $display("%t ns %s got read response with data 0x%8h",$time, name, rd_resp.data);
+                        $display("%t ns %s got read response with data 0x%8h", $time, name, rd_resp.data);
                     end
                     resp_mbox.put(rd_resp);
 
@@ -261,7 +285,7 @@ package culsans_tb_pkg;
 
         // get write requests
         local task mon_wr;
-            $display("%t ns %s monitoring write requests",$time, name);
+            $display("%t ns %s monitoring write requests", $time, name);
             forever begin
                 if (vif.req.req && (vif.req.amo_op != AMO_LR) && vif.gnt) begin // got write request
                     amo_req  wr_req;
@@ -272,7 +296,7 @@ package culsans_tb_pkg;
                     wr_req.data          = vif.req.operand_b;
 
                     if (verbosity > 0) begin
-                        $display("%t ns %s got request for write with data 0x%8h",$time, name, wr_req.data);
+                        $display("%t ns %s got request for write with data 0x%8h", $time, name, wr_req.data);
                     end
                     req_mbox.put(wr_req);
 
@@ -312,6 +336,30 @@ package culsans_tb_pkg;
         bit                            insert_readback;
         bit                            r_dirty;
         bit                            r_shared;
+        int                            data_offset; // data offset into cache line
+        logic [DCACHE_LINE_WIDTH-1:0]  cache_line;  // for carrying an entire cache line from read response
+
+        task set_data_offset;
+            data_offset = address_index[3];
+        endtask
+
+        task add_to_cache_line (
+            input riscv::xlen_t d
+        );
+            cache_line = {d, cache_line} >> (riscv::XLEN);
+
+        endtask
+
+        function string print_me();
+            if ((trans_type == WR_REQ) || (trans_type == RD_RESP)) begin
+                return $sformatf("type %0s, tag 0x%11h, index 0x%3h, data 0x%16h",trans_type.name(), address_tag, address_index, data);
+            end else if (trans_type == READBACK) begin
+                return $sformatf("type %0s, tag 0x%11h, index 0x%3h, data 0x%16h_%16h",trans_type.name(), address_tag, address_index, cache_line[127:64], cache_line[63:0]);
+            end else begin
+                return $sformatf("type %0s, tag 0x%11h, index 0x%3h",trans_type.name(), address_tag, address_index);
+            end
+        endfunction
+
     endclass
 
 
@@ -319,8 +367,8 @@ package culsans_tb_pkg;
     // dcache response
     //--------------------------------------------------------------------------
     class dcache_resp;
-        dcache_trans_t                 trans_type;
-        riscv::xlen_t                  data;
+        dcache_trans_t trans_type;
+        riscv::xlen_t  data;
     endclass
 
 
@@ -374,7 +422,7 @@ package culsans_tb_pkg;
                 // send tag while allowing a new read to start
                 begin
                     if (verbosity > 0) begin
-                        $display("%t ns %s got grant for read address 0x%8h, sending tag 0x%6h",$time, name, addr_int, addr2tag(addr_int));
+                        $display("%t ns %s got grant for read address 0x%8h, sending tag 0x%6h", $time, name, addr_int, addr2tag(addr_int));
                     end
 
                     #0;
@@ -422,7 +470,7 @@ package culsans_tb_pkg;
             end while (!vif.resp.data_gnt);
 
             if (verbosity > 0) begin
-                $display("%t ns %s got grant for read address 0x%8h, sending tag 0x%6h",$time, name, addr_int, addr2tag(addr_int));
+                $display("%t ns %s got grant for read address 0x%8h, sending tag 0x%6h", $time, name, addr_int, addr2tag(addr_int));
             end
 
             #0;
@@ -512,7 +560,7 @@ package culsans_tb_pkg;
         // get read requests
         local task mon_rd_req;
             dcache_req rd_req;
-            $display("%t ns %s monitoring read requests",$time, name);
+            $display("%t ns %s monitoring read requests", $time, name);
             forever begin
                 if (vif.req.data_req && !vif.req.data_we) begin // got read request
 
@@ -520,13 +568,13 @@ package culsans_tb_pkg;
                         @(posedge vif.clk);
                     end
                     if (verbosity > 0) begin
-                        $display("%t ns %s got request for read",$time, name);
+                        $display("%t ns %s got request for read", $time, name);
                     end
 
                     rd_req = new();
                     rd_req.trans_type      = RD_REQ;
                     rd_req.address_index = vif.req.address_index;
-                    rd_req.port_idx      = port_idx;
+                    rd_req.port_idx      = port_idx;                    
 
                     @(posedge vif.clk);
                     while (!vif.req.tag_valid) begin
@@ -534,8 +582,9 @@ package culsans_tb_pkg;
                     end
 
                     rd_req.address_tag = vif.req.address_tag;
+                    rd_req.set_data_offset();
                     if (verbosity > 0) begin
-                        $display("%t ns %s got request for read tag 0x%6h, index 0x%3h",$time, name, rd_req.address_tag, rd_req.address_index);
+                        $display("%t ns %s got request for read tag 0x%6h, index 0x%3h", $time, name, rd_req.address_tag, rd_req.address_index);
                     end
                     req_mbox.put(rd_req);
 
@@ -548,7 +597,7 @@ package culsans_tb_pkg;
         // get read responses
         local task mon_rd_resp;
             dcache_resp rd_resp;
-            $display("%t ns %s monitoring read responses",$time, name);
+            $display("%t ns %s monitoring read responses", $time, name);
             forever begin
                 if (vif.resp.data_rvalid) begin // got read request
                     rd_resp = new();
@@ -556,7 +605,7 @@ package culsans_tb_pkg;
                     rd_resp.data = vif.resp.data_rdata;
                     #0; // add zero delay here to make sure read response is repoerted after read request if it gets served immediately
                     if (verbosity > 0) begin
-                        $display("%t ns %s got read response with data 0x%8h",$time, name, rd_resp.data);
+                        $display("%t ns %s got read response with data 0x%8h", $time, name, rd_resp.data);
                     end
                     resp_mbox.put(rd_resp);
                 end
@@ -568,7 +617,7 @@ package culsans_tb_pkg;
         local task mon_wr_req;
             dcache_req  wr_req;
             dcache_resp wr_resp;
-            $display("%t ns %s monitoring write requests",$time, name);
+            $display("%t ns %s monitoring write requests", $time, name);
             forever begin
                 if (vif.req.data_req && vif.req.data_we && vif.wr_gnt) begin // got write request
                     wr_req = new();
@@ -577,9 +626,10 @@ package culsans_tb_pkg;
                     wr_req.address_tag   = vif.req.address_tag;
                     wr_req.data          = vif.req.data_wdata;
                     wr_req.port_idx      = port_idx;
+                    wr_req.set_data_offset();
 
                     if (verbosity > 0) begin
-                        $display("%t ns %s got request for write tag 0x%6h, index 0x%3h, data 0x%8h",$time, name, wr_req.address_tag, wr_req.address_index, wr_req.data);
+                        $display("%t ns %s got request for write tag 0x%6h, index 0x%3h, data 0x%8h", $time, name, wr_req.address_tag, wr_req.address_index, wr_req.data);
                     end
                     req_mbox.put(wr_req);
 
@@ -829,6 +879,11 @@ package culsans_tb_pkg;
                 $error("%s: Cache mismatch index %h tag %h way %h - shared bit: expected %d, actual %d", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].shared, sram_vif.vld_sram[mem_idx_v][8*way+2]);
             end
 
+            if (cache_status[mem_idx_v][way].valid && (cache_status[mem_idx_v][way].data != {sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]})) begin
+                OK = 1'b0;
+                $error("%s: Cache mismatch index %h tag %h way %h - data: expected 0x%16h, actual 0x%16h", {name,".",origin}, idx_v, tag_v, way, cache_status[mem_idx_v][way].data, {sram_vif.data_sram[1][way][mem_idx_v], sram_vif.data_sram[0][way][mem_idx_v]});
+            end
+
             // check tags for valid entries
             for (int w=0;w<DCACHE_SET_ASSOC; w++) begin
                 if (cache_status[mem_idx_v][w].valid) begin
@@ -975,11 +1030,21 @@ package culsans_tb_pkg;
                             cache_status[mem_idx_v][hit_way].dirty = 1'b0;
                         end
                     endcase
-                    $display("Updated cache_status[%0d][%0d]: valid : %0d, dirty : %0d, shared : %0d, tag : 0x%6h", mem_idx_v, hit_way,
-                        cache_status[mem_idx_v][hit_way].valid,
-                        cache_status[mem_idx_v][hit_way].dirty,
-                        cache_status[mem_idx_v][hit_way].shared,
-                        cache_status[mem_idx_v][hit_way].tag);
+                    if (cache_status[mem_idx_v][hit_way].valid) begin
+                        $display("Updated cache_status[%0d][%0d]: valid : %0d, dirty : %0d, shared : %0d, tag : 0x%6h, data : 0x%16h_%16h", mem_idx_v, hit_way,
+                            cache_status[mem_idx_v][hit_way].valid,
+                            cache_status[mem_idx_v][hit_way].dirty,
+                            cache_status[mem_idx_v][hit_way].shared,
+                            cache_status[mem_idx_v][hit_way].tag,
+                            cache_status[mem_idx_v][hit_way].data[127:64],
+                            cache_status[mem_idx_v][hit_way].data[63:0]);
+                    end else begin
+                        $display("Updated cache_status[%0d][%0d]: valid : %0d, dirty : %0d, shared : %0d, tag : 0x%6h", mem_idx_v, hit_way,
+                            cache_status[mem_idx_v][hit_way].valid,
+                            cache_status[mem_idx_v][hit_way].dirty,
+                            cache_status[mem_idx_v][hit_way].shared,
+                            cache_status[mem_idx_v][hit_way].tag);                        
+                    end
                     CheckOK = checkCache(ac.ac_addr, hit_way, "update_cache_from_snoop");
                 end else begin
                     $display("No hit for addr %8h", ac.ac_addr);
@@ -1022,19 +1087,19 @@ package culsans_tb_pkg;
                         if (req.update_cache) begin
                             int cnt = 0;
                             while (!gnt_vif.gnt[req.prio]) begin
-                                $display("%t ns %s skipping cycle without grant for dcache req of type %0s to tag 0x%6h, index 0x%3h from port %0d with prio %0d",$time, name, req.trans_type.name(), req.address_tag, req.address_index, req.port_idx, req.prio);
+                                $display("%t ns %s skipping cycle without grant for dcache req : %s", $time, name, req.print_me());
                                 @(posedge sram_vif.clk); // skip cycles without grant
                                 cnt++;
                                 if (cnt > 50) begin
-                                    $error("%s : Timeout while waiting for grant for dcache update",name);
+                                    $error("%s : Timeout while waiting for grant for dcache req : %s", name, req.print_me());
                                     break;
                                 end
                             end
-                            $display("%t ns %s got grant for dcache req of type %0s to tag 0x%6h, index 0x%3h from port %0d with prio %0d",$time, name, req.trans_type.name(), req.address_tag, req.address_index, req.port_idx, req.prio);
+                            $display("%t ns %s got grant for dcache req : %s", $time, name, req.print_me());
                             @(posedge sram_vif.clk);
-                            $display("%t ns %s updating cache status from dcache req of type %0s to tag 0x%6h, index 0x%3h from port %0d with prio %0d",$time, name, req.trans_type.name(), req.address_tag, req.address_index, req.port_idx, req.prio);
+                            $display("%t ns %s updating cache status from dcache req : %s", $time, name, req.print_me());
                         end else begin
-                            $display("%t ns %s no cache update expected for dcache req of type %0s to tag 0x%6h, index 0x%3h from port %0d with prio %0d",$time, name, req.trans_type.name(), req.address_tag, req.address_index, req.port_idx, req.prio);
+                            $display("%t ns %s no cache update expected for dcache req : %s", $time, name, req.print_me());
                         end
 
 
@@ -1045,6 +1110,7 @@ package culsans_tb_pkg;
                             if (req.trans_type == WR_REQ) begin
                                 cache_status[mem_idx_v][target_way].dirty  = 1'b1;
                                 cache_status[mem_idx_v][target_way].shared = 1'b0;
+                                update_cache_line(cache_status[mem_idx_v][target_way].data, req.data, req.data_offset);
                             end
                         end else begin
                             // cache miss
@@ -1062,10 +1128,15 @@ package culsans_tb_pkg;
                                     cache_status[mem_idx_v][target_way].tag    = req.address_tag;
                                     cache_status[mem_idx_v][target_way].dirty  = 1'b1;
                                     cache_status[mem_idx_v][target_way].shared = 1'b0;
-                                end else begin
+                                    cache_status[mem_idx_v][target_way].data   = req.cache_line;
+                                    update_cache_line(cache_status[mem_idx_v][target_way].data, req.data, req.data_offset);
+                                end else  if (req.trans_type == READBACK || req.trans_type == RD_RESP) begin
                                     cache_status[mem_idx_v][target_way].tag    = req.address_tag;
                                     cache_status[mem_idx_v][target_way].dirty  = req.r_dirty;
                                     cache_status[mem_idx_v][target_way].shared = req.r_shared;
+                                    cache_status[mem_idx_v][target_way].data   = req.cache_line;
+                                end else begin
+                                    $error("Didn't expect trans_type %s", req.trans_type.name());
                                 end
                                 lfsr = nextLfsr(lfsr);
                             end else begin
@@ -1077,30 +1148,33 @@ package culsans_tb_pkg;
                                 if (req.trans_type == WR_REQ) begin
                                     cache_status[mem_idx_v][target_way].dirty  = 1'b1;
                                     cache_status[mem_idx_v][target_way].shared = 1'b0;
-                                end else begin
+                                    cache_status[mem_idx_v][target_way].data   = req.cache_line;
+                                    update_cache_line(cache_status[mem_idx_v][target_way].data, req.data, req.data_offset);
+                                end else  if (req.trans_type == READBACK || req.trans_type == RD_RESP) begin
                                     cache_status[mem_idx_v][target_way].dirty  = req.r_dirty;
                                     cache_status[mem_idx_v][target_way].shared = req.r_shared;
+                                    cache_status[mem_idx_v][target_way].data   = req.cache_line;
+                                end else begin
+                                    $error("Didn't expect trans_type %s", req.trans_type.name());
                                 end
                             end
                         end
 
                         if (hit && req.trans_type == RD_REQ) begin
                             assert (req.update_cache == 0) else $error("Didn't expect update for a read hit");
-                            // don't check cache contents for reads, it may already have been updated once the monitor
-                            // detects the request
-                            CheckOK = checkCache(addr_v, target_way, "update_cache_from_req");
                         end else begin
                             assert (req.update_cache == 1) else $error("Expected cache update for a write or miss");
-
-                            $display("Updated cache_status[%0d][%0d]: valid : %0d, dirty : %0d, shared : %0d, tag : 0x%6h", mem_idx_v, target_way,
+                        end
+                            $display("Updated cache_status[%0d][%0d]: valid : %0d, dirty : %0d, shared : %0d, tag : 0x%6h, data : 0x%16h_%16h", mem_idx_v, target_way,
                                 cache_status[mem_idx_v][target_way].valid,
                                 cache_status[mem_idx_v][target_way].dirty,
                                 cache_status[mem_idx_v][target_way].shared,
-                                cache_status[mem_idx_v][target_way].tag
+                                cache_status[mem_idx_v][target_way].tag,
+                                cache_status[mem_idx_v][target_way].data[127:64],
+                                cache_status[mem_idx_v][target_way].data[63:0]
                             );
 
                             CheckOK = checkCache(addr_v, target_way, "update_cache_from_req");
-                        end
 
                     end
 
@@ -1126,7 +1200,7 @@ package culsans_tb_pkg;
                 // wait for snoop request
                 ac_mbx.get(ac);
                 e = acsnoop_enum'(ac.ac_snoop);
-                $display("%t ns %s.check_snoop: Got snoop request %0s",$time, name, e.name());
+                $display("%t ns %s.check_snoop: Got snoop request %0s", $time, name, e.name());
 
                 fork
                     begin
@@ -1160,11 +1234,11 @@ package culsans_tb_pkg;
                                     @(posedge sram_vif.clk);
                                 end
                                 cr_exp = GetCRResp(ac);
-                                $display("%t ns %s.check_snoop: Got expected response PassDirty : %1b, DataTransfer : %1b, Error : %1b",$time, name, cr_exp.cr_resp.passDirty, cr_exp.cr_resp.dataTransfer, cr_exp.cr_resp.error);
+                                $display("%t ns %s.check_snoop: Got expected response PassDirty : %1b, DataTransfer : %1b, Error : %1b", $time, name, cr_exp.cr_resp.passDirty, cr_exp.cr_resp.dataTransfer, cr_exp.cr_resp.error);
 
                                 // wait for the response
                                 cr_mbx.get(cr);
-                                $display("%t ns %s.check_snoop: Got snoop response 0b%5b (WasUnique : %1b, isShared : %1b, PassDirty : %1b, Error : %1b, DataTransfer : %1b)",$time, name, cr.cr_resp, cr.cr_resp[4],cr.cr_resp[3],cr.cr_resp[2],cr.cr_resp[1],cr.cr_resp[0]);
+                                $display("%t ns %s.check_snoop: Got snoop response 0b%5b (WasUnique : %1b, isShared : %1b, PassDirty : %1b, Error : %1b, DataTransfer : %1b)", $time, name, cr.cr_resp, cr.cr_resp[4],cr.cr_resp[3],cr.cr_resp[2],cr.cr_resp[1],cr.cr_resp[0]);
 
                                 CheckOK = checkCRResp(.req(ac), .exp(cr_exp), .resp(cr));
 
@@ -1177,7 +1251,7 @@ package culsans_tb_pkg;
                                     cd.cd_last = 1'b0;
                                     while (!cd.cd_last) begin
                                         cd_mbx.get(cd);
-                                        $display("%t ns %s.check_snoop: Got snoop data 0x%64h, last = %0d",$time, name, cd.cd_data,cd.cd_last);
+                                        $display("%t ns %s.check_snoop: Got snoop data 0x%64h, last = %0d", $time, name, cd.cd_data,cd.cd_last);
                                     end
                                 end
                             end
@@ -1202,7 +1276,7 @@ package culsans_tb_pkg;
         // get cache requests in prio order
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         local task automatic get_cache_msg;
-            $display("%t ns %s retreiving dcache messages",$time, name);
+            $display("%t ns %s retreiving dcache messages", $time, name);
             forever begin
                 for (int i=0; i<=2; i++) begin
                     dcache_req msg;
@@ -1241,7 +1315,7 @@ package culsans_tb_pkg;
         local task automatic do_hit (input dcache_req msg);
             logic [63:0]  addr_v;
 
-            $display("%t ns %s started hit task for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+            $display("%t ns %s started hit task for message : %s", $time, name, msg.print_me());
             addr_v = tag_index2addr(.tag(msg.address_tag), .index(msg.address_index));
             if (msg.trans_type == WR_REQ) begin
                 msg.update_cache = 1'b1;
@@ -1256,9 +1330,9 @@ package culsans_tb_pkg;
                     
                     // wait for AR beat
                     ar_mbx.get(ar_beat);
-                    $display("%t ns %s.do_hit: got AR beat for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s.do_hit: got AR beat for message : %s", $time, name, msg.print_me());
                     if (!isCleanUnique(ar_beat))
-                        $error("%s Error CLEAN_UNIQUE expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d with data 0x%64h",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx, msg.data);
+                        $error("%s Error CLEAN_UNIQUE expected for message : %s", name, msg.print_me());
 
                     // wait for R beat
                     while (!r_beat.r_last) begin
@@ -1266,7 +1340,7 @@ package culsans_tb_pkg;
                         if (r_beat_peek.r_id == ar_beat.ax_id) begin                            
                             // this is our response
                             r_mbx.get(r_beat);
-                            $display("%t ns %s.do_hit: got R beat with last = %0d for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, r_beat.r_last, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                            $display("%t ns %s.do_hit: got R beat with last = %0d for message : %s", $time, name, r_beat.r_last, msg.print_me());
                         end else begin
                             @(posedge sram_vif.clk);
                         end
@@ -1276,7 +1350,7 @@ package culsans_tb_pkg;
                 end
             end
             if (!isHit(addr_v)) begin
-                $display("%t ns %s Cache status changed from hit to miss, calling miss routine for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                $display("%t ns %s Cache status changed from hit to miss, calling miss routine for message : %s", $time, name, msg.print_me());
                 do_miss(msg);
             end
         endtask
@@ -1288,7 +1362,7 @@ package culsans_tb_pkg;
             dcache_req    readback_msg;
             logic [63:0]  addr_v;
 
-            $display("%t ns %s started miss task for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+            $display("%t ns %s started miss task for message : %s", $time, name, msg.print_me());
             addr_v = tag_index2addr(.tag(msg.address_tag), .index(msg.address_index));
 
             if (!msg.insert_readback) begin // if cache was changed due to insert readback then the original port will do the
@@ -1306,14 +1380,14 @@ package culsans_tb_pkg;
                         @(posedge sram_vif.clk);
                     end
                     
-                    $display("%t ns %s Eviction needed, wait for eviction AW beat for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s Eviction needed, wait for eviction AW beat for message : %s", $time, name, msg.print_me());
                     aw_mbx.get(aw_beat);
                     if (!isWriteBack(aw_beat))
-                        $error("%s.do_miss : WRITEBACK request expected after eviction for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                        $error("%s.do_miss : WRITEBACK request expected after eviction for message : %s", name, msg.print_me());
 
                     evict_msg          = new msg;
                     evict_msg.trans_type = EVICT;
-                    $display("%t ns %s inserting a new dcache message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, evict_msg.trans_type.name(), evict_msg.address_tag, evict_msg.address_index, evict_msg.port_idx);
+                    $display("%t ns %s inserting a new dcache message :%s", $time, name, msg.print_me());
                     req_to_cache_update.put(evict_msg);
                     wait (0); // avoid exiting fork
                     
@@ -1323,19 +1397,20 @@ package culsans_tb_pkg;
                     ax_ace_beat_t ar_beat     = new();
                     r_ace_beat_t  r_beat      = new();
                     r_ace_beat_t  r_beat_peek = new();
+                    int           r_cnt       = 0;
 
-                    $display("%t ns %s wait for AR beat for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s wait for AR beat for message : %s", $time, name, msg.print_me());
 
                     // wait for AR beat
                     ar_mbx.get(ar_beat);
-                    $display("%t ns %s.do_miss: got AR beat for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s.do_miss: got AR beat for message : %s", $time, name, msg.print_me());
 
                     if (msg.trans_type == WR_REQ) begin
                         if (!isReadUnique(ar_beat))
-                            $error("%s.do_miss : READ_UNIQUE request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d with data 0x%64h",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx, msg.data);
+                            $error("%s.do_miss : READ_UNIQUE request expected for message : %s", name, msg.print_me());
                     end else begin
                         if (!isReadShared(ar_beat))
-                            $error("%s.do_miss : READ_SHARED request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                            $error("%s.do_miss : READ_SHARED request expected for message : %s", name, msg.print_me());
                     end
 
                     // wait for R beat
@@ -1344,7 +1419,16 @@ package culsans_tb_pkg;
                         if (r_beat_peek.r_id == ar_beat.ax_id) begin                            
                             // this is our response
                             r_mbx.get(r_beat);
-                            $display("%t ns %s.do_miss: got R beat with last = %0d for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, r_beat.r_last, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                            msg.add_to_cache_line(r_beat.r_data);
+                            $display("%t ns %s.do_miss: got R beat with last = %0d for message : %s", $time, name, r_beat.r_last, msg.print_me());
+                            if (msg.trans_type == RD_REQ) begin
+                                if (r_cnt == msg.data_offset) begin
+                                    $display("%t ns %s.do_miss: got R beat with valid data, changing type from RD_REQ to RD_RESP for message : %s", $time, name, msg.print_me());
+                                    msg.trans_type = RD_RESP;
+                                    msg.data       = r_beat.r_data;
+                                end
+                            end
+                            r_cnt++;
                         end else begin
                             @(posedge sram_vif.clk);
                         end
@@ -1354,18 +1438,18 @@ package culsans_tb_pkg;
                     msg.r_shared = r_beat.r_resp[3];
 
                     if (msg.insert_readback) begin
-                        // create new message to write readback data to cache
-                        readback_msg               = new();
+                        // write readback data to cache
+                        readback_msg = new();
                         readback_msg.prio          = 0;            // this will be written by miss handler
                         readback_msg.port_idx      = msg.port_idx; // keep port that caused the readback for logging reasons
-                        readback_msg.trans_type      = RD_REQ;
+                        readback_msg.trans_type    = READBACK;
                         readback_msg.address_tag   = msg.address_tag;   // keep tag
                         readback_msg.address_index = msg.address_index; // keep address
                         readback_msg.update_cache  = 1'b1;
                         readback_msg.r_dirty       = r_beat.r_resp[2];
                         readback_msg.r_shared      = r_beat.r_resp[3];
 
-                        $display("%t ns %s inserting a new dcache message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, readback_msg.trans_type.name(), readback_msg.address_tag, readback_msg.address_index, readback_msg.port_idx);
+                        $display("%t ns %s inserting a new dcache message : %s", $time, name, readback_msg.print_me());
 
                         req_to_cache_update.put(readback_msg);
                     end
@@ -1375,7 +1459,7 @@ package culsans_tb_pkg;
                 begin
                     // check if hit status changes, could be result of miss handler writeback
                     // in that case stop waiting for an AR beat
-                    $display("%t ns %s monitoring hit status for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s monitoring hit status for message : %s", $time, name, msg.print_me());
 
                     while (!isHit(addr_v) || !gnt_vif.rd_gnt[msg.port_idx + 2]) begin
                         @(posedge sram_vif.clk);
@@ -1389,7 +1473,7 @@ package culsans_tb_pkg;
                         msg.update_cache = 1'b0;
                     end
 
-                    $display("%t ns %s Cache status changed from miss to hit, abort waiting for AR for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                    $display("%t ns %s Cache status changed from miss to hit, abort waiting for AR for message : %s", $time, name, msg.print_me());
                 end
             join_any
             disable fork;
@@ -1397,7 +1481,7 @@ package culsans_tb_pkg;
             assert (r_mbx.num() == 0) else $error("R mailbox not empty");
 
             if (isHit(addr_v)) begin
-                $display("%t ns %s Cache status changed from miss to hit, calling hit routine for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                $display("%t ns %s Cache status changed from miss to hit, calling hit routine for message : %s", $time, name, msg.print_me());
                 do_hit(msg);
             end
 
@@ -1412,7 +1496,6 @@ package culsans_tb_pkg;
             dcache_req    readback_msg;
             logic [63:0]  addr_v;
             bit           CheckOK;
-            bit           insert_readback;
             bit timeout = 0;
 
             dcache_req_mbox_prio.get(msg);
@@ -1420,9 +1503,8 @@ package culsans_tb_pkg;
             // default
             msg.prio         = msg.port_idx + 2;
             msg.update_cache = 1'b0;
-            insert_readback  = 1'b0;
 
-            $display("%t ns %s got dcache message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+            $display("%t ns %s got dcache message : %s", $time, name, msg.print_me());
             addr_v = tag_index2addr(.tag(msg.address_tag), .index(msg.address_index));
 
             fork
@@ -1435,7 +1517,7 @@ package culsans_tb_pkg;
                                 ax_ace_beat_t aw_beat = new();
                                 aw_mbx.get(aw_beat);
                                 if (!isWriteUnique(aw_beat))
-                                    $error("%s.check_cache_msg : WRITE_UNIQUE request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d with data 0x%64h",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx, msg.data);
+                                    $error("%s.check_cache_msg : WRITE_UNIQUE request expected for message : %s", name, msg.print_me());
                             end else begin
                                 ax_ace_beat_t aw_beat = new();
                                 // wait for grant before checking AW, a snoop transaction may be active
@@ -1444,7 +1526,7 @@ package culsans_tb_pkg;
                                 end
                                 aw_mbx.get(aw_beat);
                                 if (!isWriteNoSnoop(aw_beat))
-                                    $error("%s.check_cache_msg : WRITE_NO_SNOOP request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d with data 0x%64h",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx, msg.data);
+                                    $error("%s.check_cache_msg : WRITE_NO_SNOOP request expected for message : %s", name, msg.print_me());
                             end
                             b_mbx.get(b_beat);
                         end else begin
@@ -1453,13 +1535,13 @@ package culsans_tb_pkg;
                             r_ace_beat_t  r_beat_peek = new();
 
                             ar_mbx.get(ar_beat);
-                            $display("%t ns %s.check_cache_msg: got AR beat for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                            $display("%t ns %s.check_cache_msg: got AR beat for message : %s", $time, name, msg.print_me());
                             if (is_inside_shareable_regions(ArianeCfg, addr_v)) begin
                                 if (!isReadOnce(ar_beat))
-                                    $error("%s.check_cache_msg : READ_ONCE request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                                    $error("%s.check_cache_msg : READ_ONCE request expected for message : %s", name, msg.print_me());
                             end else begin
                                 if (!isReadNoSnoop(ar_beat))
-                                    $error("%s.check_cache_msg : READ_NO_SNOOP request expected for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                                    $error("%s.check_cache_msg : READ_NO_SNOOP request expected for message : %s", name, msg.print_me());
                             end
 
                             // wait for R beat
@@ -1468,7 +1550,7 @@ package culsans_tb_pkg;
                                 if (r_beat_peek.r_id == ar_beat.ax_id) begin                            
                                     // this is our response
                                     r_mbx.get(r_beat);
-                                    $display("%t ns %s.check_cache_msg: got R beat with last = %0d for message of type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, r_beat.r_last, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                                    $display("%t ns %s.check_cache_msg: got R beat with last = %0d for message : %s", $time, name, r_beat.r_last, msg.print_me());
                                 end else begin
                                     @(posedge sram_vif.clk);
                                 end
@@ -1492,7 +1574,7 @@ package culsans_tb_pkg;
 
                     if (is_inside_cacheable_regions(ArianeCfg, addr_v)) begin
                         // send to cache update
-                        $display("%t ns %s Sending message to cache update: type %0s to tag 0x%6h, index 0x%3h from port %0d",$time, name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx);
+                        $display("%t ns %s Sending message to cache update : %s", $time, name, msg.print_me());
                         req_to_cache_update.put(msg);
                     end
 
@@ -1506,7 +1588,7 @@ package culsans_tb_pkg;
 
             join_any
 
-            if (timeout) $error("%s : Timeout in check_cache_msg for message of type %0s to tag 0x%6h, index 0x%3h from port %0d with data 0x%64h",name, msg.trans_type.name(), msg.address_tag, msg.address_index, msg.port_idx, msg.data);
+            if (timeout) $error("%s : Timeout in check_cache_msg for message : %s", name, msg.print_me());
 
         endtask
 
@@ -1533,12 +1615,12 @@ package culsans_tb_pkg;
                         // wait for W beat
                         while (!w_beat.w_last) begin
                             w_mbx.get(w_beat);
-                            $display("%t ns %s.flush_cache: got W beat with last = %0d for cache[%0d][%0d]",$time, name, w_beat.w_last, w, l);
+                            $display("%t ns %s.flush_cache: got W beat with last = %0d for cache[%0d][%0d]", $time, name, w_beat.w_last, w, l);
                         end                        
 
                         // wait for B beat
                         b_mbx.get(b_beat);
-                        $display("%t ns %s.flush_cache: got B beat for cache[%0d][%0d]",$time, name, w, l);
+                        $display("%t ns %s.flush_cache: got B beat for cache[%0d][%0d]", $time, name, w, l);
                     end
                 end
             end
@@ -1559,7 +1641,7 @@ package culsans_tb_pkg;
                 bit timeout = 0;
 
                 amo_req_mbox.get(msg);
-                $display("%t ns %s.check_amo_msg: Got amo message %s",$time, name, msg.print_me());
+                $display("%t ns %s.check_amo_msg: Got amo message %s", $time, name, msg.print_me());
 
                 fork
                     begin
@@ -1583,7 +1665,7 @@ package culsans_tb_pkg;
                             // wait for W beat
                             while (!w_beat.w_last) begin
                                 w_mbx.get(w_beat);
-                                $display("%t ns %s.check_amo_msg: got W beat with last = %0d for message %s",$time, name, w_beat.w_last, msg.print_me());
+                                $display("%t ns %s.check_amo_msg: got W beat with last = %0d for message %s", $time, name, w_beat.w_last, msg.print_me());
                             end
 
                             // wait for B beat
@@ -1595,7 +1677,7 @@ package culsans_tb_pkg;
                             r_ace_beat_t  r_beat_peek = new();
 
                             ar_mbx.get(ar_beat);
-                            $display("%t ns %s.check_amo_msg: got AR beat for message %s",$time, name, msg.print_me());
+                            $display("%t ns %s.check_amo_msg: got AR beat for message %s", $time, name, msg.print_me());
                             if (is_inside_shareable_regions(ArianeCfg, msg.addr)) begin
                                 if (!isReadOnce(ar_beat))
                                     $error("%s.check_amo_msg : READ_ONCE request expected for message %s",name, msg.print_me());

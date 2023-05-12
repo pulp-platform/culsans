@@ -11,8 +11,18 @@ FAIL_LIST += $(TESTS_DIR)/random_cached_amo/            # Triggers Jira issue PR
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
-
-DEFINES := CULSANS_TB_UNIT_TEST
+help:
+	@echo ""
+	@echo "    make all                   run all tests"
+	@echo "    make pass                  run all tests that are expected to pass"
+	@echo "    make fail                  run all tests that are expected to fail"
+	@echo "    make all TEST=<testname>   run test $(TESTS_DIR)/<testname>"
+	@echo "    make rerun                 run all tests that failed or that has not been run"
+	@echo "    make status                list result from latest run of each test"
+	@echo "    make list_tests            list all available tests"
+	@echo "    make clean                 clean all test results"
+	@echo "    make help                  print this message"
+	@echo ""
 
 # Run the test(s)
 
@@ -21,7 +31,7 @@ TEST ?= all
 # run all the tests
 ifeq ($(TEST), all)
 all: rtl
-	for d in $(TESTLIST); do make -C $$d all; done
+	@-for d in $(TESTLIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run a single test
@@ -36,17 +46,17 @@ endif
 
 # run all tests expected to pass
 pass: rtl
-	for d in $(PASS_LIST); do make -C $$d all; done
+	@for d in $(PASS_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run all tests expected to fail
 fail: rtl
-	for d in $(FAIL_LIST); do make -C $$d all; done
+	@-for d in $(FAIL_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run failed or not-executed tests
 rerun: rtl
-	for d in $(TESTLIST); do \
+	@-for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q Error $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
@@ -55,6 +65,7 @@ rerun: rtl
 			make -C $$d all; \
 		fi; \
 	done
+	@$(MAKE) status
 
 # list status
 status:
@@ -79,4 +90,4 @@ clean_tests:
 
 clean: clean_rtl clean_tests
 
-.PHONY: all pass fail rerun status list_tests clean clean_tests
+.PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw
