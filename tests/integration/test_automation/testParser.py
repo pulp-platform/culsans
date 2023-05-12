@@ -386,7 +386,7 @@ if __name__ == "__main__":
        #print(test_yaml['test'])
        
    file1 = open('main.map', 'r')
-   log_file = open(test_yaml['test']['test_name'] + "test_result.log", 'w')
+   log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
    Lines = file1.readlines()       
 
    if "test_action" in test_yaml['test']:

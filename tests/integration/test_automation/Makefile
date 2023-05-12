@@ -54,7 +54,7 @@ ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
-	../../test_automation/verify_transactions.py
+	python3.6 ../../test_automation/testParser.py
 	if [ -f postproc.sh ]; then ./postproc.sh; fi
 else
 $(TEST_REPORT): main.riscv
