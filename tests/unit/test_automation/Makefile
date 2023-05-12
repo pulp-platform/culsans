@@ -66,6 +66,8 @@ $(TEST_REPORT):
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
 	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
+	(! grep -n "Error:" $@)
+	(! grep -n "Fatal:" $@)
 
 else
 $(TEST_REPORT): main.riscv
