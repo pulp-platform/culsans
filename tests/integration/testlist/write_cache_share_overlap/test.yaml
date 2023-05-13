@@ -2,7 +2,7 @@
 test:
     test_name:  "write_cache_share_overlap"
     test_buffer: "data"
-    test_notes: "Known fail because core CRRESP use not consistent !! Also need to scrutinise 4c flow. This test can achieve a false pass if msg 1 of group1, msg 2 of group 2, and msg 3 of group3 hhave 5 instead of 9"    
+    
     groups:
 #test startup    
         -
@@ -77,8 +77,4 @@ test:
               log: "ace_master_snoop_2"
               CRRESP: 5           
 
-# This test fails because the CRRESP of the test returns 5 00101,
-# which means that the data is dirty. The passeddirty should only
-# be set when ownerhsip is transferred. The correct response in our
-# current system is that the ccu should respond with a value of 9
-# 01001 which indicates that ownership not passed but it is shared.
+

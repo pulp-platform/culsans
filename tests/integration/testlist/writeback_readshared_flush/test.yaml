@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readshared_flush"
     test_buffer: "data"
-    test_notes: "Known Failure due inconsistent use of CRRESP.  Also scrutise 4c crresp. This can set to a false pass if message 1 of group 1 has crreps of 5 instead 9"
+
     groups:
 #test    
         -
