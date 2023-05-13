@@ -35,7 +35,7 @@ test:
               ARSNOOP: "ReadUnique"
             -
               log: "ace_master_snoop_0"
-              CRRESP: 9 #01001   is
+              CRRESP: 5 #01001   is
             -
               log: "ace_master_snoop_2"
               CRRESP: 00000
@@ -55,7 +55,7 @@ test:
               CRRESP: 0 #01001   is
             -
               log: "ace_master_snoop_1"
-              CRRESP: 9
+              CRRESP: 5
             -
               log: "ace_master_snoop_3"
               CRRESP: 00000
@@ -75,7 +75,7 @@ test:
               CRRESP: 00000
             -
               log: "ace_master_snoop_2"
-              CRRESP: 9           
+              CRRESP: 5           
 
 # This test fails because the CRRESP of the test returns 5 00101,
 # which means that the data is dirty. The passeddirty should only

@@ -2,7 +2,7 @@
 test:
     test_name:  "read_modify_cache_share"
     test_buffer: "data"
-    test_notes: "Known fail because core CRRESP use not consistent !! Also check 4c flow. This can be set to achieve a false pass if msg 1 of greoup 1 and msg 2 of group 2 is 5 instead of 9."    
+  
     groups:
 #test startup    
         -
@@ -53,7 +53,7 @@ test:
               ARSNOOP: "ReadShared"     
             -
               log: "ace_master_snoop_0"
-              CRRESP: 13 #01001   is
+              CRRESP: 9 #01001   is
             -
               log: "ace_master_snoop_1"
               CRRESP: 9
@@ -70,17 +70,13 @@ test:
               ARSNOOP: "ReadShared"     
             -
               log: "ace_master_snoop_0"
-              CRRESP: 13 #01001   is
+              CRRESP: 9 #01001   is
             -
               log: "ace_master_snoop_2"
-              CRRESP: 13
+              CRRESP: 9
             -
               log: "ace_master_snoop_1"
-              CRRESP: 13
+              CRRESP: 9
               
-# This test fails because the CRRESP of the test returns 5 00101,
-# which means that the data is dirty. The passeddirty should only
-# be set when ownerhsip is transferred. The correct response in our
-# current system is that the ccu should respond with a value of 9
-# 01001 which indicates that ownership not passed but it is shared.
+#
 

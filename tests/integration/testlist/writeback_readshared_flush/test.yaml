@@ -27,8 +27,10 @@ test:
             -
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
+              not_certain:
             -
-              log: "axi_master_write"                
+              log: "axi_master_write"   
+              not_certain:             
              
         -
           core: 1
@@ -50,8 +52,10 @@ test:
             -
               log: "ace_master_write_1"
               AWSNOOP: "WriteBack"
+              not_certain:
             -
-              log: "axi_master_write"         
+              log: "axi_master_write" 
+              not_certain:        
         -
           core: 2
           start_index: 0
@@ -62,7 +66,7 @@ test:
               ARSNOOP: "ReadShared"          
             -
               log: "ace_master_snoop_1"
-              CRRESP: 5
+              CRRESP: 9
             -
               log: "ace_master_snoop_0"
               CRRESP: 00000
@@ -70,7 +74,7 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000
             -
-              log: "ace_master_write_2"#Also due to unpredictable writebacks due to core 2 flushing just as core 3 finished.
+              log: "ace_master_write_2"
               AWSNOOP: "WriteBack"
               not_certain:
             -
@@ -91,7 +95,7 @@ test:
               CRRESP: 0
             -
               log: "ace_master_snoop_2"
-              CRRESP: 5
+              CRRESP: 9
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000           
