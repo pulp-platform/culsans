@@ -2,6 +2,7 @@
 test:
     test_name:  "read_modify_cache"
     test_buffer: "data"
+    memory_region: "cached_shared"
     groups:
 #test startup    
         -

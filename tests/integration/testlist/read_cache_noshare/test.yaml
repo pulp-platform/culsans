@@ -2,7 +2,7 @@
 test:
     test_name:  "read_cache_noshare"
     test_buffer: "data"
-    number_of_messages: 2
+    memory_region: "cached_non_shared"
     groups:
 #test startup    
         -

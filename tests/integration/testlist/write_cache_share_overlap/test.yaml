@@ -2,7 +2,7 @@
 test:
     test_name:  "write_cache_share_overlap"
     test_buffer: "data"
-    
+    memory_region: "cached_shared"    
     groups:
 #test startup    
         -

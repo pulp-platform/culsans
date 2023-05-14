@@ -2,7 +2,7 @@
 test:
     test_name:  "writeback_readshared_flush"
     test_buffer: "data"
-
+    memory_region: "cached_shared"
     groups:
 #test    
         -

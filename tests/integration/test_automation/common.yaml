@@ -7,6 +7,7 @@ memory:
        cached_shared_beginning: 0x80060000
        cached_shared_end: 0x8007ffff
        cached_non_shared_beginning: 0x80080000
+       cached_non_shared_end: 0x8009ffff
 
     
 
