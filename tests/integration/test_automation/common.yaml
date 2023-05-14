@@ -1,0 +1,12 @@
+memory:  
+    regions:
+       non_cached_non_shared_beginning: 0x80020000
+       non_cached_non_shared_end: 0x8003ffff 
+       non_cached_shared_beginning: 0x80040000
+       non_cached_shared_end: 0x8005ffff
+       cached_shared_beginning: 0x80060000
+       cached_shared_end: 0x8007ffff
+       cached_non_shared_beginning: 0x80080000
+
+    
+

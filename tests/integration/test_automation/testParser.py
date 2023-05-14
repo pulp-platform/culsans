@@ -384,6 +384,9 @@ if __name__ == "__main__":
        print("Test: " + test_yaml['test']['test_name'])
        #print(test_yaml['test']['test_buffer'])
        #print(test_yaml['test'])
+   with open('common.yaml', 'r') as file2:
+       test_common_yaml = yaml.safe_load(file2)
+       #print(test_common_yaml['memory']['regions'])
        
    file1 = open('main.map', 'r')
    log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
@@ -454,6 +457,15 @@ if __name__ == "__main__":
                break
            #print("Checking Group " + str(i) + "\n")
            #print(hex(search_address))
+            
+           if search_address < test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_beginning'] or search_address > test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_end']:    
+               print( Fore.RED + 'The address ' + str(hex(search_address)) + ' is outsided the targetted memory region')
+               print(Fore.RED + str(hex(test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_beginning'])))
+               print(Fore.RED + str(hex(test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_end'])))
+               early_exit = True
+               break
+
+
 
            for j in range(0,len( test_yaml['test']['groups'][i]['messages'])):
                #print(Style.RESET_ALL)

@@ -2,6 +2,7 @@
 test:
     test_name:  "access_nocache_noshare"
     test_buffer: "data"
+    memory_region: "non_cached_non_shared"
     groups:
 #test     
         -
