@@ -378,6 +378,7 @@ if __name__ == "__main__":
    log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
    Lines = file1.readlines()       
 
+   #skip analysis of test if test sequence marks it so
    if "test_action" in test_yaml['test']:
        if test_yaml['test']['test_action'] == "skip":
           print(Fore.YELLOW + "Test Skipped")
@@ -390,7 +391,7 @@ if __name__ == "__main__":
           exit(0)
        
 
-
+   #create a list of checkers so that the right one can be acquried by key from the test sequence.
    list_checker_dict = {}
    RACE = ACE_LIST_CHECKER(ace_master_0_read,  arsnoop_dict, 'ARSNOOP')
    list_checker_dict['ace_master_read_0'] = RACE
@@ -421,14 +422,19 @@ if __name__ == "__main__":
    SACE = ACE_S_LIST_CHECKER(ace_master_3_snoop,  acsnoop_dict)
    list_checker_dict['ace_master_snoop_3'] = SACE
 
-   
+   #get buffer index range, minimum and maxiumu
    test_buffer_address = getIndexLists()
+   #extract messages in the expected address range and populated transaction specific lists i.e. ace vs axi vs core etc
    get_and_filter_data()
    early_exit = False
+   #get groups in yaml,and acquire expected data for each group
    for i in range(0, len(test_yaml['test']['groups'])):
+       #if there was a break from the inner loop then also break from this loop
        if early_exit == True:
                break
+       #get indexes to buffer for this group of messages
        for k in range(int(test_yaml['test']['groups'][i]['start_index']),int(test_yaml['test']['groups'][i]['end_index']) + 1):
+           #before adding the index to the bufffer, check if this group is working from a specific buffer
            if "test_buffer" in test_yaml['test']['groups'][i]:
                for line in Lines:
                   split_line = line.split()
@@ -439,10 +445,11 @@ if __name__ == "__main__":
            else:
                search_address = test_buffer_address + k*16
            log_file.write( "Checking Group " + str(i) + "\n")
+           #if there was a break from the inner loop then also break from this loop
            if early_exit == True:
                break
 
-            
+           #if address is outside the target region exit with an early exit. 
            if search_address < test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_beginning'] or search_address > test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_end']:    
                print( Fore.RED + 'The address ' + str(hex(search_address)) + ' is outsided the targetted memory region')
                print(Fore.RED + str(hex(test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_beginning'])))
@@ -451,15 +458,17 @@ if __name__ == "__main__":
                break
 
 
-
+           #for each message in the  group, check if is in the log and has the expected parameters
            for j in range(0,len( test_yaml['test']['groups'][i]['messages'])):
 
                log_file.write("\t" +test_yaml['test']['groups'][i]['messages'][j]['log'] + "\t")
                message_found = False
                definite_message = True
+               #if the message is tagged as uncertain, tell the checker. This type of message is difficult to predict. i.e. writeback evicts
                if "not_certain" in test_yaml['test']['groups'][i]['messages'][j]:
                    definite_message = False
-               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j, definite_message)                                
+               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j, definite_message) 
+               # if message with parameters has not been found, output log data, and do an early exit                               
                if message_found == False:
                    print(Fore.RED + "Expected  message " + test_yaml['test']['groups'][i]['messages'][j]['log'] + " " +str(j) + " of group " + str(i) + " not found")
                    print(Fore.RED + "at address " + str(hex(search_address)))
@@ -471,7 +480,7 @@ if __name__ == "__main__":
                    break              
 
 
-                    
+   #if there is extra messages not expected by the test sequence, flag this as fail.                 
    extra_messages = are_there_any_extra_messages()
 
    if early_exit == True or extra_messages == True:
