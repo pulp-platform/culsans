@@ -115,21 +115,12 @@ class ACE_S_LIST_CHECKER:
         crresp_search = test_yaml['test']['groups'][i]['messages'][j]['CRRESP']
         k = 0
         for l in range(0,len(self.theList)):
-            if l <= len(self.theList) - 1:
-                #print("length is " + str(len(self.theList)))
-                #print("address " + str(hex(search_address)))
-                #print(self.theList[l].srcline)
+
                 if self.theList[l].address == search_address:
 
-                    #print(self.theList[l].srcline)
-                    #print(self.theList[l+1].srcline) 
-                    #print(j)
                     log_file.write(self.theList[l].srcline)
                     k = l
-                    #print(self.theList[l].msgtype)
-                    #if self.theList[l].msgtype == 2:
-                        #del self.theList[l]
-                        #return True
+
                     if len(self.theList) != 0:
                         if self.theList[l+1].crresp == crresp_search :
                             log_file.write("\t\t" + self.theList[l+1].srcline)
@@ -166,9 +157,7 @@ def getIndexLists():
    groups = test_yaml['test']['groups']
    for i in range(0,len(test_yaml['test']['groups'])):
        if "test_buffer" in test_yaml['test']['groups'][i]:
-          #print(test_yaml['test']['groups'][i])
-          #print(buffer_access_dict.keys())
-          #print(test_yaml['test']['groups'][i]['test_buffer'])
+
           if test_yaml['test']['groups'][i]['test_buffer'] not in buffer_access_dict:
               buffer_access_dict[test_yaml['test']['groups'][i]['test_buffer']] = []                      
           buffer_access_dict[test_yaml['test']['groups'][i]['test_buffer']].append(groups[i]['start_index']);
@@ -194,11 +183,9 @@ def tr_ace(file_lines, transactions, snoop, rw):
     for line in file_lines:
         if  snoop in line:
             split_line = line.split()
-            #print(split_line)
+
             for addr in  buffer_address_list:
-                #print("here")
-                #print(addr.min_address)
-                #print(addr.max_address)
+
                 if int(split_line[7],16) >= addr.min_address and int(split_line[7],16) <= addr.max_address:
                     if (int(split_line[7],16) & 15) == 0:
                         timestamp = split_line[0].strip('>')
@@ -215,7 +202,7 @@ def tr_axi(file_lines, transactions, identifier,  rw):
     for line in file_lines:
         if  identifier in line:
             split_line = line.split()
-            #print(split_line)
+
             list_address_index = 7
             for addr in  buffer_address_list:
                 if int(split_line[list_address_index ],16) >= addr.min_address and int(split_line[ list_address_index ],16) <= addr.max_address:
@@ -228,7 +215,7 @@ def tr_snoop(file_lines, transactions):
     snoop_in_line = False
     for line in file_lines:
         split_line = line.split()
-        #print(split_line)
+
         if  snoop_in_line is True and 'RESP' in line:
               timestamp = split_line[0].strip('>')
               crresp_stripped = split_line[len(split_line) - 1].strip(',')
@@ -382,11 +369,10 @@ if __name__ == "__main__":
    with open('test.yaml', 'r') as file:
        test_yaml = yaml.safe_load(file)
        print("Test: " + test_yaml['test']['test_name'])
-       #print(test_yaml['test']['test_buffer'])
-       #print(test_yaml['test'])
+
    with open('common.yaml', 'r') as file2:
        test_common_yaml = yaml.safe_load(file2)
-       #print(test_common_yaml['memory']['regions'])
+
        
    file1 = open('main.map', 'r')
    log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
@@ -455,8 +441,7 @@ if __name__ == "__main__":
            log_file.write( "Checking Group " + str(i) + "\n")
            if early_exit == True:
                break
-           #print("Checking Group " + str(i) + "\n")
-           #print(hex(search_address))
+
             
            if search_address < test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_beginning'] or search_address > test_common_yaml['memory']['regions'][test_yaml['test']['memory_region'] + '_end']:    
                print( Fore.RED + 'The address ' + str(hex(search_address)) + ' is outsided the targetted memory region')
@@ -468,7 +453,7 @@ if __name__ == "__main__":
 
 
            for j in range(0,len( test_yaml['test']['groups'][i]['messages'])):
-               #print(Style.RESET_ALL)
+
                log_file.write("\t" +test_yaml['test']['groups'][i]['messages'][j]['log'] + "\t")
                message_found = False
                definite_message = True
@@ -488,7 +473,7 @@ if __name__ == "__main__":
 
                     
    extra_messages = are_there_any_extra_messages()
-   #extra_messages = False
+
    if early_exit == True or extra_messages == True:
       print(Fore.RED + "Test FAILED !! \n")
       log_file.write("Test FAILED !! \n")
@@ -498,106 +483,16 @@ if __name__ == "__main__":
    else:
       print(Fore.GREEN + "Test PASSED !! \n ")
       log_file.write("Test PASSED !! \n")
-   #print(filenames_dict)
+
    print_warnings() 
-   #print(filenames_dict['ace_log/ccu_logger_master_0/read'])
+
 
    log_file.close()
    file1.close()
+   file2.close()
+   file.close()
    print(Style.RESET_ALL)
-'''
-   print("snoop 3")
-   for tr in ace_master_3_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)
-   print("snoop 1")
-   for tr in ace_master_1_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)     
 
- 
-   print("snoop 0")
-   for tr in ace_master_0_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)
-   print("snoop 0")
-   for tr in ace_master_0_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)
-
-   for tr in axi_slave_write:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.rwtype)
-       print(tr.srcline)   
-
-  
-   for tr in ace_master_2_read:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.snoop)
-       print(tr.rwtype)
-       print(tr.srcline)
-
-   print("snoop 0")
-   for tr in ace_master_0_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)
-        
-   print("snoop 1")
-   for tr in ace_master_1_snoop:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.crresp)
-       print(tr.msgtype)
-       print(tr.srcline)     
-  
-
-
-
-       
-   print("The buffer " + test_yaml['test']['test_buffer'] + " " + str(hex(test_buffer_address)))
-   print(str(hex(start_address)) + " " + str(hex(end_address)))
-   for tr in ace_master_0_read:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.snoop)
-       print(tr.rwtype)
-       print(tr.srcline)
-
-   for tr in ace_master_0_write:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.snoop)
-       print(tr.rwtype)
-       print(tr.srcline)       
-
-
-
-
-   for tr in axi_slave_write:
-       print(tr.address)
-       print(tr.time_stamp)
-       print(tr.rwtype)
-       print(tr.srcline)
-
-        
-'''
 
     
 
