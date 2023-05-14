@@ -391,7 +391,7 @@ if __name__ == "__main__":
           exit(0)
        
 
-   #create a list of checkers so that the right one can be acquried by key from the test sequence.
+   #create a dictionary of checkers so that the right one can be acquried by key from the test sequence.
    list_checker_dict = {}
    RACE = ACE_LIST_CHECKER(ace_master_0_read,  arsnoop_dict, 'ARSNOOP')
    list_checker_dict['ace_master_read_0'] = RACE
