@@ -1,9 +1,0 @@
-:iteration
-1536
-:core_dependent
-yes
-:data
-cache_share
-:expected
-read_snoop_slave
-
