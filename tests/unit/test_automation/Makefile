@@ -32,6 +32,9 @@ TEST_SRCS += $(shell find . -name "*.c" -exec basename {} \;)
 
 GUI ?= 0
 
+# the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
+ENABLE_CCU_MON ?= 1
+
 VSIM_LIB = $(ROOT_DIR)/../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
@@ -42,6 +45,7 @@ VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -classdebug
 VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
+VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 #VSIM_FLAGS += -coverage
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW

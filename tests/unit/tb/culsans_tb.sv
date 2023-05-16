@@ -195,17 +195,24 @@ module culsans_tb
     // Create environment
     //--------------------------------------------------------------------------
 
+
+    bit enable_ccu_mon=1;
     initial begin : CCU_MON
         ccu_mon = new(ace_bus_dv, axi_bus_dv, snoop_bus_dv);
-        ccu_mon.run();
+        $value$plusargs("ENABLE_CCU_MON=%b", enable_ccu_mon);
+        if (enable_ccu_mon) begin
+            ccu_mon.run();
+        end
     end
 
     final begin : CCU_CHECK
-        $display("--------------------------------------------------------------------------");
-        $display("CCU monitor results");
-        $display("--------------------------------------------------------------------------");
-        ccu_mon.print_result();
-        $display("--------------------------------------------------------------------------");
+        if (enable_ccu_mon) begin
+            $display("--------------------------------------------------------------------------");
+            $display("CCU monitor results");
+            $display("--------------------------------------------------------------------------");
+            ccu_mon.print_result();
+            $display("--------------------------------------------------------------------------");
+        end
     end
 
 
