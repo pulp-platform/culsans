@@ -23,7 +23,7 @@ int writeback_readunique_flush(int cid, int nc)
   else {
     for (i = 0; i < NUM_CACHELINES; i++) {
       data[i] += cid;
-      if (data[i] != cid+i+1)
+      if (data[i] != (((cid+1)*cid)/2)+i+1) // sum(0..cid) + i + 1
         exit(cid+i+1);
     }
   }
