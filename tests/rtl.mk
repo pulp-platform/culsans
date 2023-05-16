@@ -56,7 +56,8 @@ AXI_PKG := src/axi_pkg.sv \
            src/snoop_pkg.sv \
            src/axi_test.sv \
            src/ace_test.sv \
-           src/snoop_test.sv
+           src/snoop_test.sv \
+           test/tb_ace_ccu_pkg.sv
 
 AXI_PKG := $(addprefix $(AXI_DIR)/, $(AXI_PKG))
 
