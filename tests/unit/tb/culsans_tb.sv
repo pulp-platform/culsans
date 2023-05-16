@@ -2,9 +2,9 @@
 module culsans_tb
     import ariane_pkg::*;
     import snoop_test::*;
-//    import axi_test::*;
     import ace_test::*;
     import culsans_tb_pkg::*;
+    import tb_ace_ccu_pkg::*;
 #()();
 
     `define WAIT_CYC(CLK, N)            \
@@ -16,13 +16,10 @@ module culsans_tb
         @(posedge(CLK));                \
     end while(SIG == 1'b0);
 
-    // ID width of the Full AXI slave port, master port has ID `AxiIdWidthFull + 32'd1`
-    parameter  int unsigned AxiIdWidth   = 32'd6;
-    // Address width of the full AXI bus
-    parameter  int unsigned AxiAddrWidth = 32'd64;
-    // Data width of the full AXI bus
-    parameter  int unsigned AxiDataWidth = 32'd64;
-    localparam int unsigned AxiUserWidth = 32'd1;
+    parameter  int unsigned AxiIdWidth   = culsans_pkg::IdWidth;
+    parameter  int unsigned AxiAddrWidth = culsans_pkg::AddrWidth;
+    parameter  int unsigned AxiDataWidth = culsans_pkg::DataWidth;
+    localparam int unsigned AxiUserWidth = culsans_pkg::UserWidth;
 
     localparam              CLK_PERIOD       = 10ns;
     localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
@@ -59,10 +56,10 @@ module culsans_tb
     mailbox #(amo_resp)     amo_resp_mbox    [culsans_pkg::NB_CORES-1:0];
 
     dcache_checker #(
-        .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
-        .AXI_DATA_WIDTH ( AxiDataWidth       ),
-        .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
-        .AXI_USER_WIDTH ( AxiUserWidth       )
+        .AXI_ADDR_WIDTH ( AxiAddrWidth ),
+        .AXI_DATA_WIDTH ( AxiDataWidth ),
+        .AXI_ID_WIDTH   ( AxiIdWidth   ),
+        .AXI_USER_WIDTH ( AxiUserWidth )
     ) dcache_chk [culsans_pkg::NB_CORES-1:0];
 
     // ACE mailboxes
@@ -124,47 +121,93 @@ module culsans_tb
     // AXI/ACE bus interfaces
     //--------------------------------------------------------------------------
 
+    AXI_BUS #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth               ),
+        .AXI_DATA_WIDTH ( AxiDataWidth               ),
+        .AXI_ID_WIDTH   ( culsans_pkg::IdWidthToXbar ),
+        .AXI_USER_WIDTH ( AxiUserWidth               )
+    ) axi_bus [0:0] ();
+
+    AXI_BUS_DV #(
+        .AXI_ADDR_WIDTH ( AxiAddrWidth               ),
+        .AXI_DATA_WIDTH ( AxiDataWidth               ),
+        .AXI_ID_WIDTH   ( culsans_pkg::IdWidthToXbar ),
+        .AXI_USER_WIDTH ( AxiUserWidth               )
+    ) axi_bus_dv [0:0] (clk);
+
+
     ACE_BUS #(
-        .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
-        .AXI_DATA_WIDTH ( AxiDataWidth       ),
-        .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
-        .AXI_USER_WIDTH ( AxiUserWidth       )
-    ) ace_bus [culsans_pkg::NB_CORES] ();
+        .AXI_ADDR_WIDTH ( AxiAddrWidth ),
+        .AXI_DATA_WIDTH ( AxiDataWidth ),
+        .AXI_ID_WIDTH   ( AxiIdWidth   ),
+        .AXI_USER_WIDTH ( AxiUserWidth )
+    ) ace_bus [culsans_pkg::NB_CORES-1:0] ();
 
     ACE_BUS_DV #(
-        .AXI_ADDR_WIDTH ( AxiAddrWidth       ),
-        .AXI_DATA_WIDTH ( AxiDataWidth       ),
-        .AXI_ID_WIDTH   ( AxiIdWidth + 32'd1 ),
-        .AXI_USER_WIDTH ( AxiUserWidth       )
-    ) ace_bus_dv [culsans_pkg::NB_CORES] (clk);
+        .AXI_ADDR_WIDTH ( AxiAddrWidth ),
+        .AXI_DATA_WIDTH ( AxiDataWidth ),
+        .AXI_ID_WIDTH   ( AxiIdWidth   ),
+        .AXI_USER_WIDTH ( AxiUserWidth )
+    ) ace_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
 
     ace_monitor #(
-        .IW ( AxiIdWidth + 32'd1 ),
-        .AW ( AxiAddrWidth       ),
-        .DW ( AxiDataWidth       ),
-        .UW ( AxiUserWidth       )
-    ) ace_mon [culsans_pkg::NB_CORES];
-
+        .IW ( AxiIdWidth   ),
+        .AW ( AxiAddrWidth ),
+        .DW ( AxiDataWidth ),
+        .UW ( AxiUserWidth )
+    ) ace_mon [culsans_pkg::NB_CORES-1:0];
 
     SNOOP_BUS #(
-        .SNOOP_ADDR_WIDTH( AxiAddrWidth ),
-        .SNOOP_DATA_WIDTH( AxiDataWidth )
-    ) snoop_bus  [culsans_pkg::NB_CORES-1:0] ();
+        .SNOOP_ADDR_WIDTH ( AxiAddrWidth ),
+        .SNOOP_DATA_WIDTH ( AxiDataWidth )
+    ) snoop_bus [culsans_pkg::NB_CORES-1:0] ();
 
     SNOOP_BUS_DV #(
-        .SNOOP_ADDR_WIDTH( AxiAddrWidth ),
-        .SNOOP_DATA_WIDTH( AxiDataWidth )
-    ) snoop_bus_dv  [culsans_pkg::NB_CORES-1:0] (clk);
+        .SNOOP_ADDR_WIDTH ( AxiAddrWidth ),
+        .SNOOP_DATA_WIDTH ( AxiDataWidth )
+    ) snoop_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
 
     snoop_monitor #(
         .AW ( AxiAddrWidth ),
         .DW ( AxiDataWidth )
-    ) snoop_mon [culsans_pkg::NB_CORES];
+    ) snoop_mon [culsans_pkg::NB_CORES-1:0];
+
+    //--------------------------------------------------------------------------
+    // CCU monitor
+    //--------------------------------------------------------------------------
+
+    ace_ccu_monitor #(
+        .AxiAddrWidth      ( AxiAddrWidth               ),
+        .AxiDataWidth      ( AxiDataWidth               ),
+        .AxiIdWidthMasters ( AxiIdWidth                 ),
+        .AxiIdWidthSlaves  ( culsans_pkg::IdWidthToXbar ),
+        .AxiUserWidth      ( AxiUserWidth               ),
+        .NoMasters         ( culsans_pkg::NB_CORES      ),
+        .NoSlaves          ( 1                          ),
+        .TimeTest          ( 0                          )
+    ) ccu_mon;
+
+    `AXI_ASSIGN_MONITOR (axi_bus_dv[0], axi_bus[0])
+    `AXI_ASSIGN_MONITOR (axi_bus[0], i_culsans.to_xbar[0])
 
 
     //--------------------------------------------------------------------------
     // Create environment
     //--------------------------------------------------------------------------
+
+    initial begin : CCU_MON
+        ccu_mon = new(ace_bus_dv, axi_bus_dv, snoop_bus_dv);
+        ccu_mon.run();
+    end
+
+    final begin : CCU_CHECK
+        $display("--------------------------------------------------------------------------");
+        $display("CCU monitor results");
+        $display("--------------------------------------------------------------------------");
+        ccu_mon.print_result();
+        $display("--------------------------------------------------------------------------");
+    end
+
 
     for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
 
@@ -328,7 +371,7 @@ module culsans_tb
     initial begin : TESTS
         logic [63:0] addr, base_addr;
 
-        string testname="";
+        automatic string testname="";
         if (!$value$plusargs("TESTNAME=%s", testname)) begin
             $error("No TESTNAME plusarg given");
         end
