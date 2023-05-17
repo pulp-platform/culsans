@@ -1247,7 +1247,7 @@ package culsans_tb_pkg;
                                     cd.cd_last = 1'b0;
                                     while (!cd.cd_last) begin
                                         cd_mbx.get(cd);
-                                        $display("%t ns %s.check_snoop: Got snoop data 0x%64h, last = %0d", $time, name, cd.cd_data,cd.cd_last);
+                                        $display("%t ns %s.check_snoop: Got snoop data 0x%16h, last = %0d", $time, name, cd.cd_data,cd.cd_last);
                                     end
                                 end
                             end
