@@ -571,6 +571,7 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_read_cached" : begin
+                        // This test is targeted towards triggering bug PROJ-153: "AMO read of cached data returns wrong data"
                         test_header(testname, "AMO requests data cached in other core");
 
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
@@ -588,8 +589,7 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_snoop_single_collision" : begin
-                        // This test is targeted towards triggering bug PROJ-150:
-                        // "AMO request skips cache flush if snoop_cache_ctrl is busy" specifically
+                        // This test is targeted towards triggering bug PROJ-150: "AMO request skips cache flush if snoop_cache_ctrl is busy"
                         test_header(testname, "Single AMO request while receiving snoop");
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
