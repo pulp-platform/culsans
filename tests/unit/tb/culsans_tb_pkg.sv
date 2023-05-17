@@ -1,29 +1,3 @@
-// interface to probe internal SRAM
-interface culsans_tb_sram_if (input logic clk);
-    import ariane_pkg::*;
-    import std_cache_pkg::*;
-
-    // interface for probing into sram
-
-    typedef logic [4*DCACHE_DIRTY_WIDTH-1:0] vld_t;
-    typedef logic [63:0]                     data_t;
-    typedef logic [63:0]                     tag_t;
-    typedef data_t                           data_sram_t [DCACHE_NUM_WORDS-1:0];
-    typedef tag_t                            tag_sram_t  [DCACHE_NUM_WORDS-1:0];
-    typedef vld_t                            vld_sram_t  [DCACHE_NUM_WORDS-1:0];
-
-    data_sram_t data_sram [1:0][DCACHE_SET_ASSOC-1:0];
-    tag_sram_t  tag_sram       [DCACHE_SET_ASSOC-1:0];
-    vld_sram_t  vld_sram;
-endinterface
-
-// interface to probe internal cache grant signals
-interface culsans_tb_gnt_if (input logic clk);
-    logic [4:0] gnt;
-    logic [4:0] rd_gnt;
-    logic [3:0] bypass_gnt;
-endinterface
-
 // main package definition
 package culsans_tb_pkg;
     import ariane_pkg::*;
@@ -701,8 +675,8 @@ package culsans_tb_pkg;
         // Snoop mailboxes
         mailbox ac_mbx = new, cd_mbx = new, cr_mbx = new;
 
-        virtual culsans_tb_sram_if sram_vif;
-        virtual culsans_tb_gnt_if  gnt_vif;
+        virtual dcache_sram_if sram_vif;
+        virtual dcache_gnt_if  gnt_vif;
 
         string       name;
         ariane_cfg_t ArianeCfg;
@@ -712,8 +686,8 @@ package culsans_tb_pkg;
         logic                              [DCACHE_SET_ASSOC-1:0] lfsr;
 
         function new (
-            virtual culsans_tb_sram_if sram_vif,
-            virtual culsans_tb_gnt_if  gnt_vif,
+            virtual dcache_sram_if sram_vif,
+            virtual dcache_gnt_if  gnt_vif,
             ariane_cfg_t               cfg,
             string                     name="dcache_checker"
         );

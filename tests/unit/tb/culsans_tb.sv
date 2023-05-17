@@ -3,33 +3,28 @@ module culsans_tb
     import ariane_pkg::*;
     import snoop_test::*;
     import ace_test::*;
-    import culsans_tb_pkg::*;
+    import std_cache_test::*;
     import tb_ace_ccu_pkg::*;
 #()();
 
-    `define WAIT_CYC(CLK, N)            \
-    repeat(N) @(posedge(CLK));
+    `define WAIT_CYC(CLK, N) \
+        repeat(N) @(posedge(CLK));
 
 
-    `define WAIT_SIG(CLK,SIG)           \
-    do begin                            \
-        @(posedge(CLK));                \
-    end while(SIG == 1'b0);
+    `define WAIT_SIG(CLK,SIG)    \
+        do begin                 \
+            @(posedge(CLK));     \
+        end while(SIG == 1'b0);
 
-    parameter  int unsigned AxiIdWidth   = culsans_pkg::IdWidth;
-    parameter  int unsigned AxiAddrWidth = culsans_pkg::AddrWidth;
-    parameter  int unsigned AxiDataWidth = culsans_pkg::DataWidth;
-    localparam int unsigned AxiUserWidth = culsans_pkg::UserWidth;
+    parameter  int unsigned AxiIdWidth       = culsans_pkg::IdWidth;
+    parameter  int unsigned AxiAddrWidth     = culsans_pkg::AddrWidth;
+    parameter  int unsigned AxiDataWidth     = culsans_pkg::DataWidth;
+    localparam int unsigned AxiUserWidth     = culsans_pkg::UserWidth;
+    localparam ariane_cfg_t ArianeCfg        = culsans_pkg::ArianeSocCfg;
 
     localparam              CLK_PERIOD       = 10ns;
     localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
 
-
-    localparam ariane_cfg_t ArianeCfg = culsans_pkg::ArianeSocCfg;
-
-    //--------------------------------------------------------------------------
-    // Signals
-    //--------------------------------------------------------------------------
 
     // TB signals
     dcache_req_i_t [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_i;
@@ -38,11 +33,13 @@ module culsans_tb
     logic                                           rst_n;
     logic                                           rtc;
 
-    dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
+    // TB interfaces
     amo_intf                amo_if           [culsans_pkg::NB_CORES-1:0]      (clk);
-    culsans_tb_sram_if      sram_if          [culsans_pkg::NB_CORES-1:0]      (clk);
-    culsans_tb_gnt_if       gnt_if           [culsans_pkg::NB_CORES-1:0]      (clk);
+    dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
+    dcache_sram_if          sram_if          [culsans_pkg::NB_CORES-1:0]      (clk);
+    dcache_gnt_if           gnt_if           [culsans_pkg::NB_CORES-1:0]      (clk);
 
+    // verification conponents
     dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
     dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
 
@@ -55,12 +52,12 @@ module culsans_tb
     mailbox #(amo_req)      amo_req_mbox     [culsans_pkg::NB_CORES-1:0];
     mailbox #(amo_resp)     amo_resp_mbox    [culsans_pkg::NB_CORES-1:0];
 
-    dcache_checker #(
+    std_cache_scoreboard #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
         .AXI_DATA_WIDTH ( AxiDataWidth ),
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_USER_WIDTH ( AxiUserWidth )
-    ) dcache_chk [culsans_pkg::NB_CORES-1:0];
+    ) cache_scbd [culsans_pkg::NB_CORES-1:0];
 
     // ACE mailboxes
     mailbox aw_mbx [culsans_pkg::NB_CORES-1:0];
@@ -150,12 +147,6 @@ module culsans_tb
         .AXI_USER_WIDTH ( AxiUserWidth )
     ) ace_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
 
-    ace_monitor #(
-        .IW ( AxiIdWidth   ),
-        .AW ( AxiAddrWidth ),
-        .DW ( AxiDataWidth ),
-        .UW ( AxiUserWidth )
-    ) ace_mon [culsans_pkg::NB_CORES-1:0];
 
     SNOOP_BUS #(
         .SNOOP_ADDR_WIDTH ( AxiAddrWidth ),
@@ -167,15 +158,35 @@ module culsans_tb
         .SNOOP_DATA_WIDTH ( AxiDataWidth )
     ) snoop_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
 
+
+    // connect internal signals to interfaces, connect interfaces to dv interfaces
+    `AXI_ASSIGN_MONITOR (axi_bus[0], i_culsans.to_xbar[0])
+    `AXI_ASSIGN_MONITOR (axi_bus_dv[0], axi_bus[0])
+
+    for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+        `ACE_ASSIGN_FROM_REQ    (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
+        `ACE_ASSIGN_FROM_RESP   (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
+        `ACE_ASSIGN_MONITOR   (ace_bus_dv   [core_idx], ace_bus   [core_idx])
+
+        `SNOOP_ASSIGN_FROM_REQ  (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
+        `SNOOP_ASSIGN_FROM_RESP (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
+        `SNOOP_ASSIGN_MONITOR (snoop_bus_dv [core_idx], snoop_bus [core_idx])
+    end
+
+    // AXI/ACE monitors
+    ace_monitor #(
+        .IW ( AxiIdWidth   ),
+        .AW ( AxiAddrWidth ),
+        .DW ( AxiDataWidth ),
+        .UW ( AxiUserWidth )
+    ) ace_mon [culsans_pkg::NB_CORES-1:0];
+
     snoop_monitor #(
         .AW ( AxiAddrWidth ),
         .DW ( AxiDataWidth )
     ) snoop_mon [culsans_pkg::NB_CORES-1:0];
 
-    //--------------------------------------------------------------------------
-    // CCU monitor
-    //--------------------------------------------------------------------------
-
+    // CCU monitor & scoreboard
     ace_ccu_monitor #(
         .AxiAddrWidth      ( AxiAddrWidth               ),
         .AxiDataWidth      ( AxiDataWidth               ),
@@ -187,19 +198,16 @@ module culsans_tb
         .TimeTest          ( 0                          )
     ) ccu_mon;
 
-    `AXI_ASSIGN_MONITOR (axi_bus_dv[0], axi_bus[0])
-    `AXI_ASSIGN_MONITOR (axi_bus[0], i_culsans.to_xbar[0])
-
 
     //--------------------------------------------------------------------------
     // Create environment
     //--------------------------------------------------------------------------
 
-
     bit enable_ccu_mon=1;
+
     initial begin : CCU_MON
         ccu_mon = new(ace_bus_dv, axi_bus_dv, snoop_bus_dv);
-        $value$plusargs("ENABLE_CCU_MON=%b", enable_ccu_mon);
+        void'($value$plusargs("ENABLE_CCU_MON=%b", enable_ccu_mon));
         if (enable_ccu_mon) begin
             ccu_mon.run();
         end
@@ -208,26 +216,14 @@ module culsans_tb
     final begin : CCU_CHECK
         if (enable_ccu_mon) begin
             $display("--------------------------------------------------------------------------");
-            $display("CCU monitor results");
+            $display("CCU scoreboard results");
             $display("--------------------------------------------------------------------------");
             ccu_mon.print_result();
             $display("--------------------------------------------------------------------------");
         end
     end
 
-
     for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
-
-        // connect signals to interface
-        `ACE_ASSIGN_FROM_REQ    (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
-        `ACE_ASSIGN_FROM_RESP   (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
-
-        `SNOOP_ASSIGN_FROM_REQ  (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
-        `SNOOP_ASSIGN_FROM_RESP (snoop_bus [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
-
-        // connect interfaces
-        `ACE_ASSIGN_MONITOR   (ace_bus_dv   [core_idx], ace_bus   [core_idx])
-        `SNOOP_ASSIGN_MONITOR (snoop_bus_dv [core_idx], snoop_bus [core_idx])
 
         initial begin : ACE_MON
             aw_mbx [core_idx] = new();
@@ -336,26 +332,26 @@ module culsans_tb
         end
 
 
-        initial begin : CACHE_CHK
-            dcache_chk[core_idx] = new(sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
+        initial begin : CACHE_SCBD
+            cache_scbd[core_idx] = new(sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
 
-            dcache_chk[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
-            dcache_chk[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
+            cache_scbd[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
+            cache_scbd[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
 
-            dcache_chk[core_idx].amo_req_mbox     = amo_req_mbox     [core_idx];
-            dcache_chk[core_idx].amo_resp_mbox    = amo_resp_mbox    [core_idx];
+            cache_scbd[core_idx].amo_req_mbox     = amo_req_mbox     [core_idx];
+            cache_scbd[core_idx].amo_resp_mbox    = amo_resp_mbox    [core_idx];
 
-            dcache_chk[core_idx].aw_mbx           = aw_mbx           [core_idx];
-            dcache_chk[core_idx].w_mbx            = w_mbx            [core_idx];
-            dcache_chk[core_idx].b_mbx            = b_mbx            [core_idx];
-            dcache_chk[core_idx].ar_mbx           = ar_mbx           [core_idx];
-            dcache_chk[core_idx].r_mbx            = r_mbx            [core_idx];
+            cache_scbd[core_idx].aw_mbx           = aw_mbx           [core_idx];
+            cache_scbd[core_idx].w_mbx            = w_mbx            [core_idx];
+            cache_scbd[core_idx].b_mbx            = b_mbx            [core_idx];
+            cache_scbd[core_idx].ar_mbx           = ar_mbx           [core_idx];
+            cache_scbd[core_idx].r_mbx            = r_mbx            [core_idx];
 
-            dcache_chk[core_idx].ac_mbx           = ac_mbx           [core_idx];
-            dcache_chk[core_idx].cd_mbx           = cd_mbx           [core_idx];
-            dcache_chk[core_idx].cr_mbx           = cr_mbx           [core_idx];
+            cache_scbd[core_idx].ac_mbx           = ac_mbx           [core_idx];
+            cache_scbd[core_idx].cd_mbx           = cd_mbx           [core_idx];
+            cache_scbd[core_idx].cr_mbx           = cr_mbx           [core_idx];
 
-            dcache_chk[core_idx].run();
+            cache_scbd[core_idx].run();
         end
 
     end
@@ -386,13 +382,9 @@ module culsans_tb
 
         fork
 
-            //------------------------------------------------------------------
-            // Tests
-            //------------------------------------------------------------------
             begin
 
                 `WAIT_SIG(clk, rst_n)
-
                 `WAIT_CYC(clk, 300)
 
                 case (testname)

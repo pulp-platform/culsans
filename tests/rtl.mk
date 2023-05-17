@@ -88,19 +88,20 @@ AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
 # CVA6 packages
 CVA6_PKG := core/include/cv64a6_imafdc_sv39_config_pkg.sv
 CVA6_PKG += core/include/riscv_pkg.sv                              \
-              corev_apu/riscv-dbg/src/dm_pkg.sv                      \
-              core/include/ariane_pkg.sv                             \
-              core/include/ariane_rvfi_pkg.sv                        \
-              core/include/wt_cache_pkg.sv                           \
-              core/include/cvxif_pkg.sv                              \
-              corev_apu/register_interface/src/reg_intf.sv           \
-							corev_apu/tb/rvfi_pkg.sv                               \
-              core/include/ariane_axi_pkg.sv                         \
-              core/include/ariane_ace_pkg.sv                         \
-              core/include/std_cache_pkg.sv                          \
-              core/fpu/src/fpnew_pkg.sv                              \
-              core/cvxif_example/include/cvxif_instr_pkg.sv          \
-              core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
+            corev_apu/riscv-dbg/src/dm_pkg.sv                      \
+            core/include/ariane_pkg.sv                             \
+            core/include/ariane_rvfi_pkg.sv                        \
+            core/include/wt_cache_pkg.sv                           \
+            core/include/cvxif_pkg.sv                              \
+            corev_apu/register_interface/src/reg_intf.sv           \
+            corev_apu/tb/rvfi_pkg.sv                               \
+            core/include/ariane_axi_pkg.sv                         \
+            core/include/ariane_ace_pkg.sv                         \
+            core/include/std_cache_pkg.sv                          \
+            core/include/std_cache_test.sv                         \
+            core/fpu/src/fpnew_pkg.sv                              \
+            core/cvxif_example/include/cvxif_instr_pkg.sv          \
+            core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
 CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
 
 # utility modules
@@ -241,8 +242,7 @@ $(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cor
 	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC) $(TB_PKG)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_PKG) $(RTL_INCDIR)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
 	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-tb
 
