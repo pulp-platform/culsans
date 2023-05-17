@@ -578,6 +578,23 @@ module culsans_tb
                     end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_read_cached" : begin
+                        test_header(testname, "AMO requests data cached in other core");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // write data to cache in core 1
+                        dcache_drv[1][2].wr(.addr(base_addr),     .data(64'hCAFEBABE_00000000));
+                        dcache_drv[1][2].wr(.addr(base_addr + 8), .data(64'hBAADF00D_11111111));
+
+                        // amo read 
+                        amo_drv[0].rd(.addr(base_addr));
+                        amo_drv[0].rd(.addr(base_addr + 8));
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_snoop_single_collision" : begin
                         // This test is targeted towards triggering bug PROJ-150:
                         // "AMO request skips cache flush if snoop_cache_ctrl is busy" specifically
