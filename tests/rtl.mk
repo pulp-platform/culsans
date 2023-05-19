@@ -98,7 +98,6 @@ CVA6_PKG += core/include/riscv_pkg.sv                              \
             core/include/ariane_axi_pkg.sv                         \
             core/include/ariane_ace_pkg.sv                         \
             core/include/std_cache_pkg.sv                          \
-            core/include/std_cache_test.sv                         \
             core/fpu/src/fpnew_pkg.sv                              \
             core/cvxif_example/include/cvxif_instr_pkg.sv          \
             core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
@@ -162,6 +161,14 @@ COPRO_SRC := $(CVA6_DIR)/core/cvxif_example/include/cvxif_instr_pkg.sv \
 CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ corev_apu/register_interface/include/
 CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
+
+
+CVA6_TEST := $(CVA6_DIR)/corev_apu/tb/cva6_cache_dummy.sv \
+             $(CVA6_DIR)/corev_apu/tb/dcache_intf.sv \
+             $(CVA6_DIR)/corev_apu/tb/amo_intf.sv \
+             $(CVA6_DIR)/corev_apu/tb/std_cache_test.sv
+
+
 
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
@@ -231,22 +238,26 @@ $(VSIM_LIB)/.build-axi-srcs: $(library) $(AXI_PKG) $(AXI_SRC)
 	@touch $(VSIM_LIB)/.build-axi-srcs
 
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
-	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-cva6-srcs
 
+$(VSIM_LIB)/.build-cva6-test: $(VSIM_LIB)/.build-cva6-srcs $(CVA6_TEST)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CVA6_TEST) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-cva6-test
+
 $(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cores_rtl
-	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC) $(CVA6_TEST)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-cva6-test $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1
