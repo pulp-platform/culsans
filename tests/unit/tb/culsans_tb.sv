@@ -445,14 +445,16 @@ module culsans_tb
                         for (int i=0; i<100; i++) begin
                             fork
                                 begin
-                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i));
                                     `WAIT_CYC(clk, 10)
-                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i));
+                                    `WAIT_CYC(clk, 10)
                                 end
                                 begin
-                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBAADF00D0000 + i));
+                                    dcache_drv[1][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i));
                                     `WAIT_CYC(clk, i%19)
-                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hDEADABBA0000 + i));
+                                    dcache_drv[1][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i));
+                                    `WAIT_CYC(clk, 10)
                                 end
                             join
                         end
