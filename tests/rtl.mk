@@ -163,12 +163,10 @@ CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
 
-CVA6_TEST := $(CVA6_DIR)/corev_apu/tb/cva6_cache_dummy.sv \
-             $(CVA6_DIR)/corev_apu/tb/dcache_intf.sv \
-             $(CVA6_DIR)/corev_apu/tb/amo_intf.sv \
-             $(CVA6_DIR)/corev_apu/tb/std_cache_test.sv
-
-
+CVA6_TEST := $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/cva6_cache_dummy.sv \
+             $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/dcache_intf.sv \
+             $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/amo_intf.sv \
+             $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_std_cache_subsystem_pkg.sv
 
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)

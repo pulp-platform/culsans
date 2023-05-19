@@ -3,8 +3,8 @@ module culsans_tb
     import ariane_pkg::*;
     import snoop_test::*;
     import ace_test::*;
-    import std_cache_test::*;
     import tb_ace_ccu_pkg::*;
+    import tb_std_cache_subsystem_pkg::*;
 #()();
 
     `define WAIT_CYC(CLK, N) \
