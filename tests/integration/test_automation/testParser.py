@@ -475,7 +475,7 @@ if __name__ == "__main__":
    else:
       print(Fore.GREEN + "Test PASSED !! \n ")
       log_file.write("Test PASSED !! \n")
-      test_result
+      test_result = True
 
    print_warnings() 
 
