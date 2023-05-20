@@ -1,6 +1,7 @@
 import yaml
 from pathlib import Path
 from colorama import Fore, Back, Style
+import sys
 
 class ACE:
 
@@ -357,7 +358,7 @@ if __name__ == "__main__":
 
        
    file1 = open('main.map', 'r')
-   log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
+   log_file = open(test_yaml["test_parser_result.log", 'w')
    Lines = file1.readlines()       
 
    #skip analysis of test if test sequence marks it so
@@ -461,7 +462,7 @@ if __name__ == "__main__":
                    early_exit = True
                    break              
 
-
+   test_result = False
    #if there is extra messages not expected by the test sequence, flag this as fail.                 
    extra_messages = are_there_any_extra_messages()
 
@@ -474,6 +475,7 @@ if __name__ == "__main__":
    else:
       print(Fore.GREEN + "Test PASSED !! \n ")
       log_file.write("Test PASSED !! \n")
+      test_result
 
    print_warnings() 
 
@@ -483,6 +485,7 @@ if __name__ == "__main__":
    file2.close()
    file.close()
    print(Style.RESET_ALL)
+   sys.exit(test_result)
 
 
     
