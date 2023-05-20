@@ -47,11 +47,11 @@ class ACE_LIST_CHECKER:
         self.expectedData = expected_data
  
 
-    def checker (self, group_index, message_index, certainty):
+    def checker (self, group_index, message_index, address, certainty):
         message_found = False
         snoop_search = self.transactionTypes[self.expectedData['test']['groups'][i]['messages'][j][self.rw]]
         for l in range(0,len(self.transactions)):         
-            if self.transactions[l].address == search_address and self.transactions[l].snoop == snoop_search :
+            if self.transactions[l].address == address and self.transactions[l].snoop == snoop_search :
                 log_file.write(self.transactions[l].srcline)
                 del self.transactions[l]
                 message_found = True
@@ -75,10 +75,10 @@ class AXI_LIST_CHECKER:
         self.rw = rw
  
 
-    def checker (self, group_index, message_index, certainty):
+    def checker (self, group_index, message_index, address, certainty):
         message_found = False
         for l in range(0,len(self.transactions)):         
-            if self.transactions[l].address == search_address :
+            if self.transactions[l].address == address :
                 log_file.write(self.transactions[l].srcline)
                 del self.transactions[l]
                 message_found = True
@@ -102,12 +102,12 @@ class ACE_S_LIST_CHECKER:
         self.expectedData = expected_data
 
 
-    def checker (self, group_index, message_index, certainty):
+    def checker (self, group_index, message_index, address, certainty):
         message_found = False
         crresp_search = self.expectedData['test']['groups'][i]['messages'][j]['CRRESP']
         k = 0
         for l in range(0,len(self.transactions)):
-                if self.transactions[l].address == search_address:
+                if self.transactions[l].address == address:
                     log_file.write(self.transactions[l].srcline)
                     k = l
                     if len(self.transactions) != 0:
@@ -449,7 +449,7 @@ if __name__ == "__main__":
                #if the message is tagged as uncertain, tell the checker. This type of message is difficult to predict. i.e. writeback evicts
                if "not_certain" in test_yaml['test']['groups'][i]['messages'][j]:
                    definite_message = False
-               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j, definite_message) 
+               message_found = list_checker_dict[ test_yaml['test']['groups'][i]['messages'][j]['log']].checker(i,j, search_address, definite_message) 
                # if message with parameters has not been found, output log data, and do an early exit                               
                if message_found == False:
                    print(Fore.RED + "Expected  message " + test_yaml['test']['groups'][i]['messages'][j]['log'] + " " +str(j) + " of group " + str(i) + " not found")
