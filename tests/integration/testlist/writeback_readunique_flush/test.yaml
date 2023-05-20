@@ -2,9 +2,8 @@
 test:
     test_name:  "writeback_readunique_flush"
     test_buffer: "data"
-    test_notes: "Known Failure due inconsistent use of CRRESP. Also unpredictable writeback. TODO also scrutinise crresp 4c flow. This test seems to cease when core 2 starts. Core 3 shows no ace transactiions. Further more when a snoop trnascation is seen with a SNOOP value of 9(1001), all cores don not givbe a crresp except core 3 which has yet to run."
     memory_region: "cached_shared"
-    #test_action: "skip"
+
     
     groups:
 #test    
