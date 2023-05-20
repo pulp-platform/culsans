@@ -358,7 +358,7 @@ if __name__ == "__main__":
 
        
    file1 = open('main.map', 'r')
-   log_file = open(test_yaml["test_parser_result.log", 'w')
+   log_file = open(test_yaml['test']['test_name'] + "_test_result.log", 'w')
    Lines = file1.readlines()       
 
    #skip analysis of test if test sequence marks it so
