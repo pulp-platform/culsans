@@ -40,19 +40,20 @@ class DATA_BUFFER_ACCESS:
 
 class ACE_LIST_CHECKER:
 
-    def __init__(self, theList,theDict, rw):
-        self.theList = theList
-        self.theDict = theDict
+    def __init__(self, ace_rw_transactions, ace_rw_transaction_types, rw, expected_data):
+        self.transactions = ace_rw_transactions
+        self.transactionTypes = ace_rw_transaction_types
         self.rw = rw
+        self.expectedData = expected_data
  
 
     def checker (self, group_index, message_index, certainty):
         message_found = False
-        snoop_search = self.theDict[test_yaml['test']['groups'][i]['messages'][j][self.rw]]
-        for l in range(0,len(self.theList)):         
-            if self.theList[l].address == search_address and self.theList[l].snoop == snoop_search :
-                log_file.write(self.theList[l].srcline)
-                del self.theList[l]
+        snoop_search = self.transactionTypes[self.expectedData['test']['groups'][i]['messages'][j][self.rw]]
+        for l in range(0,len(self.transactions)):         
+            if self.transactions[l].address == search_address and self.transactions[l].snoop == snoop_search :
+                log_file.write(self.transactions[l].srcline)
+                del self.transactions[l]
                 message_found = True
                 break
         if certainty == False:
@@ -63,28 +64,23 @@ class ACE_LIST_CHECKER:
             return False
 
     def isListEmpty(self):
-        isEmpty = False
-        if len(self.theList) == 0:
-            isEmpty = True
-        else:
-            isEmpty = False
-
-        return isEmpty         
+        return (len(self.transactions) == 0)
+                
 
 
 class AXI_LIST_CHECKER:
 
-    def __init__(self, theList, rw):
-        self.theList = theList
+    def __init__(self, axi_rw_transactions, rw):
+        self.transactions = axi_rw_transactions
         self.rw = rw
  
 
     def checker (self, group_index, message_index, certainty):
         message_found = False
-        for l in range(0,len(self.theList)):         
-            if self.theList[l].address == search_address :
-                log_file.write(self.theList[l].srcline)
-                del self.theList[l]
+        for l in range(0,len(self.transactions)):         
+            if self.transactions[l].address == search_address :
+                log_file.write(self.transactions[l].srcline)
+                del self.transactions[l]
                 message_found = True
                 break
         if certainty == False:
@@ -95,61 +91,47 @@ class AXI_LIST_CHECKER:
             return False
         
     def isListEmpty(self):
-        isEmpty = False
-        if len(self.theList) == 0:
-            isEmpty = True
-        else:
-            isEmpty = False
+       return (len(self.transactions) == 0)
 
-        return isEmpty 
 
 class ACE_S_LIST_CHECKER:
 
-    def __init__(self, theList,theDict):
-        self.theList = theList
-        self.theDict = theDict
+    def __init__(self, ace_s_transactions,ace_s_transaction_types, expected_data):
+        self.transactions = ace_s_transactions
+        self.transactionTypes = ace_s_transaction_types
+        self.expectedData = expected_data
 
 
     def checker (self, group_index, message_index, certainty):
         message_found = False
-        crresp_search = test_yaml['test']['groups'][i]['messages'][j]['CRRESP']
+        crresp_search = self.expectedData['test']['groups'][i]['messages'][j]['CRRESP']
         k = 0
-        for l in range(0,len(self.theList)):
-
-                if self.theList[l].address == search_address:
-
-                    log_file.write(self.theList[l].srcline)
+        for l in range(0,len(self.transactions)):
+                if self.transactions[l].address == search_address:
+                    log_file.write(self.transactions[l].srcline)
                     k = l
-
-                    if len(self.theList) != 0:
-                        if self.theList[l+1].crresp == crresp_search :
-                            log_file.write("\t\t" + self.theList[l+1].srcline)
+                    if len(self.transactions) != 0:
+                        if self.transactions[l+1].crresp == crresp_search :
+                            log_file.write("\t\t" + self.transactions[l+1].srcline)
                             message_found = True
                             break
                         else:
                             print("Test sequence " + str(crresp_search))
-                            print("Logs " + str(self.theList[l+1].crresp))
-                            print(certainty)
-                         
+                            print("Logs " + str(self.transactions[l+1].crresp))                      
                             break
         if certainty == False:
             return True
 
         if message_found == True:
-            del self.theList[k]
-            del self.theList[k]
+            del self.transactions[k]
+            del self.transactions[k]
             return True
         else:
             return False
 
     def isListEmpty(self):
-        isEmpty = False
-        if len(self.theList) == 0:
-            isEmpty = True
-        else:
-            isEmpty = False
-
-        return isEmpty          
+       return (len(self.transactions) == 0)
+          
        
 def getIndexLists():
    indexes = []
@@ -393,33 +375,33 @@ if __name__ == "__main__":
 
    #create a dictionary of checkers so that the right one can be acquried by key from the test sequence.
    list_checker_dict = {}
-   RACE = ACE_LIST_CHECKER(ace_master_0_read,  arsnoop_dict, 'ARSNOOP')
+   RACE = ACE_LIST_CHECKER(ace_master_0_read,  arsnoop_dict, 'ARSNOOP', test_yaml)
    list_checker_dict['ace_master_read_0'] = RACE
-   RACE = ACE_LIST_CHECKER(ace_master_1_read,  arsnoop_dict, 'ARSNOOP')
+   RACE = ACE_LIST_CHECKER(ace_master_1_read,  arsnoop_dict, 'ARSNOOP', test_yaml)
    list_checker_dict['ace_master_read_1'] = RACE
-   RACE = ACE_LIST_CHECKER(ace_master_2_read,  arsnoop_dict, 'ARSNOOP')
+   RACE = ACE_LIST_CHECKER(ace_master_2_read,  arsnoop_dict, 'ARSNOOP' , test_yaml)
    list_checker_dict['ace_master_read_2'] = RACE
-   RACE = ACE_LIST_CHECKER(ace_master_3_read,  arsnoop_dict, 'ARSNOOP')
+   RACE = ACE_LIST_CHECKER(ace_master_3_read,  arsnoop_dict, 'ARSNOOP', test_yaml)
    list_checker_dict['ace_master_read_3'] = RACE
-   WACE = ACE_LIST_CHECKER(ace_master_0_write,  awsnoop_dict, 'AWSNOOP')
+   WACE = ACE_LIST_CHECKER(ace_master_0_write,  awsnoop_dict, 'AWSNOOP', test_yaml)
    list_checker_dict['ace_master_write_0'] = WACE
-   WACE = ACE_LIST_CHECKER(ace_master_1_write,  awsnoop_dict, 'AWSNOOP')
+   WACE = ACE_LIST_CHECKER(ace_master_1_write,  awsnoop_dict, 'AWSNOOP', test_yaml)
    list_checker_dict['ace_master_write_1'] = WACE
-   WACE = ACE_LIST_CHECKER(ace_master_2_write,  awsnoop_dict, 'AWSNOOP')
+   WACE = ACE_LIST_CHECKER(ace_master_2_write,  awsnoop_dict, 'AWSNOOP', test_yaml)
    list_checker_dict['ace_master_write_2'] = WACE
-   WACE = ACE_LIST_CHECKER(ace_master_3_write,  awsnoop_dict, 'AWSNOOP')
+   WACE = ACE_LIST_CHECKER(ace_master_3_write,  awsnoop_dict, 'AWSNOOP', test_yaml)
    list_checker_dict['ace_master_write_3'] = WACE
    RAXI = AXI_LIST_CHECKER(axi_slave_read,   'READ')
    list_checker_dict['axi_master_read'] = RAXI
    WAXI = AXI_LIST_CHECKER(axi_slave_write,   'WRITE')
    list_checker_dict['axi_master_write'] = WAXI
-   SACE = ACE_S_LIST_CHECKER(ace_master_0_snoop,  acsnoop_dict)
+   SACE = ACE_S_LIST_CHECKER(ace_master_0_snoop,  acsnoop_dict, test_yaml)
    list_checker_dict['ace_master_snoop_0'] = SACE   
-   SACE = ACE_S_LIST_CHECKER(ace_master_1_snoop,  acsnoop_dict)
+   SACE = ACE_S_LIST_CHECKER(ace_master_1_snoop,  acsnoop_dict, test_yaml)
    list_checker_dict['ace_master_snoop_1'] = SACE
-   SACE = ACE_S_LIST_CHECKER(ace_master_2_snoop,  acsnoop_dict)
+   SACE = ACE_S_LIST_CHECKER(ace_master_2_snoop,  acsnoop_dict, test_yaml)
    list_checker_dict['ace_master_snoop_2'] = SACE   
-   SACE = ACE_S_LIST_CHECKER(ace_master_3_snoop,  acsnoop_dict)
+   SACE = ACE_S_LIST_CHECKER(ace_master_3_snoop,  acsnoop_dict, test_yaml)
    list_checker_dict['ace_master_snoop_3'] = SACE
 
    #get buffer index range, minimum and maxiumu
