@@ -138,7 +138,6 @@ def getIndexLists():
    indexes = []
    buffer_access_dict[test_yaml['test']['test_buffer']] = []
    groups = test_yaml['test']['groups']
-   cache_byte_len = 16
    for i in range(0,len(groups)):
        if "test_buffer" in groups[i]:
           if test_yaml['test']['groups'][i]['test_buffer'] not in buffer_access_dict:
@@ -345,6 +344,7 @@ if __name__ == "__main__":
    axi_slave_read  = []
    axi_slave_write  = []
    buffer_address_list = []
+   cache_byte_len = 16
   
 
    print(Style.RESET_ALL)
@@ -424,9 +424,9 @@ if __name__ == "__main__":
                   if len(split_line) > 1:
                      if split_line[1] == test_yaml['test']['groups'][i]['test_buffer']:
                         new_address = int(split_line[0],16)
-                        search_address = new_address + k*16
+                        search_address = new_address + k*cache_byte_len
            else:
-               search_address = test_buffer_address + k*16
+               search_address = test_buffer_address + k*cache_byte_len
            log_file.write( "Checking Group " + str(i) + "\n")
            #if there was a break from the inner loop then also break from this loop
            if early_exit == True:
