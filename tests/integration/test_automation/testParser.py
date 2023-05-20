@@ -137,13 +137,13 @@ def getIndexLists():
    indexes = []
    buffer_access_dict[test_yaml['test']['test_buffer']] = []
    groups = test_yaml['test']['groups']
-   for i in range(0,len(test_yaml['test']['groups'])):
-       if "test_buffer" in test_yaml['test']['groups'][i]:
-
+   cache_byte_len = 16
+   for i in range(0,len(groups)):
+       if "test_buffer" in groups[i]:
           if test_yaml['test']['groups'][i]['test_buffer'] not in buffer_access_dict:
               buffer_access_dict[test_yaml['test']['groups'][i]['test_buffer']] = []                      
-          buffer_access_dict[test_yaml['test']['groups'][i]['test_buffer']].append(groups[i]['start_index']);
-          buffer_access_dict[test_yaml['test']['groups'][i]['test_buffer']].append(groups[i]['end_index']);
+          buffer_access_dict[groups[i]['test_buffer']].append(groups[i]['start_index']);
+          buffer_access_dict[groups[i]['test_buffer']].append(groups[i]['end_index']);
        else:
           buffer_access_dict[test_yaml['test']['test_buffer']].append(groups[i]['start_index'])
           buffer_access_dict[test_yaml['test']['test_buffer']].append(groups[i]['end_index']);
@@ -153,8 +153,8 @@ def getIndexLists():
             if len(split_line) > 1:
                if split_line[1] == buffer:
                    buffer_address = int(split_line[0],16)
-                   min_index = min(list)*16 + buffer_address
-                   max_index = max(list)*16 + buffer_address
+                   min_index = min(list)*cache_byte_len + buffer_address
+                   max_index = max(list)*cache_byte_len + buffer_address
         dba = DATA_BUFFER_ACCESS(buffer_address, min_index, max_index)
         buffer_address_list.append(dba)
    return buffer_address_list[0].address
