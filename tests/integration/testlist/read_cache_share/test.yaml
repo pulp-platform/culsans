@@ -14,7 +14,7 @@ test:
               log: "ace_master_read_0"
               ARSNOOP: "ReadUnique"
             -
-              log: "axi_master_read"          
+              log: "axi_slave_read"          
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000
@@ -28,7 +28,7 @@ test:
               log: "ace_master_write_0"
               AWSNOOP: "WriteBack"
             -
-              log: "axi_master_write"
+              log: "axi_slave_write"
 #actual  test                 
         -
           core: 0
@@ -48,7 +48,7 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000
             -
-              log: "axi_master_read"
+              log: "axi_slave_read"
               
         -
           core: 1
@@ -68,7 +68,7 @@ test:
               log: "ace_master_snoop_0"
               CRRESP: 00000          
             -
-              log: "axi_master_read"
+              log: "axi_slave_read"
         -
           core: 2
           start_index: 2
@@ -87,7 +87,7 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000
             -
-              log: "axi_master_read"
+              log: "axi_slave_read"
               
         -
           core: 3
@@ -107,4 +107,4 @@ test:
               log: "ace_master_snoop_0"
               CRRESP: 00000          
             -
-              log: "axi_master_read"    
+              log: "axi_slave_read"    

@@ -393,9 +393,9 @@ if __name__ == "__main__":
    WACE = ACE_LIST_CHECKER(ace_master_3_write,  awsnoop_dict, 'AWSNOOP', test_yaml)
    list_checker_dict['ace_master_write_3'] = WACE
    RAXI = AXI_LIST_CHECKER(axi_slave_read,   'READ')
-   list_checker_dict['axi_master_read'] = RAXI
+   list_checker_dict['axi_slave_read'] = RAXI
    WAXI = AXI_LIST_CHECKER(axi_slave_write,   'WRITE')
-   list_checker_dict['axi_master_write'] = WAXI
+   list_checker_dict['axi_slave_write'] = WAXI
    SACE = ACE_S_LIST_CHECKER(ace_master_0_snoop,  acsnoop_dict, test_yaml)
    list_checker_dict['ace_master_snoop_0'] = SACE   
    SACE = ACE_S_LIST_CHECKER(ace_master_1_snoop,  acsnoop_dict, test_yaml)

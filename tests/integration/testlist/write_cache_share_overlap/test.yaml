@@ -14,7 +14,7 @@ test:
               log: "ace_master_read_0"
               ARSNOOP: "ReadUnique"
             -
-              log: "axi_master_read"          
+              log: "axi_slave_read"          
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000

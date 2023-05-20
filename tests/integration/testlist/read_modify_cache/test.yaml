@@ -14,7 +14,7 @@ test:
               log: "ace_master_read_0"
               ARSNOOP: "ReadUnique"
             -
-              log: "axi_master_read"          
+              log: "axi_slave_read"          
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000
@@ -42,7 +42,7 @@ test:
               log: "ace_master_snoop_3"
               CRRESP: 00000              
             -
-              log: "axi_master_read"
+              log: "axi_slave_read"
         -
           core: 2
           start_index: 3072
@@ -52,7 +52,7 @@ test:
               log: "ace_master_read_2"
               ARSNOOP: "ReadUnique"
             -
-              log: "axi_master_read"          
+              log: "axi_slave_read"          
             -
               log: "ace_master_snoop_1"
               CRRESP: 00000
@@ -80,4 +80,4 @@ test:
               log: "ace_master_snoop_1"
               CRRESP: 00000              
             -
-              log: "axi_master_read"          
+              log: "axi_slave_read"          
