@@ -34,11 +34,26 @@ SECTIONS
   /* set the base address at the beginnning of the RAM */
   . = 0x80000000;
 
-  /* data segment */
-  .data : { *(.data) }
-
-  . = 0x80001000;
   .tohost : { *(.tohost) }
+
+  . = 0x80000048;
+
+  . = 0x80020000;
+  .nocache_noshare_region : { *(.nocache_noshare_region) }
+  . = 0x80040000;
+  .nocache_share_region : { *(.nocache_share_region) }
+  . = 0x80060000;
+  .cache_share_region : { *(.cache_share_region) }
+  . = 0x80080000;
+  .cache_noshare_region : { *(.cache_noshare_region) }
+
+  . = 0x800a0000;
+
+  /* data segment */
+  /*.data : { *(.cached_region) *(.non_cached_region) }*/
+  /*.data : { *(.cached_region)}*/
+  .data : { *(.cached_region_2)}
+  /*.data : { *(.data) }*/
 
   .sdata : {
     __global_pointer$ = . + 0x800;
@@ -75,4 +90,3 @@ SECTIONS
   .text.init : { *(.text.init) }
   .text : { *(.text) }
 }
-

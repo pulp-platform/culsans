@@ -3,6 +3,31 @@ include ../common.mk
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
+NB_CORES ?= 4
+
+ifneq ($(NB_CORES), 2)
+ifneq ($(NB_CORES), 4)
+$(error "NB_CORES must be 2 or 4")
+endif
+endif
+
+# Check that RTL and SW are aligned with the NB_CORES setting
+
+RTL_NBCORES_DEF = "localparam NB_CORES = $(NB_CORES);"
+SW_NBCORES_DEF = "\# define NB_CORES $(NB_CORES)"
+
+.PHONY: nb_cores
+nb_cores:
+	@if ! grep -q $(RTL_NBCORES_DEF) ../../rtl/include/culsans_pkg.sv; then \
+		sed -i 's/localparam NB_CORES = [0-9]\+;/localparam NB_CORES = $(NB_CORES);/' ../../rtl/include/culsans_pkg.sv; \
+	fi
+	@if ! grep -q $(SW_NBCORES_DEF) ./sw/sys/crt.S; then \
+		sed -i 's/\# define NB_CORES [0-9]\+/\# define NB_CORES $(NB_CORES)/' ./sw/sys/crt.S; \
+	fi
+	@if ! grep -q $(SW_NBCORES_DEF) ./sw/include/nb_cores.h; then \
+		sed -i 's/\# define NB_CORES [0-9]\+/\# define NB_CORES $(NB_CORES)/' ./sw/include/nb_cores.h; \
+	fi
+
 # Compile the SW
 
 COMMON_TEST_SW = ./sw
@@ -28,12 +53,15 @@ libs:
 $(OBJDIR)/%.o: %.c objs
 	$(RV_GCC) $(SW_INCLUDES) -Werror -falign-functions=32 -falign-jumps=32 -c $< -o $@
 
-# 
+#
 libs/libintegr.a: $(OBJS) libs
 	$(RV_AR) -rcs $@ $(OBJS)
 
-sw : libs/libintegr.a
+sw : libs/libintegr.a nb_cores
 	for d in $(TESTLIST); do make -C $$d sw; done
+
+sw_all : libs/libintegr.a nb_cores
+	for d in $(TESTLIST); do make -C $$d all; done
 
 # Compile the RTL
 
@@ -97,6 +125,7 @@ AXI_SRC := src/axi_cut.sv                                                 \
 	          src/snoop_intf.sv \
 	          src/axi_xbar.sv \
 	          src/ace_trs_dec.sv \
+	          src/ccu_fsm.sv \
 	          src/ace_ccu_top.sv
 AXI_SRC := $(addprefix $(AXI_DIR)/, $(AXI_SRC))
 
@@ -201,7 +230,7 @@ VERILATOR_LIB = work_verilate
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
-VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
+VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
                     $(COMMON_PKG) $(AXI_PKG) $(COMMON_SRC) $(AXI_SRC) $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
@@ -250,7 +279,7 @@ $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-cva6-srcs
 
-$(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC)
+$(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cores
 	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	touch $(VSIM_LIB)/.build-culsans-srcs
@@ -286,7 +315,7 @@ endif
 
 # run failed or not-executed tests
 rerun: sw rtl
-	for d in $(TESTLIST); do if [ -e $$d/$(TEST_REPORT) ]; then if grep -q FAIL $$d/$(TEST_REPORT) ; then make -C $$d all; fi; else make -C $$d all; fi; done
+	for d in $(TESTLIST); do if [ -e $$d/$(TEST_REPORT) ] and [ -e $$d/$(VERIFICATION_REPORT) ]; then if grep -q FAIL $$d/$(TEST_REPORT) ; then make -C $$d all; fi; else make -C $$d all; fi; done
 
 # Cleanup
 
@@ -303,4 +332,4 @@ clean_tests:
 
 clean: clean_sw clean_rtl clean_tests
 
-.PHONY: all sw rtl rerun clean clean_sw clean_rtl
+.PHONY: all sw sw_all rtl rerun clean clean_sw clean_rtl

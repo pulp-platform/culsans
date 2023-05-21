@@ -203,8 +203,10 @@ module culsans_top #(
     end
   end
 
-  culsans_pkg::req_t    dm_axi_m_req;
-  culsans_pkg::resp_t   dm_axi_m_resp;
+  ariane_axi::req_t    dm_axi_m_req;
+  ariane_axi::resp_t   dm_axi_m_resp;
+  ariane_axi::req_t    slv_req;
+  ariane_axi::resp_t   slv_resp;
 
   logic                dm_slave_req;
   logic                dm_slave_we;
@@ -281,6 +283,8 @@ module culsans_top #(
 
   `AXI_ASSIGN_FROM_REQ(to_xbar[1], dm_axi_m_req)
   `AXI_ASSIGN_TO_RESP(dm_axi_m_resp, to_xbar[1])
+  `AXI_ASSIGN_TO_REQ(slv_req, to_xbar[0])
+  `AXI_ASSIGN_TO_RESP(slv_resp, to_xbar[0])
 
   axi_adapter #(
     .DATA_WIDTH            ( AXI_DATA_WIDTH            ),
@@ -700,6 +704,108 @@ module culsans_top #(
      `SNOOP_ASSIGN_TO_REQ(ace_ariane_resp[i], CCU_to_core[i])
 
   end
+
+// logger for ACE master modules
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_master_logger
+    ccu_master_logger #(
+      .TestTime  (      ), // Time after clock, where sampling happens
+      .LoggerName( $sformatf("ccu_logger_master_%0d", i)),
+      .aw_chan_t ( ariane_ace::aw_chan_t  ), // axi AW type
+      .w_chan_t  ( ariane_axi::w_chan_t   ), // axi  W type
+      .b_chan_t  ( ariane_axi::b_chan_t   ), // axi  B type
+      .ar_chan_t ( ariane_ace::ar_chan_t  ), // axi AR type
+      .r_chan_t  ( ariane_ace::r_chan_t   )  // axi  R type
+    ) i_mst_channel_logger (
+      .clk_i      ( clk_i         ),    // Clock
+      .rst_ni     ( rst_ni       ),    // Asynchronous reset active low, when `1'b0` no sampling
+      .end_sim_i  ( '0 ),
+      // AW channel
+      .aw_chan_i  ( ace_ariane_req[i].aw        ),
+      .aw_valid_i ( ace_ariane_req[i].aw_valid  ),
+      .aw_ready_i ( ace_ariane_resp[i].aw_ready ),
+      //  W channel
+      .w_chan_i   ( ace_ariane_req[i].w         ),
+      .w_valid_i  ( ace_ariane_req[i].w_valid   ),
+      .w_ready_i  ( ace_ariane_resp[i].w_ready  ),
+      //  B channel
+      .b_chan_i   ( ace_ariane_resp[i].b        ),
+      .b_valid_i  ( ace_ariane_resp[i].b_valid  ),
+      .b_ready_i  ( ace_ariane_req[i].b_ready   ),
+      // AR channel
+      .ar_chan_i  ( ace_ariane_req[i].ar        ),
+      .ar_valid_i ( ace_ariane_req[i].ar_valid  ),
+      .ar_ready_i ( ace_ariane_resp[i].ar_ready ),
+      //  R channel
+      .r_chan_i   ( ace_ariane_resp[i].r        ),
+      .r_valid_i  ( ace_ariane_resp[i].r_valid  ),
+      .r_ready_i  ( ace_ariane_req[i].r_ready   )
+    );
+  end
+
+  // logger for snoop modules
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_snoop_logger
+    snoop_chan_logger #(
+      .TestTime  (      ), // Time after clock, where sampling happens
+      .LoggerName( $sformatf("ccu_logger_snoop_%0d",i)),
+      .ac_chan_t ( ariane_ace::ac_chan_t ), // AC type
+      .cr_chan_t ( snoop_pkg::crresp_t), // CR type
+      .cd_chan_t ( ariane_ace::cd_chan_t )  // CD type
+    ) i_snoop_channel_logger (
+      .clk_i      ( clk_i         ),    // Clock
+      .rst_ni     ( rst_ni       ),    // Asynchronous reset active low, when `1'b0` no sampling
+      .end_sim_i  ( '0 ),
+      // AC channel
+      .ac_chan_i  ( ace_ariane_resp[i].ac        ),
+      .ac_valid_i ( ace_ariane_resp[i].ac_valid  ),
+      .ac_ready_i ( ace_ariane_req[i].ac_ready ),
+      // CR channel
+      .cr_chan_i   ( ace_ariane_req[i].cr_resp ),
+      .cr_valid_i  ( ace_ariane_req[i].cr_valid),
+      .cr_ready_i  ( ace_ariane_resp[i].cr_ready ),
+      // CR channel
+      .cd_chan_i   ( ace_ariane_req[i].cd      ),
+      .cd_valid_i  ( ace_ariane_req[i].cd_valid),
+      .cd_ready_i  ( ace_ariane_resp[i].cd_ready )
+    );
+  end
+
+  // logger for AXI slave module
+    ccu_slave_logger #(
+      .TestTime  (       ), // Time after clock, where sampling happens
+      .LoggerName( $sformatf("ccu_logger_slave")),
+      .aw_chan_t ( ariane_axi::aw_chan_t ), // axi AW type
+      .w_chan_t  ( ariane_axi::w_chan_t ), // axi  W type
+      .b_chan_t  ( ariane_axi::b_chan_t ), // axi  B type
+      .ar_chan_t ( ariane_axi::ar_chan_t ), // axi AR type
+      .r_chan_t  ( ariane_axi::r_chan_t )  // axi  R type
+    ) i_slv_channel_logger (
+      .clk_i      ( clk_i         ),    // Clock
+      .rst_ni     ( rst_ni       ),    // Asynchronous reset active low, when `1'b0` no sampling
+      .end_sim_i  ( '0 ),
+      // AW channel
+      .aw_chan_i  ( slv_req.aw        ),
+      .aw_valid_i ( slv_req.aw_valid  ),
+      .aw_ready_i ( slv_resp.aw_ready ),
+      //  W channel
+      .w_chan_i   ( slv_req.w         ),
+      .w_valid_i  ( slv_req.w_valid   ),
+      .w_ready_i  ( slv_resp.w_ready  ),
+      //  B channel
+      .b_chan_i   ( slv_resp.b        ),
+      .b_valid_i  ( slv_resp.b_valid  ),
+      .b_ready_i  ( slv_req.b_ready   ),
+      // AR channel
+      .ar_chan_i  ( slv_req.ar        ),
+      .ar_valid_i ( slv_req.ar_valid  ),
+      .ar_ready_i ( slv_resp.ar_ready ),
+      //  R channel
+      .r_chan_i   ( slv_resp.r        ),
+      .r_valid_i  ( slv_resp.r_valid  ),
+      .r_ready_i  ( slv_req.r_ready   )
+    );
+
+
+
 
   // -------------
   // Simulation Helper Functions
