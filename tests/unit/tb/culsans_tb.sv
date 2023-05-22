@@ -305,7 +305,7 @@ module culsans_tb
             end
 
             initial begin : DCACHE_DRV
-                dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
+                dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], ArianeCfg, $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
             end
 
         end
@@ -328,7 +328,7 @@ module culsans_tb
         end
 
         initial begin : AMO_DRV
-            amo_drv[core_idx] = new(amo_if[core_idx], $sformatf("%s[%0d]","amo_driver",core_idx));
+            amo_drv[core_idx] = new(amo_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","amo_driver",core_idx));
         end
 
 
