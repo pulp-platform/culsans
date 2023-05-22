@@ -677,7 +677,7 @@ module culsans_top #(
       reset[1] = ndmreset_n;
    end
 
-  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_ariane
 
     assign hart_id[i] = i;
 

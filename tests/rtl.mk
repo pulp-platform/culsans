@@ -45,14 +45,20 @@ COMMON_SRC := $(CVA6_DIR)/common/submodules/common_cells/src/rstgen_bypass.sv   
 	        $(CVA6_DIR)/common/submodules/common_cells/src/lfsr_16bit.sv                             \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/delta_counter.sv                          \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/counter.sv                                \
-	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv
+	        $(CVA6_DIR)/common/submodules/common_cells/src/shift_reg.sv                              \
+                $(CVA6_DIR)/corev_apu/tb/common_verification/src/rand_id_queue.sv
 
 # AXI
 
 # AXI packages
 AXI_PKG := src/axi_pkg.sv \
-						src/ace_pkg.sv \
-						src/snoop_pkg.sv
+           src/ace_pkg.sv \
+           src/snoop_pkg.sv \
+           src/axi_test.sv \
+           src/ace_test.sv \
+           src/snoop_test.sv \
+           test/tb_ace_ccu_pkg.sv
+
 AXI_PKG := $(addprefix $(AXI_DIR)/, $(AXI_PKG))
 
 AXI_SRC := src/axi_cut.sv                                                 \
@@ -82,19 +88,19 @@ AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
 # CVA6 packages
 CVA6_PKG := core/include/cv64a6_imafdc_sv39_config_pkg.sv
 CVA6_PKG += core/include/riscv_pkg.sv                              \
-              corev_apu/riscv-dbg/src/dm_pkg.sv                      \
-              core/include/ariane_pkg.sv                             \
-              core/include/ariane_rvfi_pkg.sv                        \
-              core/include/wt_cache_pkg.sv                           \
-              core/include/cvxif_pkg.sv                              \
-              corev_apu/register_interface/src/reg_intf.sv           \
-							corev_apu/tb/rvfi_pkg.sv                               \
-              core/include/ariane_axi_pkg.sv                         \
-              core/include/ariane_ace_pkg.sv                         \
-              core/include/std_cache_pkg.sv                          \
-              core/fpu/src/fpnew_pkg.sv                              \
-              core/cvxif_example/include/cvxif_instr_pkg.sv          \
-              core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
+            corev_apu/riscv-dbg/src/dm_pkg.sv                      \
+            core/include/ariane_pkg.sv                             \
+            core/include/ariane_rvfi_pkg.sv                        \
+            core/include/wt_cache_pkg.sv                           \
+            core/include/cvxif_pkg.sv                              \
+            corev_apu/register_interface/src/reg_intf.sv           \
+            corev_apu/tb/rvfi_pkg.sv                               \
+            core/include/ariane_axi_pkg.sv                         \
+            core/include/ariane_ace_pkg.sv                         \
+            core/include/std_cache_pkg.sv                          \
+            core/fpu/src/fpnew_pkg.sv                              \
+            core/cvxif_example/include/cvxif_instr_pkg.sv          \
+            core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
 CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
 
 # utility modules
@@ -118,6 +124,7 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/axi2apb/src/*.sv)                              \
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/apb_timer/*.sv)                                \
 	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/axi_slice/src/*.sv)                            \
+	        $(wildcard $(CVA6_DIR)/corev_apu/fpga/src/bootrom/*.sv)                              \
 	        $(wildcard $(CVA6_DIR)/corev_apu/src/axi_riscv_atomics/src/*.sv)                         \
 	        $(wildcard $(CVA6_DIR)/corev_apu/axi_mem_if/src/*.sv)                                    \
 	        $(wildcard $(CVA6_DIR)/core/pmp/src/*.sv)                                                \
@@ -155,6 +162,11 @@ CVA6_INCDIR := common/submodules/common_cells/include/ corev_apu/axi/include/ co
 CVA6_INCDIR := $(addprefix $(CVA6_DIR)/, $(CVA6_INCDIR))
 CVA6_INCDIR := $(foreach dir, ${CVA6_INCDIR}, +incdir+$(dir))
 
+
+CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/dcache_intf.sv
+CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/amo_intf.sv
+CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_std_cache_subsystem_pkg.sv
+
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
 CULSANS_SRC := $(filter-out $(CULSANS_DIR)/src/culsans_xilinx.sv, $(wildcard $(CULSANS_DIR)/src/*.sv))
@@ -172,10 +184,14 @@ RTL_INCDIR += $(CULSANS_INCDIR)
 
 VSIM_LIB = work
 VERILATOR_LIB = work_verilate
+DEFINES = 
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
+ifneq ($(DEFINES), "")
+VLOG_FLAGS += $(foreach def, $(DEFINES), +define+$(def))
+endif
 
 VERILATOR_CMD := $(VERILATOR)                                                                                 \
                     $(COMMON_PKG) $(AXI_PKG) $(COMMON_SRC) $(AXI_SRC) $(CVA6_PKG) $(CVA6_SRC) $(CULSANS_PKG) $(CULSANS_SRC) \
@@ -219,22 +235,26 @@ $(VSIM_LIB)/.build-axi-srcs: $(library) $(AXI_PKG) $(AXI_SRC)
 	@touch $(VSIM_LIB)/.build-axi-srcs
 
 $(VSIM_LIB)/.build-cva6-srcs: $(UTIL) $(CVA6_PKG) $(CVA6_SRC)
-	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(filter %.sv,$(CVA6_PKG)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) $(filter %.sv,$(UTIL)) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(filter %.sv,$(CVA6_SRC)) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-cva6-srcs
 
+$(VSIM_LIB)/.build-cva6-test: $(VSIM_LIB)/.build-cva6-srcs $(CVA6_TEST)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CVA6_TEST) $(RTL_INCDIR)
+	@touch $(VSIM_LIB)/.build-cva6-test
+
 $(VSIM_LIB)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) nb_cores_rtl
-	@$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -work $(VSIM_LIB) $(CULSANS_PKG) $(RTL_INCDIR)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(CULSANS_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-culsans-srcs
 
-$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC)
-	@$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
+$(VSIM_LIB)/.build-tb: $(library) $(TB_SRC) $(CVA6_TEST)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(VSIM_LIB) -pedanticerrors $(TB_SRC) $(RTL_INCDIR)
 	@touch $(VSIM_LIB)/.build-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
+rtl: $(library) $(VSIM_LIB)/.build-common-srcs $(VSIM_LIB)/.build-axi-srcs $(VSIM_LIB)/.build-cva6-srcs $(VSIM_LIB)/.build-cva6-test $(VSIM_LIB)/.build-culsans-srcs $(VSIM_LIB)/.build-tb
 #	$(VOPT) $(VLOG_FLAGS) -work $(VSIM_LIB)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1
