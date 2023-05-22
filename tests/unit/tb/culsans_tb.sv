@@ -38,10 +38,12 @@ module culsans_tb
     dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
     dcache_sram_if          sram_if          [culsans_pkg::NB_CORES-1:0]      (clk);
     dcache_gnt_if           gnt_if           [culsans_pkg::NB_CORES-1:0]      (clk);
+    dcache_mgmt_intf        mgmt_if          [culsans_pkg::NB_CORES-1:0]      (clk);
 
     // verification conponents
     dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
     dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
+    dcache_mgmt_driver      dcache_mgmt_drv  [culsans_pkg::NB_CORES-1:0];
 
     amo_driver              amo_drv          [culsans_pkg::NB_CORES-1:0];
     amo_monitor             amo_mon          [culsans_pkg::NB_CORES-1:0];
@@ -286,6 +288,19 @@ module culsans_tb
         assign gnt_if[core_idx].bypass_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.bypass_gnt[2];
         assign gnt_if[core_idx].bypass_gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.bypass_gnt[3];
 
+
+        // assign management IF
+        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_en_csr_nbdcache  = mgmt_if[core_idx].dcache_enable;
+        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ctrl_cache = mgmt_if[core_idx].dcache_flush;
+        assign mgmt_if[core_idx].dcache_flush_ack = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl;
+        assign mgmt_if[core_idx].dcache_miss      = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_miss_cache_perf;
+        assign mgmt_if[core_idx].wbuffer_empty    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_commit_wbuffer_empty;
+    
+        initial begin : DCACHE_MGMT_DRV
+            dcache_mgmt_drv[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_driver",core_idx));
+        end
+
+
         for (genvar port=0; port<=2; port++) begin : PORT
             // assign dcache request/response to dcache_if
             assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_ex_cache[port] = dcache_if[core_idx][port].req;
@@ -511,6 +526,23 @@ module culsans_tb
                                 end
                             join
                         end
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "flush_collision" : begin
+                        test_header(testname, "Flush the cache while accessing its contents");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // fill cache
+                        for (int i=0; i<2048; i++) begin
+                            dcache_drv[0][2].wr(.addr(addr + ((i/2) << DCACHE_INDEX_WIDTH) + 8 * (i%2)),  .data(64'hBEEFCAFE0000 + i));
+                        end
+
+                        // flush
+                        dcache_mgmt_drv[0].flush();
 
                         `WAIT_CYC(clk, 100)
                     end
