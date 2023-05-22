@@ -15,3 +15,4 @@ objs/
 libs/
 work_verilate/
 testlist/*/uart
+my_wave.do
