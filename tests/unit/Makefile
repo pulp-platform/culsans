@@ -1,6 +1,8 @@
 include ../common.mk
 
 include ../rtl.mk
+# add dummy version of cva6 for injecting cache requests from test bench drivers
+CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/cva6_cache_dummy.sv
 
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
@@ -18,6 +20,8 @@ FAIL_LIST += $(TESTS_DIR)/amo_read_cached/               # triggers Jira issue P
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
+
+
 help:
 	@echo ""
 	@echo "    make all                   run all tests"
@@ -34,8 +38,6 @@ help:
 # Run the test(s)
 
 TEST ?= all
-
-DEFINES := CULSANS_TB_UNIT_TEST
 
 # run all the tests
 ifeq ($(TEST), all)
