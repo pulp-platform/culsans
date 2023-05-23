@@ -3,8 +3,8 @@ module culsans_tb
     import ariane_pkg::*;
     import snoop_test::*;
     import ace_test::*;
-    import std_cache_test::*;
     import tb_ace_ccu_pkg::*;
+    import tb_std_cache_subsystem_pkg::*;
 #()();
 
     `define WAIT_CYC(CLK, N) \
@@ -305,7 +305,7 @@ module culsans_tb
             end
 
             initial begin : DCACHE_DRV
-                dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
+                dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], ArianeCfg, $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
             end
 
         end
@@ -328,7 +328,7 @@ module culsans_tb
         end
 
         initial begin : AMO_DRV
-            amo_drv[core_idx] = new(amo_if[core_idx], $sformatf("%s[%0d]","amo_driver",core_idx));
+            amo_drv[core_idx] = new(amo_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","amo_driver",core_idx));
         end
 
 
@@ -445,14 +445,16 @@ module culsans_tb
                         for (int i=0; i<100; i++) begin
                             fork
                                 begin
-                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i));
                                     `WAIT_CYC(clk, 10)
-                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
+                                    dcache_drv[0][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i));
+                                    `WAIT_CYC(clk, 10)
                                 end
                                 begin
-                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBAADF00D0000 + i));
+                                    dcache_drv[1][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i));
                                     `WAIT_CYC(clk, i%19)
-                                    dcache_drv[1][2].wr(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hDEADABBA0000 + i));
+                                    dcache_drv[1][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i));
+                                    `WAIT_CYC(clk, 10)
                                 end
                             join
                         end
