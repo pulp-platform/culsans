@@ -583,8 +583,8 @@ module culsans_tb
                         dcache_drv[1][2].wr(.addr(base_addr + 8), .data(64'hBAADF00D_11111111));
 
                         // amo read 
-                        amo_drv[0].rd(.addr(base_addr));
-                        amo_drv[0].rd(.addr(base_addr + 8));
+                        amo_drv[0].rd(.addr(base_addr),     .check_result(1), .exp_result(64'hCAFEBABE_00000000));
+                        amo_drv[0].rd(.addr(base_addr + 8), .check_result(1), .exp_result(64'hBAADF00D_11111111));
 
                         `WAIT_CYC(clk, 100)
                     end
