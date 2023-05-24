@@ -689,7 +689,7 @@ module culsans_tb
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
                                             port   = $urandom_range(2);
-                                            offset = $urandom_range(1024);
+                                            offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
                                             if (port == 2) begin
                                                 dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                             end else begin
@@ -714,7 +714,7 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_shared" : begin
-                        test_header(testname, "Writes and reads to random shareable addresses");
+                        test_header(testname, "Writes and reads to random shareable , non-cacheable addresses");
 
                         base_addr = ArianeCfg.SharedRegionAddrBase[0];
                         rep_cnt   = 1000;
@@ -728,7 +728,8 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
+                                        // don't enter the shared & cached region
+                                        offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]);
                                         if (port == 2) begin
                                             dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                         end else begin
@@ -748,7 +749,7 @@ module culsans_tb
                     "random_non-shared" : begin
                         test_header(testname, "Writes and reads to random non-shareable addresses");
 
-                        base_addr = 0;
+                        base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
                         rep_cnt   = 1500;
 
                         for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
@@ -760,7 +761,7 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
+                                        offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
                                         if (port == 2) begin
                                             dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                         end else begin
@@ -846,7 +847,8 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
@@ -887,7 +889,8 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
@@ -931,7 +934,8 @@ module culsans_tb
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
                                             1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
