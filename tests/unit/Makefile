@@ -8,14 +8,8 @@ TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
 # List known failing tests
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PROJ-147
-FAIL_LIST += $(TESTS_DIR)/amo_snoop_single_collision/   # Triggers Jira issue PROJ-150
-FAIL_LIST += $(TESTS_DIR)/random_cached_amo/            # Triggers Jira issue PROJ-150
-FAIL_LIST += $(TESTS_DIR)/amo_read_write_collision/     # Triggers Jira issue PROJ-153
-FAIL_LIST += $(TESTS_DIR)/amo_read_cached/              # Triggers Jira issue PROJ-153
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
-
-
 
 help:
 	@echo ""
