@@ -105,6 +105,33 @@ package culsans_pkg;
     NrPMPEntries:           8
   };
 
+   localparam ariane_pkg::ariane_cfg_t ArianeFpgaSocCfg = '{
+    RASDepth: 2,
+    BTBEntries: 32,
+    BHTEntries: 128,
+    // idempotent region
+    NrNonIdempotentRules:  1,
+    NonIdempotentAddrBase: {64'b0},
+    NonIdempotentLength:   {DRAMBase},
+    NrExecuteRegionRules:  3,
+    ExecuteRegionAddrBase: {DRAMBase,   ROMBase,   DebugBase},
+    ExecuteRegionLength:   {DRAMLength, ROMLength, DebugLength},
+    // cached region
+    NrCachedRegionRules:    1,
+    CachedRegionAddrBase:  {DRAMBase},
+    CachedRegionLength:    {DRAMLength},
+    // shared region
+    NrSharedRegionRules:    1,
+    SharedRegionAddrBase:  {DRAMBase},
+    SharedRegionLength:    {DRAMLength},
+    //  cache config
+    Axi64BitCompliant:      1'b1,
+    SwapEndianess:          1'b0,
+    // debug
+    DmBaseAddress:          DebugBase,
+    NrPMPEntries:           8
+  };
+
   localparam exitOffset = 64'h0;
   localparam exitAddr = DRAMBase + exitOffset;
 

@@ -65,7 +65,6 @@ endif
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
 
-
 clean:
 	rm -rf objs
 	rm -rf main.riscv
@@ -79,6 +78,5 @@ clean:
 	rm -rf main.map
 	rm -rf ace_log/
 	rm -rf axi_log/
-
 
 .PHONY: all gui sw dis sw clean

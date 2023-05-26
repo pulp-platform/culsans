@@ -89,8 +89,8 @@ module culsans_tb ();
 
     culsans_top #(
         .InclSimDTM (1'b0),
-        .NUM_WORDS  (4**10), // 4Kwords
-        .BootAddress (culsans_pkg::DRAMBase + 64'h10_0000)
+        .NUM_WORDS  (80*1024*1024), // 4Kwords
+        .BootAddress (culsans_pkg::DRAMBase + 64'h100000)
     ) i_culsans (
         .clk_i (clk),
         .rtc_i (rtc),

@@ -1,0 +1,10 @@
+results
+trace_*
+transcript
+ace_log
+axi_log
+uart*
+vsim.wlf
+main.hex
+.build-litmus-srcs
+work/

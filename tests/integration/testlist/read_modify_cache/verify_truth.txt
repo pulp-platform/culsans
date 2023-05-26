@@ -1,0 +1,8 @@
+:iteration
+6144
+:data
+cache_share
+:expected
+read_snoop_slave
+write
+

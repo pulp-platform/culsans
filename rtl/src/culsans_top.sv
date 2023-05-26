@@ -41,7 +41,7 @@ module culsans_top #(
   logic        test_en;
   logic        ndmreset;
   logic        ndmreset_n;
-  logic        debug_req_core;
+  logic [culsans_pkg::NB_CORES-1:0] debug_req_core;
 
   int          jtag_enable;
   logic        init_done;
@@ -188,7 +188,7 @@ module culsans_top #(
   // pointer to the dev tree, respectively.
   localparam int unsigned DmiDelCycles = 500;
 
-  logic debug_req_core_ungtd;
+  logic [culsans_pkg::NB_CORES-1:0] debug_req_core_ungtd;
   int dmi_del_cnt_d, dmi_del_cnt_q;
 
   assign dmi_del_cnt_d  = (dmi_del_cnt_q) ? dmi_del_cnt_q - 1 : 0;
@@ -226,9 +226,8 @@ module culsans_top #(
 
   // debug module
   dm_top #(
-    .NrHarts              ( 1                           ),
-    .BusWidth             ( AXI_DATA_WIDTH              ),
-    .SelectableHarts      ( 1'b1                        )
+    .NrHarts              ( culsans_pkg::NB_CORES       ),
+    .BusWidth             ( AXI_DATA_WIDTH              )
   ) i_dm_top (
     .clk_i                ( clk_i                       ),
     .rst_ni               ( rst_ni                      ), // PoR
@@ -692,7 +691,7 @@ module culsans_top #(
   `ifdef SPIKE_TANDEM
       .debug_req_i          ( 1'b0                ),
   `else
-      .debug_req_i          ( debug_req_core      ),
+      .debug_req_i          ( debug_req_core[i]      ),
   `endif
       .axi_req_o            ( ace_ariane_req[i]   ),
       .axi_resp_i           ( ace_ariane_resp[i]  )
