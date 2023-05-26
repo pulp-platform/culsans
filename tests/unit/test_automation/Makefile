@@ -79,7 +79,6 @@ endif
 all: $(TEST_REPORT)
 	(! grep -n "Error:" $(TEST_REPORT))
 	(! grep -n "Fatal:" $(TEST_REPORT))
-	@if [ -f $(VERIFICATION_REPORT) ]; then cat $(VERIFICATION_REPORT); fi
 
 clean:
 	rm -rf objs
@@ -95,6 +94,5 @@ clean:
 	rm -rf ace_log/
 	rm -rf axi_log/
 	rm -rf vsim.wlf
-	rm -rf $(VERIFICATION_REPORT)
 
 .PHONY: all gui sw dis sw clean $(TEST_REPORT)

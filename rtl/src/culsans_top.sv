@@ -668,7 +668,7 @@ module culsans_top #(
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
 
-  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_ariane
 
     assign hart_id[i] = i;
 
