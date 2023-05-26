@@ -1,4 +1,5 @@
 #include "read_modify_cache_share.h"
+#include "../../sw/include/nb_cores.h"
 #include <stdint.h>
 
 extern void exit(int);

@@ -1,4 +1,5 @@
 #include "read_cache_share_overlap.h"
+#include "../../sw/include/nb_cores.h"
 #include <stdint.h>
 
 extern void exit(int);
