@@ -547,6 +547,7 @@ module culsans_tb
 
                         // core 1 will have to wait for flush, increase timeout
                         cache_scbd[1].set_cache_msg_timeout(10000);
+                        cache_scbd[0].set_snoop_msg_timeout(10000);
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
@@ -677,6 +678,7 @@ module culsans_tb
 
                         // core 1 will have to wait for flush, increase timeout
                         cache_scbd[1].set_cache_msg_timeout(10000);
+                        cache_scbd[0].set_snoop_msg_timeout(10000);
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
