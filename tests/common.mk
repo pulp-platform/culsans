@@ -2,7 +2,6 @@
 SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
 TEST_REPORT = result.rpt
-VERIFICATION_REPORT = verification_result.txt
 
 RV_TOOL_PREFIX = riscv64-unknown-elf-
 RV_GCC := $(RV_TOOL_PREFIX)gcc

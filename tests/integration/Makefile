@@ -65,8 +65,7 @@ all: sw rtl
 # run a single test
 else
 all: sw rtl
-	if [ -d $(TESTS_DIR)/$(TEST) ]; then echo "$(TEST) doesn't exist"; false; fi
-	make -C $(TESTS_DIR)/$(TEST) all
+	if [ -d $(TESTS_DIR)/$(TEST) ]; then make -C $(TESTS_DIR)/$(TEST) all; else echo "$(TEST) doesn't exist"; false; fi
 endif
 
 # run failed or not-executed tests
@@ -84,4 +83,4 @@ clean_tests:
 
 clean: clean_sw clean_rtl clean_tests
 
-.PHONY: all sw rerun clean clean_sw
+.PHONY: all sw sw_all rerun clean clean_sw

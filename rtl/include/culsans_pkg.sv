@@ -11,7 +11,7 @@
 
 package culsans_pkg;
 
-  localparam NB_CORES = 2; // 2~4 number of cores
+  localparam NB_CORES = 4; // 2~4 number of cores
 
   // M-Mode Hart, S-Mode Hart
   localparam int unsigned NumTargets = 2*NB_CORES;
@@ -51,7 +51,7 @@ package culsans_pkg;
   localparam logic[63:0] SPILength      = 64'h800000;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h1000;
-  localparam logic[63:0] DRAMLength     = 64'h50000000; // 1GByte of DDR (split between two chips on Genesys2)
+  localparam logic[63:0] DRAMLength     = 64'h40000000; // 1GByte of DDR (split between two chips on Genesys2)
 
   localparam logic[63:0] uncachedLength = 64'h60000;
 
@@ -92,7 +92,7 @@ package culsans_pkg;
     // cached region
     NrCachedRegionRules:    1,
     CachedRegionAddrBase:  {DRAMBase + uncachedLength},
-    CachedRegionLength:    {DRAMLength},
+    CachedRegionLength:    {DRAMLength - uncachedLength},
     // shared region
     NrSharedRegionRules:    1,
     SharedRegionAddrBase:  {DRAMBase + sharedOffset},
