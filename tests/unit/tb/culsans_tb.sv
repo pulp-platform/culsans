@@ -750,7 +750,7 @@ module culsans_tb
 
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 1000;
-                        timeout   = 50000;
+                        timeout   = 50000; // long test
 
                         for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
                             fork
