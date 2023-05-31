@@ -38,10 +38,13 @@ module culsans_tb
     dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
     dcache_sram_if          sram_if          [culsans_pkg::NB_CORES-1:0]      (clk);
     dcache_gnt_if           gnt_if           [culsans_pkg::NB_CORES-1:0]      (clk);
+    dcache_mgmt_intf        mgmt_if          [culsans_pkg::NB_CORES-1:0]      (clk);
 
     // verification conponents
     dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
     dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
+    dcache_mgmt_driver      dcache_mgmt_drv  [culsans_pkg::NB_CORES-1:0];
+    dcache_mgmt_monitor     dcache_mgmt_mon  [culsans_pkg::NB_CORES-1:0];
 
     amo_driver              amo_drv          [culsans_pkg::NB_CORES-1:0];
     amo_monitor             amo_mon          [culsans_pkg::NB_CORES-1:0];
@@ -51,6 +54,8 @@ module culsans_tb
 
     mailbox #(amo_req)      amo_req_mbox     [culsans_pkg::NB_CORES-1:0];
     mailbox #(amo_resp)     amo_resp_mbox    [culsans_pkg::NB_CORES-1:0];
+
+    mailbox #(dcache_mgmt_trans) mgmt_mbox   [culsans_pkg::NB_CORES-1:0];
 
     std_cache_scoreboard #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
@@ -286,6 +291,25 @@ module culsans_tb
         assign gnt_if[core_idx].bypass_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.bypass_gnt[2];
         assign gnt_if[core_idx].bypass_gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.bypass_gnt[3];
 
+
+        // assign management IF
+        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_en_csr_nbdcache  = mgmt_if[core_idx].dcache_enable;
+        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ctrl_cache = mgmt_if[core_idx].dcache_flush;
+        assign mgmt_if[core_idx].dcache_flush_ack = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl;
+        assign mgmt_if[core_idx].dcache_miss      = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_miss_cache_perf;
+        assign mgmt_if[core_idx].wbuffer_empty    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_commit_wbuffer_empty;
+    
+        initial begin : DCACHE_MGMT_DRV
+            dcache_mgmt_drv[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_driver",core_idx));
+        end
+        initial begin : DCACHE_MGMT_MON
+            mgmt_mbox[core_idx] = new();
+            dcache_mgmt_mon[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_monitor",core_idx));
+            dcache_mgmt_mon[core_idx].mbox = mgmt_mbox[core_idx];
+            dcache_mgmt_mon[core_idx].monitor();
+        end
+
+
         for (genvar port=0; port<=2; port++) begin : PORT
             // assign dcache request/response to dcache_if
             assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_ex_cache[port] = dcache_if[core_idx][port].req;
@@ -350,6 +374,8 @@ module culsans_tb
             cache_scbd[core_idx].ac_mbx           = ac_mbx           [core_idx];
             cache_scbd[core_idx].cd_mbx           = cd_mbx           [core_idx];
             cache_scbd[core_idx].cr_mbx           = cr_mbx           [core_idx];
+
+            cache_scbd[core_idx].mgmt_mbox        = mgmt_mbox        [core_idx];
 
             cache_scbd[core_idx].run();
         end
@@ -515,6 +541,43 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "flush_collision" : begin
+                        test_header(testname, "Flush the cache while other core is accessing its contents");
+
+                        // core 1 will have to wait for flush, increase timeout
+                        cache_scbd[1].set_cache_msg_timeout(10000);
+
+                        // other snooped cores will have to wait for flush, increase timeout
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
+                            if (core_idx != 1) begin
+                                cache_scbd[core_idx].set_snoop_msg_timeout(10000);
+                            end
+                        end
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // fill up cache
+                        for (int i=0; i<2048; i++) begin
+                            dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
+                        end
+
+                        fork 
+                            begin
+                                // flush
+                                dcache_mgmt_drv[0].flush();
+                            end
+                            begin
+                                for (int i=2047;  i>=0; i--) begin
+                                    dcache_drv[1][1].rd_wait(.addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                end
+                            end
+                        join
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+
+                        `WAIT_CYC(clk, 100)
+                    end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_read_write" : begin
@@ -615,31 +678,44 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                    "amo_snoop_single_collision" : begin
-                        // This test is targeted towards triggering bug PROJ-150 "AMO request skips cache flush if snoop_cache_ctrl is busy" specifically
-                        test_header(testname, "Single AMO request while receiving snoop");
+                    "amo_snoop_collision" : begin
+                        test_header(testname, "AMO request flushing the cache while other core is accessing its contents");
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                        fork
+                        // core 1 will have to wait for flush, increase timeout
+                        cache_scbd[1].set_cache_msg_timeout(10000);
+
+                        // other snooped cores will have to wait for flush, increase timeout
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
+                            if (core_idx != 1) begin
+                                cache_scbd[core_idx].set_snoop_msg_timeout(10000);
+                            end
+                        end
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // fill up cache
+                        for (int i=0; i<2048; i++) begin
+                            dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
+                        end
+
+                        fork 
                             begin
-                                // make sure there is something dirty in the cache of core 0
-                                dcache_drv[0][2].wr(.addr(base_addr));
+                                // AMO request, should cause flush and writeback of data in cache
+                                amo_drv[0].rd(.addr(addr));
                             end
                             begin
-                                // read cache in core 1 to trigger a snoop transaction towards other cores
-                                dcache_drv[1][0].rd(.addr(base_addr+1));
+                                for (int i=2047;  i>=0; i--) begin
+                                    dcache_drv[1][1].rd_wait(.addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                end
                             end
                         join
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
 
-
-                    //******************************************************************************
-                    //*** NOTE: this test currently fails at it hits bug described in PROJ-150
-                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached" : begin
                         test_header(testname, "Writes and reads to random cacheable addresses ");
@@ -657,7 +733,7 @@ module culsans_tb
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
                                             port   = $urandom_range(2);
-                                            offset = $urandom_range(1024);
+                                            offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
                                             if (port == 2) begin
                                                 dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                             end else begin
@@ -681,8 +757,46 @@ module culsans_tb
                     end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "random_cached_flush" : begin
+                        test_header(testname, "Writes and reads to random cacheable addresses mixed with occasional flush");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 1000;
+                        timeout   = 50000; // long test
+
+                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                            fork
+                                automatic int my_core_idx = core_idx;
+                                automatic int port;
+                                automatic int offset;
+
+                                begin
+                                    for (int i=0; i<rep_cnt; i++) begin
+                                        if ($urandom_range(99) < 99) begin
+                                            port   = $urandom_range(2);
+                                            offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            if (port == 2) begin
+                                                dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            end else begin
+                                                dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                            end
+                                        end else begin
+                                            dcache_mgmt_drv[my_core_idx].flush();
+                                        end
+                                    end
+                                end
+
+                            join_none
+                        end
+                        wait fork;
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_shared" : begin
-                        test_header(testname, "Writes and reads to random shareable addresses");
+                        test_header(testname, "Writes and reads to random shareable , non-cacheable addresses");
 
                         base_addr = ArianeCfg.SharedRegionAddrBase[0];
                         rep_cnt   = 1000;
@@ -696,7 +810,8 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
+                                        // don't enter the shared & cached region
+                                        offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]);
                                         if (port == 2) begin
                                             dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                         end else begin
@@ -716,7 +831,7 @@ module culsans_tb
                     "random_non-shared" : begin
                         test_header(testname, "Writes and reads to random non-shareable addresses");
 
-                        base_addr = 0;
+                        base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
                         rep_cnt   = 1500;
 
                         for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
@@ -728,7 +843,7 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port   = $urandom_range(2);
-                                        offset = $urandom_range(1024);
+                                        offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
                                         if (port == 2) begin
                                             dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                         end else begin
@@ -789,9 +904,6 @@ module culsans_tb
                     end
 
 
-                    //******************************************************************************
-                    // NOTE: this test currently fails at it hits bug described in PROJ-149
-                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "random_cached_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  non-shareable, non-cacheable");
@@ -814,7 +926,8 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
@@ -855,7 +968,8 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
@@ -899,7 +1013,8 @@ module culsans_tb
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
                                             1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = 0;
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+
                                         endcase
 
                                         if (port == 2) begin
