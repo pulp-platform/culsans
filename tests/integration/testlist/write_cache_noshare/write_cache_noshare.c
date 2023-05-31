@@ -1,11 +1,12 @@
 #include "write_cache_noshare.h"
+#include "../../sw/include/nb_cores.h"
 #include <stdint.h>
 
 extern void exit(int);
 
 // cachelines are 128bit long
 #define uint128_t __uint128_t
-uint128_t data[4] __attribute__((section(".cache_noshare_region")));
+uint128_t data[NB_CORES] __attribute__((section(".cache_noshare_region")));
 
 int write_cache_noshare(int cid, int nc)
 {

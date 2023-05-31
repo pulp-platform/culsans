@@ -1,4 +1,5 @@
 #include "writeback_readshared_flush.h"
+#include "../../sw/include/nb_cores.h"
 #include <stdint.h>
 
 extern void exit(int);
