@@ -396,6 +396,7 @@ module culsans_tb
     int timeout = 100000; // default
     int test_id = -1;
     int rep_cnt;
+    // select one core randomly for tests that need one core that behaves differently
     int cid = $urandom_range(culsans_pkg::NB_CORES-1);
 
     initial begin : TESTS
@@ -638,6 +639,13 @@ module culsans_tb
                         rep_cnt   = 1000;
 
                         for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            // other cores may have to wait for AMO
+                            if (c != cid) begin
+                                cache_scbd[c].set_cache_msg_timeout(10000);
+                            end
+                        end
+
+                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -663,6 +671,8 @@ module culsans_tb
                             join_none
                         end
                         wait fork;
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -780,7 +790,7 @@ module culsans_tb
                                         port   = $urandom_range(2);
                                         case (testname)
                                             "random_cached"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
-                                            "random_shared"     : offset = $urandom_range(ArianeCfg.SharedRegionLength[0]);
+                                            "random_shared"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]); // don't enter the cached region
                                             "random_non-shared" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
                                         endcase
                                         if (port == 2) begin
@@ -821,6 +831,11 @@ module culsans_tb
                         rep_cnt   = 1000;
 
                         for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            // any core may have to wait for AMO/flush, increase timeout
+                            cache_scbd[c].set_cache_msg_timeout(10000);
+                        end
+
+                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -832,7 +847,7 @@ module culsans_tb
                                             port   = $urandom_range(2);
                                             case (testname)
                                                 "random_cached_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
-                                                "random_shared_amo"     : offset = $urandom_range(ArianeCfg.SharedRegionLength[0]);
+                                                "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]); // don't enter the cached region
                                                 "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
                                             endcase
                                             if (port == 2) begin
@@ -853,6 +868,8 @@ module culsans_tb
                             join_none
                         end
                         wait fork;
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
