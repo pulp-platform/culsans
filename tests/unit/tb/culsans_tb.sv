@@ -401,6 +401,7 @@ module culsans_tb
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
+        logic [63:0] data, base_data;
 
         automatic string testname="";
         if (!$value$plusargs("TESTNAME=%s", testname)) begin
@@ -607,6 +608,11 @@ module culsans_tb
                         test_header(testname, "AMO reads and writes to single address");
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
+                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            cache_scbd[c].set_amo_msg_timeout(10000);
+                        end
+
+
                         // simultaneous writes to same address
                         for (int i=0; i<10; i++) begin
                             for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
@@ -614,19 +620,21 @@ module culsans_tb
                                     automatic int cc = c;
                                     begin
                                         if (cc == cid) begin
-                                            amo_drv[cc].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
+                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
                                             `WAIT_CYC(clk, 5)
-                                            amo_drv[cc].rd(.addr(addr));
+                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
                                         end else begin
-                                            amo_drv[cc].wr(.addr(addr), .data(64'hBAADF00D0000 + i + cc));
+                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
                                             `WAIT_CYC(clk, (i+cc))
-                                            amo_drv[cc].rd(.addr(addr));
+                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
                                         end
                                     end
                                 join_none
                             end
                             wait fork;
                         end
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -653,9 +661,9 @@ module culsans_tb
                                 begin
                                     if (cc == cid) begin
                                         `WAIT_CYC(clk, rep_cnt*10)
-                                        amo_drv[cc].wr(.addr(base_addr), .data(64'hBEEFCAFE0000));
+                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_SC));
                                         `WAIT_CYC(clk, 5)
-                                        amo_drv[cc].rd(.addr(base_addr));
+                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_LR));
                                     end else begin
                                         for (int i=0; i<rep_cnt; i++) begin
                                             port   = $urandom_range(2);
@@ -689,8 +697,8 @@ module culsans_tb
                         dcache_drv[1][2].wr(.addr(base_addr + 8), .data(64'hBAADF00D_11111111));
 
                         // amo read
-                        amo_drv[0].rd(.addr(base_addr),     .check_result(1), .exp_result(64'hCAFEBABE_00000000));
-                        amo_drv[0].rd(.addr(base_addr + 8), .check_result(1), .exp_result(64'hBAADF00D_11111111));
+                        amo_drv[0].req(.addr(base_addr),     .op(AMO_LR), .check_result(1), .exp_result(64'hCAFEBABE_00000000));
+                        amo_drv[0].req(.addr(base_addr + 8), .op(AMO_LR), .check_result(1), .exp_result(64'hBAADF00D_11111111));
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -708,7 +716,7 @@ module culsans_tb
                                 // allow snoop from core 1 to propagate
                                 `WAIT_CYC(clk, 15)
                                 // AMO request, should cause flush and writeback of data in cache
-                                amo_drv[0].rd(.addr(addr));
+                                amo_drv[0].req(.addr(addr), .rand_op(1));
                                 // another request outside cacheable regions will trigger the AW beat and detect the mismatch
                                 dcache_drv[0][2].wr(.addr(ArianeCfg.SharedRegionAddrBase[0]));
                             end
@@ -720,6 +728,45 @@ module culsans_tb
 
                         `WAIT_CYC(clk, 100)
                     end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_upper_cache_line" : begin
+                        logic [63:0] data8, data16;
+                        // This test is targeted towards triggering a bug in PROJ-151 that caused writeback of "next" cache line
+                        test_header(testname, "Single AMO request towards upper part of cache line");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        // write known value to address 16 in core 0
+                        data16 = 64'h00000000_CAFEBABE;
+                        dcache_drv[0][2].wr(.addr(addr + 16), .data(data16));
+
+                        `WAIT_CYC(clk, 100)
+
+                        // write something to address 8 in core 1
+                        data8 = 64'h1111BAAD_F00D0000;
+                        dcache_drv[1][2].wr(.addr(addr + 8), .data(data8));
+
+                        `WAIT_CYC(clk, 100)
+
+                        // AMO request to increment data8, should cause flush and writeback of data16 in cache
+                        amo_drv[0].req(.addr(addr + 8), .op(AMO_ADD), .data(17), .check_result(1), .exp_result(data8));
+                        data8 = data8 + 17;
+
+                        `WAIT_CYC(clk, 100)
+
+                        // check expected values
+                        dcache_drv[0][1].rd_wait(.addr(addr + 16), .check_result(1), .exp_result(data16));
+
+                        `WAIT_CYC(clk, 100)
+
+                        dcache_drv[0][1].rd_wait(.addr(addr + 8),  .check_result(1), .exp_result(data8));
+
+                        `WAIT_CYC(clk, 100)
+                    end
+
+
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_snoop_collision" : begin
@@ -745,7 +792,7 @@ module culsans_tb
                         fork 
                             begin
                                 // AMO request, should cause flush and writeback of data in cache
-                                amo_drv[0].rd(.addr(addr));
+                                amo_drv[0].req(.addr(addr), .rand_op(1));
                             end
                             begin
                                 for (int i=2047;  i>=0; i--) begin
@@ -856,11 +903,7 @@ module culsans_tb
                                                 dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
                                             end
                                         end else begin
-                                            if ($urandom_range(1) > 0) begin
-                                                amo_drv[cc].wr(.addr(base_addr+offset), .data(64'hBEEFCAFE00000000 + offset));
-                                            end else begin
-                                                amo_drv[cc].rd(.addr(base_addr+offset));
-                                            end
+                                            amo_drv[cc].req(.addr(base_addr+offset), .rand_op(1),. rand_data(1));
                                         end
                                     end
                                 end
