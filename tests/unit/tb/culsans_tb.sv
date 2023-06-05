@@ -821,7 +821,7 @@ module culsans_tb
                             end
                             "random_non-shared" : begin
                                 test_header(testname, "Writes and reads to random non-shareable addresses, excluding AMO requests");
-                                base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                                base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
                             end
                         endcase
 
@@ -871,7 +871,7 @@ module culsans_tb
                             end
                             "random_non-shared_amo" : begin
                                 test_header(testname, "Writes and reads to random non-shareable addresses, including AMO requests");
-                                base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                                base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
                             end
                         endcase
 
@@ -895,7 +895,7 @@ module culsans_tb
                                             case (testname)
                                                 "random_cached_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
                                                 "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]); // don't enter the cached region
-                                                "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
+                                                "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[2]);
                                             endcase
                                             if (port == 2) begin
                                                 dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
@@ -1021,7 +1021,7 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
 
                                         endcase
 
@@ -1063,7 +1063,7 @@ module culsans_tb
 
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
 
                                         endcase
 
@@ -1105,7 +1105,7 @@ module culsans_tb
                                         case (addr_region)
                                             0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
                                             1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[0];
+                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
 
                                         endcase
 
