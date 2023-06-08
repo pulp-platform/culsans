@@ -821,7 +821,7 @@ module culsans_tb
                             end
                             "random_non-shared" : begin
                                 test_header(testname, "Writes and reads to random non-shareable addresses, excluding AMO requests");
-                                base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
+                                base_addr = culsans_pkg::DRAMBase;
                             end
                         endcase
 
@@ -834,11 +834,13 @@ module culsans_tb
 
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
+                                        // add none or a few cycles between requests
+                                        `WAIT_CYC(clk, $urandom_range(4,0));
                                         port   = $urandom_range(2);
                                         case (testname)
                                             "random_cached"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
-                                            "random_shared"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]); // don't enter the cached region
-                                            "random_non-shared" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[0]);
+                                            "random_shared"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                            "random_non-shared" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                         endcase
                                         if (port == 2) begin
                                             dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
@@ -871,7 +873,7 @@ module culsans_tb
                             end
                             "random_non-shared_amo" : begin
                                 test_header(testname, "Writes and reads to random non-shareable addresses, including AMO requests");
-                                base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
+                                base_addr = culsans_pkg::DRAMBase;
                             end
                         endcase
 
@@ -890,20 +892,24 @@ module culsans_tb
 
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
-                                        if ($urandom_range(99) < 99) begin
+                                        // add none or a few cycles between requests
+                                        `WAIT_CYC(clk, $urandom_range(4,0));
+                                        if ($urandom_range(100) > 99) begin
+                                            // possibly an AMO
+                                            amo_drv[cc].req(.addr(base_addr+offset), .rand_op(1),. rand_data(1));
+                                        end else begin
                                             port   = $urandom_range(2);
                                             case (testname)
                                                 "random_cached_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
-                                                "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - ArianeCfg.SharedRegionAddrBase[0]); // don't enter the cached region
-                                                "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.ExecuteRegionLength[2]);
+                                                "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                                "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                             endcase
+
                                             if (port == 2) begin
                                                 dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                             end else begin
                                                 dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
                                             end
-                                        end else begin
-                                            amo_drv[cc].req(.addr(base_addr+offset), .rand_op(1),. rand_data(1));
                                         end
                                     end
                                 end
