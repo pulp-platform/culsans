@@ -14,7 +14,6 @@ FAIL_LIST += $(TESTS_DIR)/random_all/                    # triggers Jira issue P
 FAIL_LIST += $(TESTS_DIR)/random_cached_shared/          # triggers Jira issue PROJ-149
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/  # triggers Jira issue PROJ-147
 FAIL_LIST += $(TESTS_DIR)/snoop_non-cached_collision/    # triggers Jira issue PROJ-149
-FAIL_LIST += $(TESTS_DIR)/flush_collision/               # triggers Jira issue PROJ-161
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
