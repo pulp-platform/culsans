@@ -887,12 +887,14 @@ module culsans_tb
                     "random_cached_flush" : begin
                         test_header(testname, "Writes and reads to random cacheable addresses mixed with occasional flush");
 
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+
                         rep_cnt   = 1000;
                         timeout   = 50000; // long test
 
-                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
                             fork
-                                automatic int my_core_idx = core_idx;
+                                automatic int cc = c;
                                 automatic int port;
                                 automatic int offset;
 
@@ -902,12 +904,12 @@ module culsans_tb
                                             port   = $urandom_range(2);
                                             offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
                                             if (port == 2) begin
-                                                dcache_drv[my_core_idx][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                             end else begin
-                                                dcache_drv[my_core_idx][port].rd_wait(.addr(base_addr + offset));
+                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
                                             end
                                         end else begin
-                                            dcache_mgmt_drv[my_core_idx].flush();
+                                            dcache_mgmt_drv[cc].flush();
                                         end
                                     end
                                 end
