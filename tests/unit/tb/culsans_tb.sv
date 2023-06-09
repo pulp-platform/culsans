@@ -22,59 +22,60 @@ module culsans_tb
     localparam int unsigned AxiUserWidth     = culsans_pkg::UserWidth;
     localparam ariane_cfg_t ArianeCfg        = culsans_pkg::ArianeSocCfg;
 
-    localparam              CLK_PERIOD       = 10ns;
+    localparam time         CLK_PERIOD       = 10ns;
     localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
-
+    localparam int unsigned DCACHE_PORTS     = 3;
+    localparam int unsigned NB_CORES         = culsans_pkg::NB_CORES;
 
     // TB signals
-    dcache_req_i_t [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_i;
-    dcache_req_o_t [culsans_pkg::NB_CORES-1:0][2:0] dcache_req_ports_o;
-    logic                                           clk;
-    logic                                           rst_n;
-    logic                                           rtc;
+    dcache_req_i_t [NB_CORES][DCACHE_PORTS] dcache_req_ports_i;
+    dcache_req_o_t [NB_CORES][DCACHE_PORTS] dcache_req_ports_o;
+    logic                                   clk;
+    logic                                   rst_n;
+    logic                                   rtc;
 
     // TB interfaces
-    amo_intf                amo_if           [culsans_pkg::NB_CORES-1:0]      (clk);
-    dcache_intf             dcache_if        [culsans_pkg::NB_CORES-1:0][2:0] (clk);
-    dcache_sram_if          sram_if          [culsans_pkg::NB_CORES-1:0]      (clk);
-    dcache_gnt_if           gnt_if           [culsans_pkg::NB_CORES-1:0]      (clk);
-    dcache_mgmt_intf        mgmt_if          [culsans_pkg::NB_CORES-1:0]      (clk);
+    amo_intf                amo_if           [NB_CORES]               (clk);
+    dcache_intf             dcache_if        [NB_CORES][DCACHE_PORTS] (clk);
+    dcache_sram_if          sram_if          [NB_CORES]               (clk);
+    dcache_gnt_if           gnt_if           [NB_CORES]               (clk);
+    dcache_mgmt_intf        mgmt_if          [NB_CORES]               (clk);
 
     // verification conponents
-    dcache_driver           dcache_drv       [culsans_pkg::NB_CORES-1:0][2:0];
-    dcache_monitor          dcache_mon       [culsans_pkg::NB_CORES-1:0][2:0];
-    dcache_mgmt_driver      dcache_mgmt_drv  [culsans_pkg::NB_CORES-1:0];
-    dcache_mgmt_monitor     dcache_mgmt_mon  [culsans_pkg::NB_CORES-1:0];
+    dcache_driver           dcache_drv       [NB_CORES][DCACHE_PORTS];
+    dcache_monitor          dcache_mon       [NB_CORES][DCACHE_PORTS];
+    dcache_mgmt_driver      dcache_mgmt_drv  [NB_CORES];
+    dcache_mgmt_monitor     dcache_mgmt_mon  [NB_CORES];
 
-    amo_driver              amo_drv          [culsans_pkg::NB_CORES-1:0];
-    amo_monitor             amo_mon          [culsans_pkg::NB_CORES-1:0];
+    amo_driver              amo_drv          [NB_CORES];
+    amo_monitor             amo_mon          [NB_CORES];
 
-    mailbox #(dcache_req)   dcache_req_mbox  [culsans_pkg::NB_CORES-1:0][2:0];
-    mailbox #(dcache_resp)  dcache_resp_mbox [culsans_pkg::NB_CORES-1:0][2:0];
+    mailbox #(dcache_req)   dcache_req_mbox  [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_resp)  dcache_resp_mbox [NB_CORES][DCACHE_PORTS];
 
-    mailbox #(amo_req)      amo_req_mbox     [culsans_pkg::NB_CORES-1:0];
-    mailbox #(amo_resp)     amo_resp_mbox    [culsans_pkg::NB_CORES-1:0];
+    mailbox #(amo_req)      amo_req_mbox     [NB_CORES];
+    mailbox #(amo_resp)     amo_resp_mbox    [NB_CORES];
 
-    mailbox #(dcache_mgmt_trans) mgmt_mbox   [culsans_pkg::NB_CORES-1:0];
+    mailbox #(dcache_mgmt_trans) mgmt_mbox   [NB_CORES];
 
     std_cache_scoreboard #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
         .AXI_DATA_WIDTH ( AxiDataWidth ),
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_USER_WIDTH ( AxiUserWidth )
-    ) cache_scbd [culsans_pkg::NB_CORES-1:0];
+    ) cache_scbd [NB_CORES];
 
     // ACE mailboxes
-    mailbox aw_mbx [culsans_pkg::NB_CORES-1:0];
-    mailbox w_mbx  [culsans_pkg::NB_CORES-1:0];
-    mailbox b_mbx  [culsans_pkg::NB_CORES-1:0];
-    mailbox ar_mbx [culsans_pkg::NB_CORES-1:0];
-    mailbox r_mbx  [culsans_pkg::NB_CORES-1:0];
+    mailbox aw_mbx [NB_CORES];
+    mailbox w_mbx  [NB_CORES];
+    mailbox b_mbx  [NB_CORES];
+    mailbox ar_mbx [NB_CORES];
+    mailbox r_mbx  [NB_CORES];
 
     // Snoop mailboxes
-    mailbox ac_mbx [culsans_pkg::NB_CORES-1:0];
-    mailbox cd_mbx [culsans_pkg::NB_CORES-1:0];
-    mailbox cr_mbx [culsans_pkg::NB_CORES-1:0];
+    mailbox ac_mbx [NB_CORES];
+    mailbox cd_mbx [NB_CORES];
+    mailbox cr_mbx [NB_CORES];
 
     //--------------------------------------------------------------------------
     // Clock & reset generation
@@ -143,32 +144,32 @@ module culsans_tb
         .AXI_DATA_WIDTH ( AxiDataWidth ),
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_USER_WIDTH ( AxiUserWidth )
-    ) ace_bus [culsans_pkg::NB_CORES-1:0] ();
+    ) ace_bus [NB_CORES-1:0] ();
 
     ACE_BUS_DV #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
         .AXI_DATA_WIDTH ( AxiDataWidth ),
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_USER_WIDTH ( AxiUserWidth )
-    ) ace_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
+    ) ace_bus_dv [NB_CORES-1:0] (clk);
 
 
     SNOOP_BUS #(
         .SNOOP_ADDR_WIDTH ( AxiAddrWidth ),
         .SNOOP_DATA_WIDTH ( AxiDataWidth )
-    ) snoop_bus [culsans_pkg::NB_CORES-1:0] ();
+    ) snoop_bus [NB_CORES-1:0] ();
 
     SNOOP_BUS_DV #(
         .SNOOP_ADDR_WIDTH ( AxiAddrWidth ),
         .SNOOP_DATA_WIDTH ( AxiDataWidth )
-    ) snoop_bus_dv [culsans_pkg::NB_CORES-1:0] (clk);
+    ) snoop_bus_dv [NB_CORES-1:0] (clk);
 
 
     // connect internal signals to interfaces, connect interfaces to dv interfaces
     `AXI_ASSIGN_MONITOR (axi_bus[0], i_culsans.to_xbar[0])
     `AXI_ASSIGN_MONITOR (axi_bus_dv[0], axi_bus[0])
 
-    for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin
+    for (genvar core_idx=0; core_idx<NB_CORES; core_idx++) begin
         `ACE_ASSIGN_FROM_REQ    (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_req_o)
         `ACE_ASSIGN_FROM_RESP   (ace_bus   [core_idx], i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.axi_resp_i)
         `ACE_ASSIGN_MONITOR   (ace_bus_dv   [core_idx], ace_bus   [core_idx])
@@ -184,12 +185,12 @@ module culsans_tb
         .AW ( AxiAddrWidth ),
         .DW ( AxiDataWidth ),
         .UW ( AxiUserWidth )
-    ) ace_mon [culsans_pkg::NB_CORES-1:0];
+    ) ace_mon [NB_CORES-1:0];
 
     snoop_monitor #(
         .AW ( AxiAddrWidth ),
         .DW ( AxiDataWidth )
-    ) snoop_mon [culsans_pkg::NB_CORES-1:0];
+    ) snoop_mon [NB_CORES-1:0];
 
     // CCU monitor & scoreboard
     ace_ccu_monitor #(
@@ -198,7 +199,7 @@ module culsans_tb
         .AxiIdWidthMasters ( AxiIdWidth                 ),
         .AxiIdWidthSlaves  ( culsans_pkg::IdWidthToXbar ),
         .AxiUserWidth      ( AxiUserWidth               ),
-        .NoMasters         ( culsans_pkg::NB_CORES      ),
+        .NoMasters         ( NB_CORES      ),
         .NoSlaves          ( 1                          ),
         .TimeTest          ( 0                          )
     ) ccu_mon;
@@ -228,7 +229,7 @@ module culsans_tb
         end
     end
 
-    for (genvar core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
+    for (genvar core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
 
         initial begin : ACE_MON
             aw_mbx [core_idx] = new();
@@ -397,7 +398,7 @@ module culsans_tb
     int test_id = -1;
     int rep_cnt;
     // select one core randomly for tests that need one core that behaves differently
-    int cid = $urandom_range(culsans_pkg::NB_CORES-1);
+    int cid = $urandom_range(NB_CORES-1);
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
@@ -445,14 +446,14 @@ module culsans_tb
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         // make sure data 0 is in cache
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             dcache_drv[c][0].rd(.addr(addr));
                             `WAIT_CYC(clk, 100)
                         end
 
                         // simultaneous writes to same address
                         for (int i=0; i<100; i++) begin
-                            for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
@@ -477,7 +478,7 @@ module culsans_tb
 
                         // simultaneous writes to same set
                         for (int i=0; i<100; i++) begin
-                            for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
@@ -508,14 +509,14 @@ module culsans_tb
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         // make sure data 0 is in cache
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             dcache_drv[c][0].rd(.addr(addr));
                             `WAIT_CYC(clk, 100)
                         end
 
                         // simultaneous writes and read to same address
                         for (int i=0; i<100; i++) begin
-                            for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
@@ -536,7 +537,7 @@ module culsans_tb
                         test_header(testname, "Part 1 : Write + read conflicts to addresses in the same cache set");
 
                         // read x 8 - fill cache set 0 in CPU 0
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             for (int i=0; i<8; i++) begin
                                 dcache_drv[c][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
                             end
@@ -544,7 +545,7 @@ module culsans_tb
 
                         // simultaneous writes and reads to same set
                         for (int i=0; i<500; i++) begin
-                            for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
@@ -578,7 +579,7 @@ module culsans_tb
                         cache_scbd[1].set_cache_msg_timeout(10000);
 
                         // other snooped cores will have to wait for flush, increase timeout
-                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
+                        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             if (core_idx != 1) begin
                                 cache_scbd[core_idx].set_snoop_msg_timeout(10000);
                             end
@@ -614,14 +615,14 @@ module culsans_tb
                         test_header(testname, "AMO reads and writes to single address");
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             cache_scbd[c].set_amo_msg_timeout(10000);
                         end
 
 
                         // simultaneous writes to same address
                         for (int i=0; i<10; i++) begin
-                            for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                            for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
@@ -653,14 +654,14 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             // other cores may have to wait for AMO
                             if (c != cid) begin
                                 cache_scbd[c].set_cache_msg_timeout(10000);
                             end
                         end
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -784,7 +785,7 @@ module culsans_tb
                         cache_scbd[1].set_cache_msg_timeout(10000);
 
                         // other snooped cores will have to wait for flush, increase timeout
-                        for (int core_idx=0; core_idx<culsans_pkg::NB_CORES; core_idx++) begin : CORE
+                        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             if (core_idx != 1) begin
                                 cache_scbd[core_idx].set_snoop_msg_timeout(10000);
                             end
@@ -832,7 +833,7 @@ module culsans_tb
                         endcase
 
                         rep_cnt   = 1000;
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -885,12 +886,12 @@ module culsans_tb
 
                         rep_cnt   = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             // any core may have to wait for AMO/flush, increase timeout
                             cache_scbd[c].set_cache_msg_timeout(10000);
                         end
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -939,7 +940,7 @@ module culsans_tb
                         rep_cnt   = 1000;
                         timeout   = 50000; // long test
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -950,6 +951,7 @@ module culsans_tb
                                         if ($urandom_range(99) < 99) begin
                                             port   = $urandom_range(2);
                                             offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+
                                             if (port == 2) begin
                                                 dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
                                             end else begin
@@ -973,10 +975,9 @@ module culsans_tb
                     "random_cached_shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  shareable, non-cacheable");
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -986,12 +987,17 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port        = $urandom_range(2);
-                                        offset      = $urandom_range(1024);
                                         addr_region = $urandom_range(1);
 
                                         case (addr_region)
-                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                            0 : begin
+                                                base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            end
+                                            default : begin 
+                                                base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                            end
                                         endcase
 
                                         if (port == 2) begin
@@ -1014,10 +1020,9 @@ module culsans_tb
                     "random_cached_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  non-shareable, non-cacheable");
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                        rep_cnt   = 1000;
+                        rep_cnt = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -1027,13 +1032,17 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port        = $urandom_range(2);
-                                        offset      = $urandom_range(1024);
                                         addr_region = $urandom_range(1);
 
                                         case (addr_region)
-                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
-
+                                            0 : begin
+                                                base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            end
+                                            default : begin 
+                                                base_addr = culsans_pkg::DRAMBase;
+                                                offset    = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                            end
                                         endcase
 
                                         if (port == 2) begin
@@ -1056,10 +1065,9 @@ module culsans_tb
                     "random_shared_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  shareable, non-cacheable\n  non-shareable, non-cacheable");
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                        rep_cnt   = 1000;
+                        rep_cnt = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -1069,13 +1077,17 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port        = $urandom_range(2);
-                                        offset      = $urandom_range(1024);
                                         addr_region = $urandom_range(1);
 
                                         case (addr_region)
-                                            0       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
-
+                                            0 : begin
+                                                base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                            end
+                                            default : begin
+                                                base_addr = culsans_pkg::DRAMBase;
+                                                offset    = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                            end
                                         endcase
 
                                         if (port == 2) begin
@@ -1098,10 +1110,9 @@ module culsans_tb
                     "random_all" : begin
                         test_header(testname, "Writes and reads to random addresses in all address areas");
 
-                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 1000;
 
-                        for (int c=0; c < culsans_pkg::NB_CORES; c++) begin
+                        for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
                                 automatic int port;
@@ -1111,14 +1122,21 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         port        = $urandom_range(2);
-                                        offset      = $urandom_range(1024);
                                         addr_region = $urandom_range(2);
 
                                         case (addr_region)
-                                            0       : base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                            1       : base_addr = ArianeCfg.SharedRegionAddrBase[0];
-                                            default : base_addr = ArianeCfg.ExecuteRegionAddrBase[2];
-
+                                            0 : begin
+                                                base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            end
+                                            1 : begin 
+                                                base_addr = ArianeCfg.SharedRegionAddrBase[0];
+                                                offset    = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                            end
+                                            default : begin 
+                                                base_addr = culsans_pkg::DRAMBase;
+                                                offset    = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                            end
                                         endcase
 
                                         if (port == 2) begin
