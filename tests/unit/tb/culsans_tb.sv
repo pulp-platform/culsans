@@ -409,6 +409,15 @@ module culsans_tb
             $error("No TESTNAME plusarg given");
         end
 
+        // The tests assume that the address regions are arranged in increaisng address order:
+        // - non-cached, non-shared
+        // - shared, non-cached
+        // - cached, shared
+        // - cached, non-shared
+        a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] > culsans_pkg::DRAMBase) else
+            $error("Shared region must be after non-cached, non-shared region");
+        a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] > ArianeCfg.SharedRegionAddrBase[0]) else
+            $error("Cached, shared region must be after non-cached, shared region");
 
         fork
 
