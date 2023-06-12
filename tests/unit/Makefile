@@ -30,6 +30,11 @@ help:
 
 TEST ?= all
 
+# select a test for sanity
+sanity : TEST := read_miss
+sanity : rtl
+	make -C testlist/${TEST} all
+
 # run all the tests
 ifeq ($(TEST), all)
 all: rtl

@@ -24,6 +24,24 @@ perf:
 fpga:
 	echo make -C fpga $(TEST_SELECT)
 
+sanity:
+	make -C unit clean sanity
+	@# these requires additional license, wait for it
+	@# make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace_direct
+	@# make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace
+	@make -C integration clean all TEST=read_cache_share NB_CORES=4
+	@make -C ../modules/cva6/corev_apu/axi/ clean sim-ace_ccu_top_sanity.log
+	@printf "\nsanity check \033[32mPASSED\033[0m\n\n"
+
+regr:
+	make -C unit clean pass
+	@# these requires additional license, wait for it
+	@# make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace_direct
+	@# make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace
+	@make -C integration clean all NB_CORES=4
+	@make -C ../modules/cva6/corev_apu/axi/ clean sim-ace_ccu_top.log
+	@printf "\nregression test \033[32mPASSED\033[0m\n\n"
+
 # it only makes sense to call the target "all" if TESTS is set to "all"
 ifeq ($(TEST), all)
 all: unit integr perf fpga
