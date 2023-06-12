@@ -485,8 +485,11 @@ if __name__ == "__main__":
    file2.close()
    file.close()
    print(Style.RESET_ALL)
-   sys.exit(test_result)
+   if test_result == False:
+      sys.exit(1)
+   else:
+      sys.exit(0)
 
 
-    
+
 
