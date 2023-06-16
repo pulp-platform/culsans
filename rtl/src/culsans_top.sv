@@ -463,7 +463,7 @@ module culsans_top #(
 `ifdef VERILATOR
     .SIM_INIT   ( "none"         ),
 `else
-    .SIM_INIT   ( "zeros"        ),
+    .SIM_INIT   ( "random"        ),
 `endif
 `ifdef DROMAJO
     .DROMAJO_RAM (1),
