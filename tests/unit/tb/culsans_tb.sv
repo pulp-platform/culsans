@@ -886,7 +886,7 @@ module culsans_tb
                                         `WAIT_CYC(clk, $urandom_range(4,0));
                                         port   = $urandom_range(2);
                                         case (testname)
-                                            "random_cached"     : offset = $urandom_range(CachedSharedRegionLength);                      // don't enter the non-shared region
+                                            "random_cached"     : offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             "random_shared"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                             "random_non-shared" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                         endcase
@@ -949,7 +949,7 @@ module culsans_tb
                                         end else begin
                                             port   = $urandom_range(2);
                                             case (testname)
-                                                "random_cached_amo"     : offset = $urandom_range(CachedSharedRegionLength);                      // don't enter the non-shared region
+                                                "random_cached_amo"     : offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                                 "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                                 "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                             endcase
@@ -997,8 +997,8 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
-                                            port   = $urandom_range(2);
-                                            offset = $urandom_range(CachedSharedRegionLength); // don't enter the non-shared region
+                                            port   = $urandom_range(2);                                            
+                                            offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
 
                                             if (port == 2) begin
                                                 dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
@@ -1042,7 +1042,7 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(CachedSharedRegionLength); // don't enter the non-shared region
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
                                             default : begin
                                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
@@ -1087,7 +1087,7 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(CachedSharedRegionLength); // don't enter the non-shared region
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
                                             default : begin
                                                 base_addr = culsans_pkg::DRAMBase;
@@ -1177,7 +1177,7 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(CachedSharedRegionLength); // don't enter the non-shared region
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
                                             1 : begin
                                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
