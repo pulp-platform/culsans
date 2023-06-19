@@ -411,7 +411,7 @@ module culsans_tb
 
 
     initial begin
-        dcache_chk = new(sram_if, dc_sram_if, "dcache_checker");
+        dcache_chk = new(sram_if, dc_sram_if, ArianeCfg, "dcache_checker");
         dcache_chk.monitor();
     end
 
