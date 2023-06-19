@@ -42,6 +42,7 @@ TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
+VSIM_FLAGS += -suppress 2879       # allow calling tasks in final procedure
 VSIM_FLAGS += -classdebug
 VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
