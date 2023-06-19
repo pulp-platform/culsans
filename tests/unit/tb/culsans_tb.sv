@@ -26,6 +26,11 @@ module culsans_tb
     localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
     localparam int unsigned DCACHE_PORTS     = 3;
     localparam int unsigned NB_CORES         = culsans_pkg::NB_CORES;
+    localparam int unsigned NUM_WORDS        = 4**10;
+
+    // The length of cached, shared region is derived from other constants
+    localparam int CachedSharedRegionLength =  ArianeCfg.SharedRegionAddrBase[0] + ArianeCfg.SharedRegionLength[0] - ArianeCfg.CachedRegionAddrBase[0];
+    initial assert (CachedSharedRegionLength > 0) else $error ("Got negative CachedSharedRegionLength");
 
     // TB signals
     dcache_req_i_t [NB_CORES][DCACHE_PORTS] dcache_req_ports_i;
@@ -37,7 +42,7 @@ module culsans_tb
     // TB interfaces
     amo_intf                amo_if           [NB_CORES]               (clk);
     dcache_intf             dcache_if        [NB_CORES][DCACHE_PORTS] (clk);
-    dcache_sram_if          sram_if          [NB_CORES]               (clk);
+    dcache_sram_if          dc_sram_if       [NB_CORES]               (clk);
     dcache_gnt_if           gnt_if           [NB_CORES]               (clk);
     dcache_mgmt_intf        mgmt_if          [NB_CORES]               (clk);
 
@@ -58,12 +63,24 @@ module culsans_tb
 
     mailbox #(dcache_mgmt_trans) mgmt_mbox   [NB_CORES];
 
+    sram_intf #(
+        .NUM_WORDS        (NUM_WORDS),
+        .DATA_WIDTH       (AxiDataWidth),
+        .DCACHE_SET_ASSOC (DCACHE_SET_ASSOC)
+    ) sram_if [NB_CORES] ();
+
     std_cache_scoreboard #(
         .AXI_ADDR_WIDTH ( AxiAddrWidth ),
         .AXI_DATA_WIDTH ( AxiDataWidth ),
         .AXI_ID_WIDTH   ( AxiIdWidth   ),
         .AXI_USER_WIDTH ( AxiUserWidth )
     ) cache_scbd [NB_CORES];
+
+    std_dcache_checker #(
+        .NB_CORES        ( NB_CORES     ),
+        .SRAM_DATA_WIDTH ( AxiDataWidth ),
+        .SRAM_NUM_WORDS  ( NUM_WORDS    )
+    ) dcache_chk;
 
     // ACE mailboxes
     mailbox aw_mbx [NB_CORES];
@@ -110,8 +127,8 @@ module culsans_tb
     // DUT
     //--------------------------------------------------------------------------
     culsans_top #(
-        .InclSimDTM (1'b0),
-        .NUM_WORDS  (4**10), // 4Kwords
+        .InclSimDTM  (1'b0),
+        .NUM_WORDS   (NUM_WORDS), // 4Kwords
         .BootAddress (culsans_pkg::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i  (clk),
@@ -264,11 +281,14 @@ module culsans_tb
         end
 
         // assign SRAM IF
-        assign sram_if[core_idx].vld_sram = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+        assign dc_sram_if[core_idx].vld_sram  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+        assign dc_sram_if[core_idx].vld_req   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.req_i;
+        assign dc_sram_if[core_idx].vld_we    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.we_i;
+        assign dc_sram_if[core_idx].vld_index = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.valid_dirty_sram.addr_i;
         for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
-            assign sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
-            assign sram_if[core_idx].data_sram[0][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
-            assign sram_if[core_idx].data_sram[1][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[1].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign dc_sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign dc_sram_if[core_idx].data_sram[0][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
+            assign dc_sram_if[core_idx].data_sram[1][i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.gen_cut[1].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram;
         end
 
         // assign Grant IF
@@ -299,7 +319,7 @@ module culsans_tb
         assign mgmt_if[core_idx].dcache_flush_ack = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl;
         assign mgmt_if[core_idx].dcache_miss      = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_miss_cache_perf;
         assign mgmt_if[core_idx].wbuffer_empty    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_commit_wbuffer_empty;
-    
+
         initial begin : DCACHE_MGMT_DRV
             dcache_mgmt_drv[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_driver",core_idx));
         end
@@ -358,7 +378,7 @@ module culsans_tb
 
 
         initial begin : CACHE_SCBD
-            cache_scbd[core_idx] = new(sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_checker",core_idx));
+            cache_scbd[core_idx] = new(dc_sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_scoreboard",core_idx));
 
             cache_scbd[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
             cache_scbd[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
@@ -381,6 +401,18 @@ module culsans_tb
             cache_scbd[core_idx].run();
         end
 
+        // assign SRAM IF
+        for (genvar w=0; w<DCACHE_SET_ASSOC; w++) begin
+            assign sram_if[core_idx].data[w][0] = i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram[sram_if[core_idx].addr[w]];
+            assign sram_if[core_idx].data[w][1] = i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram[sram_if[core_idx].addr[w]+1];
+        end
+
+    end
+
+
+    initial begin
+        dcache_chk = new(sram_if, dc_sram_if, "dcache_checker");
+        dcache_chk.monitor();
     end
 
     //--------------------------------------------------------------------------
@@ -415,7 +447,7 @@ module culsans_tb
         // - cached, shared
         // - cached, non-shared
         a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] > culsans_pkg::DRAMBase) else
-            $error("Shared region must be after non-cached, non-shared region");
+            $error("Non-cached, shared region must be after non-cached, non-shared region");
         a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] > ArianeCfg.SharedRegionAddrBase[0]) else
             $error("Cached, shared region must be after non-cached, shared region");
 
@@ -601,7 +633,7 @@ module culsans_tb
                             dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
-                        fork 
+                        fork
                             begin
                                 // flush
                                 dcache_mgmt_drv[0].flush();
@@ -807,7 +839,7 @@ module culsans_tb
                             dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
-                        fork 
+                        fork
                             begin
                                 // AMO request, should cause flush and writeback of data in cache
                                 amo_drv[0].req(.addr(addr), .rand_op(1));
@@ -828,15 +860,15 @@ module culsans_tb
 
                         case (testname)
                             "random_cached" : begin
-                                test_header(testname, "Writes and reads to random cacheable addresses, excluding AMO requests");
+                                test_header(testname, "Writes and reads to random cacheable, shareable addresses, excluding AMO requests");
                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
                             end
                             "random_shared" : begin
-                                test_header(testname, "Writes and reads to random shareable addresses, excluding AMO requests");
+                                test_header(testname, "Writes and reads to random non-cacheable, shareable addresses, excluding AMO requests");
                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
                             end
                             "random_non-shared" : begin
-                                test_header(testname, "Writes and reads to random non-shareable addresses, excluding AMO requests");
+                                test_header(testname, "Writes and reads to random non-cacheable, non-shareable addresses, excluding AMO requests");
                                 base_addr = culsans_pkg::DRAMBase;
                             end
                         endcase
@@ -854,7 +886,7 @@ module culsans_tb
                                         `WAIT_CYC(clk, $urandom_range(4,0));
                                         port   = $urandom_range(2);
                                         case (testname)
-                                            "random_cached"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            "random_cached"     : offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             "random_shared"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                             "random_non-shared" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                         endcase
@@ -880,15 +912,15 @@ module culsans_tb
                     "random_cached_amo", "random_shared_amo", "random_non-shared_amo" : begin
                         case (testname)
                             "random_cached_amo" : begin
-                                test_header(testname, "Writes and reads to random cacheable addresses, including AMO requests");
+                                test_header(testname, "Writes and reads to random cacheable, shareable addresses, including AMO requests");
                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
                             end
                             "random_shared_amo" : begin
-                                test_header(testname, "Writes and reads to random shareable addresses, including AMO requests");
+                                test_header(testname, "Writes and reads to random non-cacheable, shareable addresses, including AMO requests");
                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
                             end
                             "random_non-shared_amo" : begin
-                                test_header(testname, "Writes and reads to random non-shareable addresses, including AMO requests");
+                                test_header(testname, "Writes and reads to random non-cacheable, non-shareable addresses, including AMO requests");
                                 base_addr = culsans_pkg::DRAMBase;
                             end
                         endcase
@@ -896,8 +928,9 @@ module culsans_tb
                         rep_cnt   = 1000;
 
                         for (int c=0; c < NB_CORES; c++) begin
-                            // any core may have to wait for AMO/flush, increase timeout
+                            // any core may have to wait for AMO/flush, increase timeouts
                             cache_scbd[c].set_cache_msg_timeout(10000);
+                            cache_scbd[c].set_snoop_msg_timeout(10000);
                         end
 
                         for (int c=0; c < NB_CORES; c++) begin
@@ -916,7 +949,7 @@ module culsans_tb
                                         end else begin
                                             port   = $urandom_range(2);
                                             case (testname)
-                                                "random_cached_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                                "random_cached_amo"     : offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                                 "random_shared_amo"     : offset = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                                 "random_non-shared_amo" : offset = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                             endcase
@@ -947,7 +980,13 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         rep_cnt   = 1000;
-                        timeout   = 50000; // long test
+                        timeout   = 100000; // long test
+
+                        for (int c=0; c < NB_CORES; c++) begin
+                            // any core may have to wait for flush, increase timeouts
+                            cache_scbd[c].set_cache_msg_timeout(10000);
+                            cache_scbd[c].set_snoop_msg_timeout(10000);
+                        end
 
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -958,8 +997,8 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
-                                            port   = $urandom_range(2);
-                                            offset = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                            port   = $urandom_range(2);                                            
+                                            offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
 
                                             if (port == 2) begin
                                                 dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
@@ -975,6 +1014,8 @@ module culsans_tb
                             join_none
                         end
                         wait fork;
+
+                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -1001,9 +1042,9 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
-                                            default : begin 
+                                            default : begin
                                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
                                                 offset    = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                             end
@@ -1046,9 +1087,9 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
-                                            default : begin 
+                                            default : begin
                                                 base_addr = culsans_pkg::DRAMBase;
                                                 offset    = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                             end
@@ -1136,13 +1177,13 @@ module culsans_tb
                                         case (addr_region)
                                             0 : begin
                                                 base_addr = ArianeCfg.CachedRegionAddrBase[0];
-                                                offset    = $urandom_range(ArianeCfg.CachedRegionLength[0]);
+                                                offset    = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                             end
-                                            1 : begin 
+                                            1 : begin
                                                 base_addr = ArianeCfg.SharedRegionAddrBase[0];
                                                 offset    = $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
                                             end
-                                            default : begin 
+                                            default : begin
                                                 base_addr = culsans_pkg::DRAMBase;
                                                 offset    = $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                             end
