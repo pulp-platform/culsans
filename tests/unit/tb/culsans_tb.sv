@@ -845,7 +845,7 @@ module culsans_tb
                                 amo_drv[0].req(.addr(addr), .rand_op(1));
                             end
                             begin
-                                for (int i=2047;  i>=0; i--) begin
+                                for (int i=2047;  i>=1; i--) begin // don't verify address (addr + 0), it may have been modified by AMO
                                     dcache_drv[1][1].rd_wait(.addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
                                 end
                             end
