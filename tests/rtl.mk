@@ -15,8 +15,12 @@ AXI_DIR = $(CVA6_DIR)/corev_apu/axi/
 
 # Common cells
 
-COMMON_PKG := $(CVA6_DIR)/common/submodules/common_cells/src/cf_math_pkg.sv
+COMMON_PKG := $(CVA6_DIR)/common/submodules/common_cells/src/cf_math_pkg.sv \
+	      $(CVA6_DIR)/core/include/cv64a6_imafdc_sv39_config_pkg.sv
+
 COMMON_SRC := $(CVA6_DIR)/common/submodules/common_cells/src/rstgen_bypass.sv                          \
+	        ${CVA6_DIR}/core/include/riscv_pkg.sv                                                    \
+	        ${CVA6_DIR}/common/local/rvfi/rvfi_pkg.sv                                                \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/rstgen.sv                                 \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_mux.sv                             \
 	        $(CVA6_DIR)/common/submodules/common_cells/src/stream_demux.sv                           \
@@ -86,21 +90,21 @@ AXI_INCDIR := $(foreach dir, ${AXI_INCDIR}, +incdir+$(dir))
 # CVA6
 
 # CVA6 packages
-CVA6_PKG := core/include/cv64a6_imafdc_sv39_config_pkg.sv
-CVA6_PKG += core/include/riscv_pkg.sv                              \
-            corev_apu/riscv-dbg/src/dm_pkg.sv                      \
+CVA6_PKG += corev_apu/riscv-dbg/src/dm_pkg.sv                      \
+            core/include/ariane_dm_pkg.sv                          \
             core/include/ariane_pkg.sv                             \
-            core/include/ariane_rvfi_pkg.sv                        \
             core/include/wt_cache_pkg.sv                           \
             core/include/cvxif_pkg.sv                              \
             corev_apu/register_interface/src/reg_intf.sv           \
-            corev_apu/tb/rvfi_pkg.sv                               \
             core/include/ariane_axi_pkg.sv                         \
             core/include/ariane_ace_pkg.sv                         \
             core/include/std_cache_pkg.sv                          \
             core/fpu/src/fpnew_pkg.sv                              \
             core/cvxif_example/include/cvxif_instr_pkg.sv          \
             core/fpu/src/fpu_div_sqrt_mvp/hdl/defs_div_sqrt_mvp.sv
+#            corev_apu/tb/rvfi_pkg.sv                               \
+#            core/include/ariane_rvfi_pkg.sv                        \
+
 CVA6_PKG := $(addprefix $(CVA6_DIR)/, $(CVA6_PKG))
 
 # utility modules
@@ -148,6 +152,7 @@ CVA6_SRC := $(filter-out $(CVA6_DIR)/core/ariane_regfile.sv, $(wildcard $(CVA6_D
 	        $(CVA6_DIR)/common/local/util/tc_sram_wrapper.sv                                         \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_sram.sv                          \
 	        $(CVA6_DIR)/corev_apu/src/tech_cells_generic/src/rtl/tc_clk.sv                           \
+	        $(CVA6_DIR)/corev_apu/src/ariane.sv                                                      \
 	        $(CVA6_DIR)/corev_apu/tb/rvfi_tracer.sv                                                  \
 	        $(CVA6_DIR)/corev_apu/tb/common/uart.sv
 
