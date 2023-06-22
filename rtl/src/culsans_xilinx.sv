@@ -725,7 +725,7 @@ end
       .irq_i                ( irq[2*i+1:2*i]      ),
       .ipi_i                ( ipi[i]              ),
       .time_irq_i           ( timer_irq[i]        ),
-  `ifdef RVFI_TRACE
+  `ifdef RVFI_PORT
       .rvfi_o               ( rvfi[i]             ),
   `endif
   // Disable Debug when simulating with Spike
