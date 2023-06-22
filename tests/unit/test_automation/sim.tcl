@@ -9,9 +9,9 @@ set local_wave   "my_wave.do"
 set default_wave "wave.do"
 
 if { [file exists $local_wave] == 1} {
-    source $local_wave
+    do $local_wave
 } elseif { [file exists $default_wave] == 1} {
-    source $default_wave
+    do $default_wave
 }
 
 
