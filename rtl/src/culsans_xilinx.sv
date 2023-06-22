@@ -282,7 +282,6 @@ localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
   MaxSlvTrans:        1, // Probably requires update
   FallThrough:        1'b0,
   LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-  PipelineStages:     1,
   AxiIdWidthSlvPorts: culsans_pkg::IdWidthToXbar,
   AxiIdUsedSlvPorts:  culsans_pkg::IdWidthToXbar,
   UniqueIds:          1'b0,
@@ -558,29 +557,32 @@ logic [1:0]    axi_adapter_size;
 assign axi_adapter_size = (riscv::XLEN == 64) ? 2'b11 : 2'b10;
 
 axi_adapter #(
-    .DATA_WIDTH            ( riscv::XLEN              ),
-    .mst_req_t (ariane_axi::req_t),
-    .mst_resp_t (ariane_axi::resp_t)
+    .DATA_WIDTH            ( riscv::XLEN          ),
+    .AXI_ADDR_WIDTH        ( AxiAddrWidth         ),
+    .AXI_DATA_WIDTH        ( AxiDataWidth         ),
+    .AXI_ID_WIDTH          ( culsans_pkg::IdWidth ),
+    .axi_req_t             ( ariane_axi::req_t    ),
+    .axi_rsp_t             ( ariane_axi::resp_t   )
 ) i_dm_axi_master (
-    .clk_i                 ( clk                       ),
-    .rst_ni                ( rst_n                     ),
-    .req_i                 ( dm_master_req             ),
-    .type_i                ( ariane_axi::SINGLE_REQ    ),
-    .amo_i                 ( ariane_pkg::AMO_NONE      ),
-    .gnt_o                 ( dm_master_gnt             ),
-    .addr_i                ( dm_master_add             ),
-    .we_i                  ( dm_master_we              ),
-    .wdata_i               ( dm_master_wdata           ),
-    .be_i                  ( dm_master_be              ),
-    .size_i                ( axi_adapter_size          ),
-    .id_i                  ( '0                        ),
-    .valid_o               ( dm_master_r_valid         ),
-    .rdata_o               ( dm_master_r_rdata         ),
-    .id_o                  (                           ),
-    .critical_word_o       (                           ),
-    .critical_word_valid_o (                           ),
-    .axi_req_o             ( dm_axi_m_req              ),
-    .axi_resp_i            ( dm_axi_m_resp             )
+    .clk_i                 ( clk                    ),
+    .rst_ni                ( rst_n                  ),
+    .req_i                 ( dm_master_req          ),
+    .type_i                ( ariane_axi::SINGLE_REQ ),
+    .amo_i                 ( ariane_pkg::AMO_NONE   ),
+    .gnt_o                 ( dm_master_gnt          ),
+    .addr_i                ( dm_master_add          ),
+    .we_i                  ( dm_master_we           ),
+    .wdata_i               ( dm_master_wdata        ),
+    .be_i                  ( dm_master_be           ),
+    .size_i                ( axi_adapter_size       ),
+    .id_i                  ( '0                     ),
+    .valid_o               ( dm_master_r_valid      ),
+    .rdata_o               ( dm_master_r_rdata      ),
+    .id_o                  (                        ),
+    .critical_word_o       (                        ),
+    .critical_word_valid_o (                        ),
+    .axi_req_o             ( dm_axi_m_req           ),
+    .axi_resp_i            ( dm_axi_m_resp          )
 );
 
 if (riscv::XLEN==32 ) begin
@@ -691,7 +693,7 @@ end
 // ---------------
   ariane_ace::m2s_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
   ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
-  ariane_rvfi_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
+  ariane_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
    ACE_BUS #(
              .AXI_ADDR_WIDTH ( AxiAddrWidth   ),
@@ -714,9 +716,15 @@ end
     assign hart_id[i] = i;
 
     ariane #(
-      .ArianeCfg  ( culsans_pkg::ArianeFpgaSocCfg ),
-      .mst_req_t (ariane_ace::m2s_t),
-      .mst_resp_t (ariane_ace::s2m_t)
+      .ArianeCfg     ( culsans_pkg::ArianeFpgaSocCfg ),
+      .AxiAddrWidth  ( AxiAddrWidth                  ),
+      .AxiDataWidth  ( AxiDataWidth                  ),
+      .AxiIdWidth    ( culsans_pkg::IdWidth          ),
+      .axi_ar_chan_t ( ariane_ace::ar_chan_t         ),
+      .axi_aw_chan_t ( ariane_ace::aw_chan_t         ),
+      .axi_w_chan_t  ( ariane_axi::w_chan_t          ),
+      .axi_req_t     ( ariane_ace::m2s_t             ),
+      .axi_rsp_t     ( ariane_ace::s2m_t             )
     ) i_ariane (
       .clk_i                ( clk                 ),
       .rst_ni               ( ndmreset_n          ),
