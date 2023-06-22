@@ -1,6 +1,11 @@
+MKFILE_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
 # Common variables
 SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
+
+include $(MKFILE_DIR)/../modules/cva6/Makefile
+
 TEST_REPORT = result.rpt
 
 RV_TOOL_PREFIX = riscv64-unknown-elf-

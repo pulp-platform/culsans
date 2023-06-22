@@ -81,6 +81,6 @@ clean_sw:
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
-clean: clean_sw clean_rtl clean_tests
+clean: clean_sw clean_tests
 
 .PHONY: all sw sw_all rerun clean clean_sw
