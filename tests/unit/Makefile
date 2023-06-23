@@ -37,7 +37,7 @@ sanity : rtl
 
 # run all the tests
 ifeq ($(TEST), all)
-all: rtl
+all: rtl tb
 	@-for d in $(TESTLIST); do make -C $$d all; done
 	@$(MAKE) status
 
@@ -95,6 +95,6 @@ list_tests:
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
-clean: clean_rtl clean_tests
+clean: clean_tests
 
 .PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw

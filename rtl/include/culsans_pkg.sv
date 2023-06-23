@@ -98,7 +98,7 @@ package culsans_pkg;
     SharedRegionAddrBase:  {DRAMBase + sharedOffset},
     SharedRegionLength:    {sharedLength},
     //  cache config
-    Axi64BitCompliant:      1'b1,
+    AxiCompliant:           1'b1,
     SwapEndianess:          1'b0,
     // debug
     DmBaseAddress:          DebugBase,
@@ -125,7 +125,7 @@ package culsans_pkg;
     SharedRegionAddrBase:  {DRAMBase},
     SharedRegionLength:    {DRAMLength},
     //  cache config
-    Axi64BitCompliant:      1'b1,
+    AxiCompliant:           1'b1,
     SwapEndianess:          1'b0,
     // debug
     DmBaseAddress:          DebugBase,

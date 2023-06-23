@@ -1,7 +1,5 @@
-ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+ROOT_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 include $(ROOT_DIR)/../../common.mk
-
-
 
 SYS_DIR = $(ROOT_DIR)/../sw/sys
 LIB_DIR = $(ROOT_DIR)/../libs
@@ -35,7 +33,7 @@ GUI ?= 0
 # the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
 ENABLE_CCU_MON ?= 1
 
-VSIM_LIB = $(ROOT_DIR)/../work
+VSIM_LIB      = ../../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
 TOP_LEVEL = culsans_tb
