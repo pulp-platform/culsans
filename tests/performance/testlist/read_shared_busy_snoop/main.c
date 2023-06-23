@@ -1,4 +1,4 @@
-#include "read_shared_busy.h"
+#include "read_shared_busy_snoop.h"
 #include <stdint.h>
 
 // synchronization variable: non-cached and non-shared
@@ -19,7 +19,7 @@ void thread_entry(int cid, int nc)
   }
 
   // actual test
-  read_shared_busy(cid, nc);
+  read_shared_busy_snoop(cid, nc);
 }
 
 int main()

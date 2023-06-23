@@ -1,4 +1,4 @@
-#include "read_shared_remote_busy.h"
+#include "read_shared_busy_snoop.h"
 #include <stdint.h>
 #include "encoding.h"
 
@@ -9,11 +9,19 @@ extern void exit(int);
 // cache is 32kB: 16B cachelines x 256 entries x 8 ways
 volatile uint128_t data[256*8] __attribute__((section(".cache_share_region")));
 
-volatile uint64_t dummy __attribute__((section(".nocache_noshare_region")));
+volatile uint128_t dummy __attribute__((section(".nocache_share_region")));
 
 void unrolled_read();
 
-int read_shared_remote_busy(int cid, int nc)
+void prepare()
+{
+  for (int i = 0; i < sizeof(data)/sizeof(data[0]); i++)
+    data[i] = i+1;
+
+  dummy = 0;
+}
+
+int read_shared_busy_snoop(int cid, int nc)
 {
   long begin, end;
 
@@ -24,9 +32,10 @@ int read_shared_remote_busy(int cid, int nc)
     exit((end-begin)>>11);
   }
 
-  // just create traffic at shared memory level
-  while(1)
+  // create some traffic
+  while (1) {
     dummy++;
+  }
 
   return 0;
 }

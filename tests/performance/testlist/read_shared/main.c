@@ -8,25 +8,22 @@ extern void exit(int);
 
 void thread_entry(int cid, int nc)
 {
-  // core 0 initializes the synchronization variable
-  if (cid == 0)
-    count = 0;
-  else
-    while(count != cid);
+  count = 0;
+  if (cid == 0) {
+    while(count == 0);
+  }
+
+  if (cid == nc-1) {
+    prepare();
+    count++;
+  }
 
   // actual test
   read_shared(cid, nc);
-  count++;
 
   // cores wait here
   while(cid)
     { asm volatile ("wfi"); }
-
-  // core 0 continues after all cores have finished
-  if (cid == 0) {
-    while (count != nc)
-      { asm volatile ("nop"); }
-  }
 }
 
 int main()

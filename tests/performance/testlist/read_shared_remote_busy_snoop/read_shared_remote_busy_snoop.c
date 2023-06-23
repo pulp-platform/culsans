@@ -1,4 +1,4 @@
-#include "read_shared_remote_busy.h"
+#include "read_shared_remote_busy_snoop.h"
 #include <stdint.h>
 #include "encoding.h"
 
@@ -9,11 +9,11 @@ extern void exit(int);
 // cache is 32kB: 16B cachelines x 256 entries x 8 ways
 volatile uint128_t data[256*8] __attribute__((section(".cache_share_region")));
 
-volatile uint64_t dummy __attribute__((section(".nocache_noshare_region")));
+volatile uint64_t dummy __attribute__((section(".nocache_share_region")));
 
 void unrolled_read();
 
-int read_shared_remote_busy(int cid, int nc)
+int read_shared_remote_busy_snoop(int cid, int nc)
 {
   long begin, end;
 

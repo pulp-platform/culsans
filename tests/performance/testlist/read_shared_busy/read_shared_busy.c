@@ -9,7 +9,7 @@ extern void exit(int);
 // cache is 32kB: 16B cachelines x 256 entries x 8 ways
 volatile uint128_t data[256*8] __attribute__((section(".cache_share_region")));
 
-volatile uint128_t dummy __attribute__((section(".cache_share_region")));
+volatile uint128_t dummy __attribute__((section(".nocache_noshare_region")));
 
 void unrolled_read();
 
@@ -25,16 +25,16 @@ int read_shared_busy(int cid, int nc)
 {
   long begin, end;
 
-  // create some traffic
-  if (cid != nc-1) {
-    dummy++;
-  }
-
-  if (cid == nc-1) {
+  if (cid == 0) {
     begin = rdcycle();
     unrolled_read();
     end = rdcycle();
     exit((end-begin)>>11);
+  }
+
+  // create some traffic
+  while (1) {
+    dummy++;
   }
 
   return 0;

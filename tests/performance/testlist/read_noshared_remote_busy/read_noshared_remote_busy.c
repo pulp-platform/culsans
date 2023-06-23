@@ -25,9 +25,8 @@ int read_noshared_remote_busy(int cid, int nc)
   }
 
   // just create traffic at shared memory level
-  if (cid == nc-1)
-    while(1)
-      dummy++;
+  while(1)
+    dummy++;
 
   return 0;
 }

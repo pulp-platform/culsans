@@ -11,21 +11,20 @@ volatile uint128_t data[256*8] __attribute__((section(".cache_share_region")));
 
 void unrolled_read();
 
+void prepare()
+{
+  for (int i = 0; i < sizeof(data)/sizeof(data[0]); i++)
+    data[i] = i+1;
+}
+
 int read_shared(int cid, int nc)
 {
   long begin, end;
 
-  // core 0 initializes the cache
   if (cid == 0) {
-    unrolled_read();
-  }
-
-  // core == nc-1 do nothing
-  if (cid == nc-1) {
     begin = rdcycle();
     unrolled_read();
     end = rdcycle();
-
     exit((end-begin)>>11);
   }
 
