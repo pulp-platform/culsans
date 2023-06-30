@@ -575,7 +575,7 @@ module culsans_tb
 
                         `WAIT_CYC(clk, 100)
 
-                        test_header(testname, "Part 1 : Write + read conflicts to addresses in the same cache set");
+                        test_header(testname, "Part 2 : Write + read conflicts to addresses in the same cache set");
 
                         // read x 8 - fill cache set 0 in CPU 0
                         for (int c=0; c < NB_CORES; c++) begin

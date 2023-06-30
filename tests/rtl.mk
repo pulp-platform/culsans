@@ -16,11 +16,11 @@ CVA6_DIR = $(root-dir)
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
 
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_intf.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/snoop_intf.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ccu_fsm.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_trs_dec.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_ccu_top.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_intf.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/snoop_intf.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ccu_fsm.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_trs_dec.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_ccu_top.sv
 CULSANS_SRC += $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv
 CULSANS_SRC += $(filter-out $(CULSANS_DIR)/src/culsans_xilinx.sv, $(wildcard $(CULSANS_DIR)/src/*.sv))
 CULSANS_INCDIR := $(CULSANS_DIR)/include
@@ -30,8 +30,8 @@ CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
 
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/common_verification/src/rand_id_queue.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/pulp-platform/axi/src/axi_test.sv
-CVA6_TEST += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_test.sv
-CVA6_TEST += $(CVA6_DIR)/vendor/pulp-platform/axi/src/snoop_test.sv
+CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/ace_test.sv
+CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/snoop_test.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_ace_ccu_pkg.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/dcache_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/sram_intf.sv

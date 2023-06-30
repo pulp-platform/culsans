@@ -35,11 +35,11 @@ ips-target := $(join $(addsuffix /ip/, $(addprefix $(ip-dir)/, $(basename $(ips)
 CULSANS_DIR := ../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
 
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_intf.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/snoop_intf.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ccu_fsm.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_trs_dec.sv
-CULSANS_SRC += $(CVA6_DIR)/vendor/pulp-platform/axi/src/ace_ccu_top.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_intf.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/snoop_intf.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ccu_fsm.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_trs_dec.sv
+CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_ccu_top.sv
 CULSANS_SRC += $(wildcard $(CULSANS_DIR)/src/*.sv)
 
 CULSANS_INCDIR := $(CULSANS_DIR)/include
