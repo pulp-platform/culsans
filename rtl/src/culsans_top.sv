@@ -372,8 +372,8 @@ module culsans_top #(
   `AXI_ASSIGN_FROM_RESP(master[culsans_pkg::GPIO], gpio_resp)
   axi_err_slv #(
     .AxiIdWidth ( culsans_pkg::IdWidthSlave   ),
-    .req_t      ( culsans_pkg::req_slv_t  ),
-    .resp_t     ( culsans_pkg::resp_slv_t )
+    .axi_req_t      ( culsans_pkg::req_slv_t  ),
+    .axi_resp_t     ( culsans_pkg::resp_slv_t )
   ) i_gpio_err_slv (
     .clk_i      ( clk_i      ),
     .rst_ni     ( ndmreset_n ),
@@ -554,6 +554,7 @@ module culsans_top #(
     MaxMstTrans: 1, // Probably requires update
     MaxSlvTrans: 1, // Probably requires update
     FallThrough: 1'b0,
+    PipelineStages: 1,
     LatencyMode: axi_pkg::NO_LATENCY,
     AxiIdWidthSlvPorts: culsans_pkg::IdWidthToXbar,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidthToXbar,

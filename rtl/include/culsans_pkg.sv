@@ -100,6 +100,9 @@ package culsans_pkg;
     //  cache config
     AxiCompliant:           1'b1,
     SwapEndianess:          1'b0,
+    // CLIC
+    CLICNumInterruptSrc:    1'b1,
+    CLICIntCtlBits:         1,
     // debug
     DmBaseAddress:          DebugBase,
     NrPMPEntries:           8
@@ -127,6 +130,9 @@ package culsans_pkg;
     //  cache config
     AxiCompliant:           1'b1,
     SwapEndianess:          1'b0,
+    // CLIC
+    CLICNumInterruptSrc:    1'b1,
+    CLICIntCtlBits:         1,
     // debug
     DmBaseAddress:          DebugBase,
     NrPMPEntries:           8
