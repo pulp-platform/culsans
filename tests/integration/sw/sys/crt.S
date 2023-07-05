@@ -12,7 +12,7 @@
 # define REGBYTES 4
 #endif
 
-# define NB_CORES 4 
+# define NB_CORES 2 
 
   .section ".text.init"
   .globl _start

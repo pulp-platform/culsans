@@ -179,7 +179,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) master[ariane_soc::NB_PERIPHERALS-1:0]();
+) master[culsans_pkg::NB_PERIPHERALS-1:0]();
 
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( riscv::XLEN      ),
@@ -260,24 +260,24 @@ assign rst = ddr_sync_reset;
 // AXI Xbar
 // ---------------
 
-axi_pkg::xbar_rule_64_t [ariane_soc::NB_PERIPHERALS-1:0] addr_map;
+axi_pkg::xbar_rule_64_t [culsans_pkg::NB_PERIPHERALS-1:0] addr_map; // No CLIC
 
 assign addr_map = '{
-  '{ idx: ariane_soc::Debug,    start_addr: ariane_soc::DebugBase,    end_addr: ariane_soc::DebugBase + ariane_soc::DebugLength       },
-  '{ idx: ariane_soc::ROM,      start_addr: ariane_soc::ROMBase,      end_addr: ariane_soc::ROMBase + ariane_soc::ROMLength           },
-  '{ idx: ariane_soc::CLINT,    start_addr: ariane_soc::CLINTBase,    end_addr: ariane_soc::CLINTBase + ariane_soc::CLINTLength       },
-  '{ idx: ariane_soc::PLIC,     start_addr: ariane_soc::PLICBase,     end_addr: ariane_soc::PLICBase + ariane_soc::PLICLength         },
-  '{ idx: ariane_soc::UART,     start_addr: ariane_soc::UARTBase,     end_addr: ariane_soc::UARTBase + ariane_soc::UARTLength         },
-  '{ idx: ariane_soc::Timer,    start_addr: ariane_soc::TimerBase,    end_addr: ariane_soc::TimerBase + ariane_soc::TimerLength       },
-  '{ idx: ariane_soc::SPI,      start_addr: ariane_soc::SPIBase,      end_addr: ariane_soc::SPIBase + ariane_soc::SPILength           },
-  '{ idx: ariane_soc::Ethernet, start_addr: ariane_soc::EthernetBase, end_addr: ariane_soc::EthernetBase + ariane_soc::EthernetLength },
-  '{ idx: ariane_soc::GPIO,     start_addr: ariane_soc::GPIOBase,     end_addr: ariane_soc::GPIOBase + ariane_soc::GPIOLength         },
-  '{ idx: ariane_soc::DRAM,     start_addr: ariane_soc::DRAMBase,     end_addr: ariane_soc::DRAMBase + ariane_soc::DRAMLength         }
+  '{ idx: culsans_pkg::Debug,    start_addr: culsans_pkg::DebugBase,    end_addr: culsans_pkg::DebugBase + culsans_pkg::DebugLength       },
+  '{ idx: culsans_pkg::ROM,      start_addr: culsans_pkg::ROMBase,      end_addr: culsans_pkg::ROMBase + culsans_pkg::ROMLength           },
+  '{ idx: culsans_pkg::CLINT,    start_addr: culsans_pkg::CLINTBase,    end_addr: culsans_pkg::CLINTBase + culsans_pkg::CLINTLength       },
+  '{ idx: culsans_pkg::PLIC,     start_addr: culsans_pkg::PLICBase,     end_addr: culsans_pkg::PLICBase + culsans_pkg::PLICLength         },
+  '{ idx: culsans_pkg::UART,     start_addr: culsans_pkg::UARTBase,     end_addr: culsans_pkg::UARTBase + culsans_pkg::UARTLength         },
+  '{ idx: culsans_pkg::Timer,    start_addr: culsans_pkg::TimerBase,    end_addr: culsans_pkg::TimerBase + culsans_pkg::TimerLength       },
+  '{ idx: culsans_pkg::SPI,      start_addr: culsans_pkg::SPIBase,      end_addr: culsans_pkg::SPIBase + culsans_pkg::SPILength           },
+  '{ idx: culsans_pkg::Ethernet, start_addr: culsans_pkg::EthernetBase, end_addr: culsans_pkg::EthernetBase + culsans_pkg::EthernetLength },
+  '{ idx: culsans_pkg::GPIO,     start_addr: culsans_pkg::GPIOBase,     end_addr: culsans_pkg::GPIOBase + culsans_pkg::GPIOLength         },
+  '{ idx: culsans_pkg::DRAM,     start_addr: culsans_pkg::DRAMBase,     end_addr: culsans_pkg::DRAMBase + culsans_pkg::DRAMLength+32'h1000         }
 };
 
 localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
   NoSlvPorts:         NBSlave,
-  NoMstPorts:         ariane_soc::NB_PERIPHERALS,
+  NoMstPorts:         culsans_pkg::NB_PERIPHERALS,
   MaxMstTrans:        1, // Probably requires update
   MaxSlvTrans:        1, // Probably requires update
   FallThrough:        1'b0,
@@ -288,7 +288,7 @@ localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
   UniqueIds:          1'b0,
   AxiAddrWidth:       AxiAddrWidth,
   AxiDataWidth:       AxiDataWidth,
-  NoAddrRules:        ariane_soc::NB_PERIPHERALS
+  NoAddrRules:        culsans_pkg::NB_PERIPHERALS
 };
 
 axi_xbar_intf #(
@@ -410,51 +410,51 @@ if (riscv::XLEN==32 ) begin
     assign master_to_dm[0].aw_id = dm_axi_m_req.aw.id;
     assign master_to_dm[0].ar_id = dm_axi_m_req.ar.id;
 
-    assign master[ariane_soc::Debug].r_user ='0;
-    assign master[ariane_soc::Debug].b_user ='0;
+    assign master[culsans_pkg::Debug].r_user ='0;
+    assign master[culsans_pkg::Debug].b_user ='0;
  
     xlnx_axi_dwidth_converter_dm_slave  i_axi_dwidth_converter_dm_slave( 
         .s_axi_aclk(clk),
         .s_axi_aresetn(ndmreset_n),
-        .s_axi_awid(master[ariane_soc::Debug].aw_id),
-        .s_axi_awaddr(master[ariane_soc::Debug].aw_addr[31:0]),
-        .s_axi_awlen(master[ariane_soc::Debug].aw_len),
-        .s_axi_awsize(master[ariane_soc::Debug].aw_size),
-        .s_axi_awburst(master[ariane_soc::Debug].aw_burst),
-        .s_axi_awlock(master[ariane_soc::Debug].aw_lock),
-        .s_axi_awcache(master[ariane_soc::Debug].aw_cache),
-        .s_axi_awprot(master[ariane_soc::Debug].aw_prot),
-        .s_axi_awregion(master[ariane_soc::Debug].aw_region),
-        .s_axi_awqos(master[ariane_soc::Debug].aw_qos),
-        .s_axi_awvalid(master[ariane_soc::Debug].aw_valid),
-        .s_axi_awready(master[ariane_soc::Debug].aw_ready),
-        .s_axi_wdata(master[ariane_soc::Debug].w_data),
-        .s_axi_wstrb(master[ariane_soc::Debug].w_strb),
-        .s_axi_wlast(master[ariane_soc::Debug].w_last),
-        .s_axi_wvalid(master[ariane_soc::Debug].w_valid),
-        .s_axi_wready(master[ariane_soc::Debug].w_ready),
-        .s_axi_bid(master[ariane_soc::Debug].b_id),
-        .s_axi_bresp(master[ariane_soc::Debug].b_resp),
-        .s_axi_bvalid(master[ariane_soc::Debug].b_valid),
-        .s_axi_bready(master[ariane_soc::Debug].b_ready),
-        .s_axi_arid(master[ariane_soc::Debug].ar_id),
-        .s_axi_araddr(master[ariane_soc::Debug].ar_addr[31:0]),
-        .s_axi_arlen(master[ariane_soc::Debug].ar_len),
-        .s_axi_arsize(master[ariane_soc::Debug].ar_size),
-        .s_axi_arburst(master[ariane_soc::Debug].ar_burst),
-        .s_axi_arlock(master[ariane_soc::Debug].ar_lock),
-        .s_axi_arcache(master[ariane_soc::Debug].ar_cache),
-        .s_axi_arprot(master[ariane_soc::Debug].ar_prot),
-        .s_axi_arregion(master[ariane_soc::Debug].ar_region),
-        .s_axi_arqos(master[ariane_soc::Debug].ar_qos),
-        .s_axi_arvalid(master[ariane_soc::Debug].ar_valid),
-        .s_axi_arready(master[ariane_soc::Debug].ar_ready),
-        .s_axi_rid(master[ariane_soc::Debug].r_id),
-        .s_axi_rdata(master[ariane_soc::Debug].r_data),
-        .s_axi_rresp(master[ariane_soc::Debug].r_resp),
-        .s_axi_rlast(master[ariane_soc::Debug].r_last),
-        .s_axi_rvalid(master[ariane_soc::Debug].r_valid),
-        .s_axi_rready(master[ariane_soc::Debug].r_ready),
+        .s_axi_awid(master[culsans_pkg::Debug].aw_id),
+        .s_axi_awaddr(master[culsans_pkg::Debug].aw_addr[31:0]),
+        .s_axi_awlen(master[culsans_pkg::Debug].aw_len),
+        .s_axi_awsize(master[culsans_pkg::Debug].aw_size),
+        .s_axi_awburst(master[culsans_pkg::Debug].aw_burst),
+        .s_axi_awlock(master[culsans_pkg::Debug].aw_lock),
+        .s_axi_awcache(master[culsans_pkg::Debug].aw_cache),
+        .s_axi_awprot(master[culsans_pkg::Debug].aw_prot),
+        .s_axi_awregion(master[culsans_pkg::Debug].aw_region),
+        .s_axi_awqos(master[culsans_pkg::Debug].aw_qos),
+        .s_axi_awvalid(master[culsans_pkg::Debug].aw_valid),
+        .s_axi_awready(master[culsans_pkg::Debug].aw_ready),
+        .s_axi_wdata(master[culsans_pkg::Debug].w_data),
+        .s_axi_wstrb(master[culsans_pkg::Debug].w_strb),
+        .s_axi_wlast(master[culsans_pkg::Debug].w_last),
+        .s_axi_wvalid(master[culsans_pkg::Debug].w_valid),
+        .s_axi_wready(master[culsans_pkg::Debug].w_ready),
+        .s_axi_bid(master[culsans_pkg::Debug].b_id),
+        .s_axi_bresp(master[culsans_pkg::Debug].b_resp),
+        .s_axi_bvalid(master[culsans_pkg::Debug].b_valid),
+        .s_axi_bready(master[culsans_pkg::Debug].b_ready),
+        .s_axi_arid(master[culsans_pkg::Debug].ar_id),
+        .s_axi_araddr(master[culsans_pkg::Debug].ar_addr[31:0]),
+        .s_axi_arlen(master[culsans_pkg::Debug].ar_len),
+        .s_axi_arsize(master[culsans_pkg::Debug].ar_size),
+        .s_axi_arburst(master[culsans_pkg::Debug].ar_burst),
+        .s_axi_arlock(master[culsans_pkg::Debug].ar_lock),
+        .s_axi_arcache(master[culsans_pkg::Debug].ar_cache),
+        .s_axi_arprot(master[culsans_pkg::Debug].ar_prot),
+        .s_axi_arregion(master[culsans_pkg::Debug].ar_region),
+        .s_axi_arqos(master[culsans_pkg::Debug].ar_qos),
+        .s_axi_arvalid(master[culsans_pkg::Debug].ar_valid),
+        .s_axi_arready(master[culsans_pkg::Debug].ar_ready),
+        .s_axi_rid(master[culsans_pkg::Debug].r_id),
+        .s_axi_rdata(master[culsans_pkg::Debug].r_data),
+        .s_axi_rresp(master[culsans_pkg::Debug].r_resp),
+        .s_axi_rlast(master[culsans_pkg::Debug].r_last),
+        .s_axi_rvalid(master[culsans_pkg::Debug].r_valid),
+        .s_axi_rready(master[culsans_pkg::Debug].r_ready),
         .m_axi_awaddr(master_to_dm[0].aw_addr),
         .m_axi_awlen(master_to_dm[0].aw_len),
         .m_axi_awsize(master_to_dm[0].aw_size),
@@ -494,60 +494,60 @@ if (riscv::XLEN==32 ) begin
 
 end else begin
 
-    assign master[ariane_soc::Debug].aw_id = master_to_dm[0].aw_id;
-    assign master[ariane_soc::Debug].aw_addr = master_to_dm[0].aw_addr;
-    assign master[ariane_soc::Debug].aw_len = master_to_dm[0].aw_len;
-    assign master[ariane_soc::Debug].aw_size = master_to_dm[0].aw_size;
-    assign master[ariane_soc::Debug].aw_burst = master_to_dm[0].aw_burst;
-    assign master[ariane_soc::Debug].aw_lock = master_to_dm[0].aw_lock;
-    assign master[ariane_soc::Debug].aw_cache = master_to_dm[0].aw_cache;
-    assign master[ariane_soc::Debug].aw_prot = master_to_dm[0].aw_prot;
-    assign master[ariane_soc::Debug].aw_qos = master_to_dm[0].aw_qos;
-    assign master[ariane_soc::Debug].aw_atop = master_to_dm[0].aw_atop;
-    assign master[ariane_soc::Debug].aw_region = master_to_dm[0].aw_region;
-    assign master[ariane_soc::Debug].aw_user = master_to_dm[0].aw_user;
-    assign master[ariane_soc::Debug].aw_valid = master_to_dm[0].aw_valid;
+    assign master[culsans_pkg::Debug].aw_id = master_to_dm[0].aw_id;
+    assign master[culsans_pkg::Debug].aw_addr = master_to_dm[0].aw_addr;
+    assign master[culsans_pkg::Debug].aw_len = master_to_dm[0].aw_len;
+    assign master[culsans_pkg::Debug].aw_size = master_to_dm[0].aw_size;
+    assign master[culsans_pkg::Debug].aw_burst = master_to_dm[0].aw_burst;
+    assign master[culsans_pkg::Debug].aw_lock = master_to_dm[0].aw_lock;
+    assign master[culsans_pkg::Debug].aw_cache = master_to_dm[0].aw_cache;
+    assign master[culsans_pkg::Debug].aw_prot = master_to_dm[0].aw_prot;
+    assign master[culsans_pkg::Debug].aw_qos = master_to_dm[0].aw_qos;
+    assign master[culsans_pkg::Debug].aw_atop = master_to_dm[0].aw_atop;
+    assign master[culsans_pkg::Debug].aw_region = master_to_dm[0].aw_region;
+    assign master[culsans_pkg::Debug].aw_user = master_to_dm[0].aw_user;
+    assign master[culsans_pkg::Debug].aw_valid = master_to_dm[0].aw_valid;
 
-    assign master_to_dm[0].aw_ready =master[ariane_soc::Debug].aw_ready;
+    assign master_to_dm[0].aw_ready =master[culsans_pkg::Debug].aw_ready;
 
-    assign master[ariane_soc::Debug].w_data = master_to_dm[0].w_data;
-    assign master[ariane_soc::Debug].w_strb = master_to_dm[0].w_strb;
-    assign master[ariane_soc::Debug].w_last = master_to_dm[0].w_last;
-    assign master[ariane_soc::Debug].w_user = master_to_dm[0].w_user;
-    assign master[ariane_soc::Debug].w_valid = master_to_dm[0].w_valid;
+    assign master[culsans_pkg::Debug].w_data = master_to_dm[0].w_data;
+    assign master[culsans_pkg::Debug].w_strb = master_to_dm[0].w_strb;
+    assign master[culsans_pkg::Debug].w_last = master_to_dm[0].w_last;
+    assign master[culsans_pkg::Debug].w_user = master_to_dm[0].w_user;
+    assign master[culsans_pkg::Debug].w_valid = master_to_dm[0].w_valid;
 
-    assign master_to_dm[0].w_ready =master[ariane_soc::Debug].w_ready;
+    assign master_to_dm[0].w_ready =master[culsans_pkg::Debug].w_ready;
 
-    assign master_to_dm[0].b_id =master[ariane_soc::Debug].b_id;
-    assign master_to_dm[0].b_resp =master[ariane_soc::Debug].b_resp;
-    assign master_to_dm[0].b_user =master[ariane_soc::Debug].b_user;
-    assign master_to_dm[0].b_valid =master[ariane_soc::Debug].b_valid;
+    assign master_to_dm[0].b_id =master[culsans_pkg::Debug].b_id;
+    assign master_to_dm[0].b_resp =master[culsans_pkg::Debug].b_resp;
+    assign master_to_dm[0].b_user =master[culsans_pkg::Debug].b_user;
+    assign master_to_dm[0].b_valid =master[culsans_pkg::Debug].b_valid;
 
-    assign master[ariane_soc::Debug].b_ready = master_to_dm[0].b_ready;
+    assign master[culsans_pkg::Debug].b_ready = master_to_dm[0].b_ready;
 
-    assign master[ariane_soc::Debug].ar_id = master_to_dm[0].ar_id;
-    assign master[ariane_soc::Debug].ar_addr = master_to_dm[0].ar_addr;
-    assign master[ariane_soc::Debug].ar_len = master_to_dm[0].ar_len;
-    assign master[ariane_soc::Debug].ar_size = master_to_dm[0].ar_size;
-    assign master[ariane_soc::Debug].ar_burst = master_to_dm[0].ar_burst;
-    assign master[ariane_soc::Debug].ar_lock = master_to_dm[0].ar_lock;
-    assign master[ariane_soc::Debug].ar_cache = master_to_dm[0].ar_cache;
-    assign master[ariane_soc::Debug].ar_prot = master_to_dm[0].ar_prot;
-    assign master[ariane_soc::Debug].ar_qos = master_to_dm[0].ar_qos;
-    assign master[ariane_soc::Debug].ar_region = master_to_dm[0].ar_region;
-    assign master[ariane_soc::Debug].ar_user = master_to_dm[0].ar_user;
-    assign master[ariane_soc::Debug].ar_valid = master_to_dm[0].ar_valid;
+    assign master[culsans_pkg::Debug].ar_id = master_to_dm[0].ar_id;
+    assign master[culsans_pkg::Debug].ar_addr = master_to_dm[0].ar_addr;
+    assign master[culsans_pkg::Debug].ar_len = master_to_dm[0].ar_len;
+    assign master[culsans_pkg::Debug].ar_size = master_to_dm[0].ar_size;
+    assign master[culsans_pkg::Debug].ar_burst = master_to_dm[0].ar_burst;
+    assign master[culsans_pkg::Debug].ar_lock = master_to_dm[0].ar_lock;
+    assign master[culsans_pkg::Debug].ar_cache = master_to_dm[0].ar_cache;
+    assign master[culsans_pkg::Debug].ar_prot = master_to_dm[0].ar_prot;
+    assign master[culsans_pkg::Debug].ar_qos = master_to_dm[0].ar_qos;
+    assign master[culsans_pkg::Debug].ar_region = master_to_dm[0].ar_region;
+    assign master[culsans_pkg::Debug].ar_user = master_to_dm[0].ar_user;
+    assign master[culsans_pkg::Debug].ar_valid = master_to_dm[0].ar_valid;
 
-    assign master_to_dm[0].ar_ready =master[ariane_soc::Debug].ar_ready;
+    assign master_to_dm[0].ar_ready =master[culsans_pkg::Debug].ar_ready;
 
-    assign master_to_dm[0].r_id =master[ariane_soc::Debug].r_id;
-    assign master_to_dm[0].r_data =master[ariane_soc::Debug].r_data;
-    assign master_to_dm[0].r_resp =master[ariane_soc::Debug].r_resp;
-    assign master_to_dm[0].r_last =master[ariane_soc::Debug].r_last;
-    assign master_to_dm[0].r_user =master[ariane_soc::Debug].r_user;
-    assign master_to_dm[0].r_valid =master[ariane_soc::Debug].r_valid;
+    assign master_to_dm[0].r_id =master[culsans_pkg::Debug].r_id;
+    assign master_to_dm[0].r_data =master[culsans_pkg::Debug].r_data;
+    assign master_to_dm[0].r_resp =master[culsans_pkg::Debug].r_resp;
+    assign master_to_dm[0].r_last =master[culsans_pkg::Debug].r_last;
+    assign master_to_dm[0].r_user =master[culsans_pkg::Debug].r_user;
+    assign master_to_dm[0].r_valid =master[culsans_pkg::Debug].r_valid;
 
-    assign master[ariane_soc::Debug].r_ready = master_to_dm[0].r_ready;
+    assign master[culsans_pkg::Debug].r_ready = master_to_dm[0].r_ready;
 
 end 
 
@@ -729,7 +729,7 @@ end
     ) i_ariane (
       .clk_i                ( clk                 ),
       .rst_ni               ( ndmreset_n          ),
-      .boot_addr_i          ( ariane_soc::ROMBase ),
+      .boot_addr_i          ( culsans_pkg::ROMBase ),
       .hart_id_i            ( {56'h0, hart_id[i]} ),
       .irq_i                ( irq[2*i+1:2*i]      ),
       .ipi_i                ( ipi[i]              ),
@@ -784,23 +784,6 @@ end
   );
 
 
-   xlnx_ila i_ila
-     (
-      .clk (clk),
-      .probe0 (to_xbar[0].aw_addr[31:0]),
-      .probe1 (to_xbar[0].ar_addr[31:0]),
-      .probe2 (to_xbar[0].w_data[31:0]),
-      .probe3 (to_xbar[0].r_data[31:0]),
-      .probe4 (core_to_CCU[0].aw_addr[31:0]),
-      .probe5 (core_to_CCU[0].ar_addr[31:0]),
-      .probe6 (core_to_CCU[1].aw_addr[31:0]),
-      .probe7 (core_to_CCU[1].ar_addr[31:0]),
-      .probe8 ({core_to_CCU[0].ar_lock, core_to_CCU[0].aw_valid, core_to_CCU[0].aw_ready, core_to_CCU[0].w_valid, core_to_CCU[0].w_ready, core_to_CCU[0].ar_valid, core_to_CCU[0].ar_ready, core_to_CCU[0].r_ready, core_to_CCU[0].r_valid, core_to_CCU[0].b_valid, core_to_CCU[0].b_ready, core_to_CCU[0].w_last, core_to_CCU[0].r_last}),
-      .probe9 ({core_to_CCU[1].ar_lock, core_to_CCU[1].aw_valid, core_to_CCU[1].aw_ready, core_to_CCU[1].w_valid, core_to_CCU[1].w_ready, core_to_CCU[1].ar_valid, core_to_CCU[1].ar_ready, core_to_CCU[1].r_ready, core_to_CCU[1].r_valid, core_to_CCU[1].b_valid, core_to_CCU[1].b_ready, core_to_CCU[1].w_last, core_to_CCU[1].r_last}),
-      .probe10 ({core_to_CCU[0].ar_id, core_to_CCU[0].aw_id, core_to_CCU[0].r_resp, core_to_CCU[0].b_resp, core_to_CCU[1].ar_id, core_to_CCU[1].aw_id, core_to_CCU[1].r_resp, core_to_CCU[1].b_resp}),
-      .probe11 ({to_xbar[0].ar_id, to_xbar[0].aw_id, to_xbar[0].r_resp, to_xbar[0].b_resp}),
-      .probe12 ({CCU_to_core[0].ac_snoop, CCU_to_core[0].ac_valid, CCU_to_core[0].ac_ready, CCU_to_core[0].cr_valid, CCU_to_core[0].cr_ready, CCU_to_core[0].cd_valid, CCU_to_core[0].cd_ready, CCU_to_core[1].ac_snoop, CCU_to_core[1].ac_valid, CCU_to_core[1].ac_ready, CCU_to_core[1].cr_valid, CCU_to_core[1].cr_ready, CCU_to_core[1].cd_valid, CCU_to_core[1].cd_ready, to_xbar[0].ar_lock, to_xbar[0].aw_valid, to_xbar[0].aw_ready, to_xbar[0].w_valid, to_xbar[0].w_ready, to_xbar[0].ar_valid, to_xbar[0].ar_ready, to_xbar[0].r_ready, to_xbar[0].r_valid, to_xbar[0].b_valid, to_xbar[0].b_ready, to_xbar[0].w_last, to_xbar[0].r_last, ipi, timer_irq, irq})
-      );
 
 // ---------------
 // CLINT
@@ -835,8 +818,8 @@ clint #(
     .ipi_o       ( ipi            )
 );
 
-`AXI_ASSIGN_TO_REQ(axi_clint_req, master[ariane_soc::CLINT])
-`AXI_ASSIGN_FROM_RESP(master[ariane_soc::CLINT], axi_clint_resp)
+`AXI_ASSIGN_TO_REQ(axi_clint_req, master[culsans_pkg::CLINT])
+`AXI_ASSIGN_FROM_RESP(master[culsans_pkg::CLINT], axi_clint_resp)
 
 // ---------------
 // ROM
@@ -849,7 +832,7 @@ axi2mem #(
 ) i_axi2rom (
     .clk_i  ( clk                     ),
     .rst_ni ( ndmreset_n              ),
-    .slave  ( master[ariane_soc::ROM] ),
+    .slave  ( master[culsans_pkg::ROM] ),
     .req_o  ( rom_req                 ),
     .we_o   (                         ),
     .addr_o ( rom_addr                ),
@@ -906,13 +889,13 @@ ariane_peripherals #(
     .clk_i        ( clk                          ),
     .clk_200MHz_i ( ddr_clock_out                ),
     .rst_ni       ( ndmreset_n                   ),
-    .plic         ( master[ariane_soc::PLIC]     ),
-    .uart         ( master[ariane_soc::UART]     ),
-    .spi          ( master[ariane_soc::SPI]      ),
-    .gpio         ( master[ariane_soc::GPIO]     ),
+    .plic         ( master[culsans_pkg::PLIC]     ),
+    .uart         ( master[culsans_pkg::UART]     ),
+    .spi          ( master[culsans_pkg::SPI]      ),
+    .gpio         ( master[culsans_pkg::GPIO]     ),
     .eth_clk_i    ( eth_clk                      ),
-    .ethernet     ( master[ariane_soc::Ethernet] ),
-    .timer        ( master[ariane_soc::Timer]    ),
+    .ethernet     ( master[culsans_pkg::Ethernet] ),
+    .timer        ( master[culsans_pkg::Timer]    ),
     .irq_o        ( irq                          ),
     .rx_i         ( rx                           ),
     .tx_o         ( tx                           ),
@@ -1004,9 +987,27 @@ axi_riscv_atomics_wrap #(
 ) i_axi_riscv_atomics (
     .clk_i  ( clk                      ),
     .rst_ni ( ndmreset_n               ),
-    .slv    ( master[ariane_soc::DRAM] ),
+    .slv    ( master[culsans_pkg::DRAM] ),
     .mst    ( dram                     )
 );
+
+   xlnx_ila i_ila
+     (
+      .clk (clk),
+      .probe0 (to_xbar[0].aw_addr[31:0]),
+      .probe1 (to_xbar[0].ar_addr[31:0]),
+      .probe2 (to_xbar[0].w_data[31:0]),
+      .probe3 (to_xbar[0].r_data[31:0]),
+      .probe4 (master[0].aw_addr[31:0]),
+      .probe5 (master[0].ar_addr[31:0]),
+      .probe6 (dram.aw_addr[31:0]),
+      .probe7 (dram.ar_addr[31:0]),
+      .probe8 ({master[0].ar_lock, master[0].aw_valid, master[0].aw_ready, master[0].w_valid, master[0].w_ready, master[0].ar_valid, master[0].ar_ready, master[0].r_ready, master[0].r_valid, master[0].b_valid, master[0].b_ready, master[0].w_last, master[0].r_last}),
+      .probe9 ({dram.ar_lock, dram.aw_valid, dram.aw_ready, dram.w_valid, dram.w_ready, dram.ar_valid, dram.ar_ready, dram.r_ready, dram.r_valid, dram.b_valid, dram.b_ready, dram.w_last, dram.r_last}),
+      .probe10 ({master[0].ar_id, master[0].aw_id, master[0].r_resp, master[0].b_resp, dram.ar_id, dram.aw_id, dram.r_resp, dram.b_resp}),
+      .probe11 ({to_xbar[0].ar_id, to_xbar[0].aw_id, to_xbar[0].r_resp, to_xbar[0].b_resp}),
+      .probe12 ({CCU_to_core[0].ac_snoop, CCU_to_core[0].ac_valid, CCU_to_core[0].ac_ready, CCU_to_core[0].cr_valid, CCU_to_core[0].cr_ready, CCU_to_core[0].cd_valid, CCU_to_core[0].cd_ready, CCU_to_core[1].ac_snoop, CCU_to_core[1].ac_valid, CCU_to_core[1].ac_ready, CCU_to_core[1].cr_valid, CCU_to_core[1].cr_ready, CCU_to_core[1].cd_valid, CCU_to_core[1].cd_ready, to_xbar[0].ar_lock, to_xbar[0].aw_valid, to_xbar[0].aw_ready, to_xbar[0].w_valid, to_xbar[0].w_ready, to_xbar[0].ar_valid, to_xbar[0].ar_ready, to_xbar[0].r_ready, to_xbar[0].r_valid, to_xbar[0].b_valid, to_xbar[0].b_ready, to_xbar[0].w_last, to_xbar[0].r_last, ipi, timer_irq, irq})
+      );
 
 `ifdef PROTOCOL_CHECKER
 logic pc_status;
