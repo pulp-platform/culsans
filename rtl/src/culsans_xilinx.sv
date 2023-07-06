@@ -991,24 +991,6 @@ axi_riscv_atomics_wrap #(
     .mst    ( dram                     )
 );
 
-   xlnx_ila i_ila
-     (
-      .clk (clk),
-      .probe0 (to_xbar[0].aw_addr[31:0]),
-      .probe1 (to_xbar[0].ar_addr[31:0]),
-      .probe2 (to_xbar[0].w_data[31:0]),
-      .probe3 (to_xbar[0].r_data[31:0]),
-      .probe4 (master[0].aw_addr[31:0]),
-      .probe5 (master[0].ar_addr[31:0]),
-      .probe6 (dram.aw_addr[31:0]),
-      .probe7 (dram.ar_addr[31:0]),
-      .probe8 ({master[0].ar_lock, master[0].aw_valid, master[0].aw_ready, master[0].w_valid, master[0].w_ready, master[0].ar_valid, master[0].ar_ready, master[0].r_ready, master[0].r_valid, master[0].b_valid, master[0].b_ready, master[0].w_last, master[0].r_last}),
-      .probe9 ({dram.ar_lock, dram.aw_valid, dram.aw_ready, dram.w_valid, dram.w_ready, dram.ar_valid, dram.ar_ready, dram.r_ready, dram.r_valid, dram.b_valid, dram.b_ready, dram.w_last, dram.r_last}),
-      .probe10 ({master[0].ar_id, master[0].aw_id, master[0].r_resp, master[0].b_resp, dram.ar_id, dram.aw_id, dram.r_resp, dram.b_resp}),
-      .probe11 ({to_xbar[0].ar_id, to_xbar[0].aw_id, to_xbar[0].r_resp, to_xbar[0].b_resp}),
-      .probe12 ({CCU_to_core[0].ac_snoop, CCU_to_core[0].ac_valid, CCU_to_core[0].ac_ready, CCU_to_core[0].cr_valid, CCU_to_core[0].cr_ready, CCU_to_core[0].cd_valid, CCU_to_core[0].cd_ready, CCU_to_core[1].ac_snoop, CCU_to_core[1].ac_valid, CCU_to_core[1].ac_ready, CCU_to_core[1].cr_valid, CCU_to_core[1].cr_ready, CCU_to_core[1].cd_valid, CCU_to_core[1].cd_ready, to_xbar[0].ar_lock, to_xbar[0].aw_valid, to_xbar[0].aw_ready, to_xbar[0].w_valid, to_xbar[0].w_ready, to_xbar[0].ar_valid, to_xbar[0].ar_ready, to_xbar[0].r_ready, to_xbar[0].r_valid, to_xbar[0].b_valid, to_xbar[0].b_ready, to_xbar[0].w_last, to_xbar[0].r_last, ipi, timer_irq, irq})
-      );
-
 `ifdef PROTOCOL_CHECKER
 logic pc_status;
 
