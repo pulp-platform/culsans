@@ -782,25 +782,6 @@ end
     .mst_ports             ( to_xbar[0]  )
   );
 
-
-   xlnx_ila i_ila
-     (
-      .clk (clk),
-      .probe0 (to_xbar[0].aw_addr[31:0]),
-      .probe1 (to_xbar[0].ar_addr[31:0]),
-      .probe2 (to_xbar[0].w_data[31:0]),
-      .probe3 (to_xbar[0].r_data[31:0]),
-      .probe4 (core_to_CCU[0].aw_addr[31:0]),
-      .probe5 (core_to_CCU[0].ar_addr[31:0]),
-      .probe6 (core_to_CCU[1].aw_addr[31:0]),
-      .probe7 (core_to_CCU[1].ar_addr[31:0]),
-      .probe8 ({core_to_CCU[0].ar_lock, core_to_CCU[0].aw_valid, core_to_CCU[0].aw_ready, core_to_CCU[0].w_valid, core_to_CCU[0].w_ready, core_to_CCU[0].ar_valid, core_to_CCU[0].ar_ready, core_to_CCU[0].r_ready, core_to_CCU[0].r_valid, core_to_CCU[0].b_valid, core_to_CCU[0].b_ready, core_to_CCU[0].w_last, core_to_CCU[0].r_last}),
-      .probe9 ({core_to_CCU[1].ar_lock, core_to_CCU[1].aw_valid, core_to_CCU[1].aw_ready, core_to_CCU[1].w_valid, core_to_CCU[1].w_ready, core_to_CCU[1].ar_valid, core_to_CCU[1].ar_ready, core_to_CCU[1].r_ready, core_to_CCU[1].r_valid, core_to_CCU[1].b_valid, core_to_CCU[1].b_ready, core_to_CCU[1].w_last, core_to_CCU[1].r_last}),
-      .probe10 ({core_to_CCU[0].ar_id, core_to_CCU[0].aw_id, core_to_CCU[0].r_resp, core_to_CCU[0].b_resp, core_to_CCU[1].ar_id, core_to_CCU[1].aw_id, core_to_CCU[1].r_resp, core_to_CCU[1].b_resp}),
-      .probe11 ({to_xbar[0].ar_id, to_xbar[0].aw_id, to_xbar[0].r_resp, to_xbar[0].b_resp}),
-      .probe12 ({CCU_to_core[0].ac_snoop, CCU_to_core[0].ac_valid, CCU_to_core[0].ac_ready, CCU_to_core[0].cr_valid, CCU_to_core[0].cr_ready, CCU_to_core[0].cd_valid, CCU_to_core[0].cd_ready, CCU_to_core[1].ac_snoop, CCU_to_core[1].ac_valid, CCU_to_core[1].ac_ready, CCU_to_core[1].cr_valid, CCU_to_core[1].cr_ready, CCU_to_core[1].cd_valid, CCU_to_core[1].cd_ready, to_xbar[0].ar_lock, to_xbar[0].aw_valid, to_xbar[0].aw_ready, to_xbar[0].w_valid, to_xbar[0].w_ready, to_xbar[0].ar_valid, to_xbar[0].ar_ready, to_xbar[0].r_ready, to_xbar[0].r_valid, to_xbar[0].b_valid, to_xbar[0].b_ready, to_xbar[0].w_last, to_xbar[0].r_last, ipi, timer_irq, irq})
-      );
-
 // ---------------
 // CLINT
 // ---------------
