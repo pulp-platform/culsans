@@ -13,3 +13,32 @@ Like the ancient god (*), its responsibilities are to maintain order (and data c
 git clone https://github.com/planvtech/culsans.git --recursive
 ```
 
+### Synthesis on FPGA (Genesys2)
+
+```
+make fpga
+```
+
+### SD image generation
+
+Make sure all dependencies specified in [`cva6-sdk`](cva6-sdk/README.md) are fulfilled.
+
+```
+make sdk
+```
+
+Then follow the instruction in [`cva6-sdk`](cva6-sdk/README.md) to copy the generated image to the SD.
+
+### RTL tests
+
+Sanity check
+
+```
+make sanity-tests
+```
+
+Regression tests
+
+```
+make test
+```

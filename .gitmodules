@@ -7,3 +7,6 @@
 [submodule "tests/litmus/litmus_src"]
 	path = tests/litmus/litmus_src
 	url = git@github.com:planvtech/cva6-litmus.git
+[submodule "cva6-sdk"]
+	path = cva6-sdk
+	url = https://github.com/openhwgroup/cva6-sdk.git
