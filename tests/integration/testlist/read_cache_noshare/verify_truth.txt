@@ -1,9 +1,0 @@
-:iteration
-4
-:data
-cache_noshare
-:expected
-read_slave
-write
-read_slave
-
