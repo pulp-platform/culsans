@@ -1,0 +1,95 @@
+diff --git a/firmware/fw_base.S b/firmware/fw_base.S
+index 1569e60..c1e308b 100644
+--- a/firmware/fw_base.S
++++ b/firmware/fw_base.S
+@@ -181,7 +181,7 @@ _wait_relocate_copy_done:
+ 	sub	t3, t3, t0
+ 	add	t3, t3, t1
+ 1:
+-	/* waitting for relocate copy done (_boot_status == 1) */
++	/* waiting for relocate copy done (_boot_status == 1) */
+ 	li	t4, BOOT_STATUS_RELOCATE_DONE
+ 	REG_L	t5, 0(t2)
+ 	/* Reduce the bus traffic so that boot hart may proceed faster */
+@@ -398,12 +398,15 @@ _fdt_reloc_again:
+ 	add	t1, t1, __SIZEOF_POINTER__
+ 	blt	t1, t2, _fdt_reloc_again
+ _fdt_reloc_done:
+-
++	fence	rw, rw
+ 	/* mark boot hart done */
+ 	li	t0, BOOT_STATUS_BOOT_HART_DONE
+ 	lla	t1, _boot_status
+ 	REG_S	t0, 0(t1)
+ 	fence	rw, rw
++
++/*	REG_S	t0, 0(t1)
++	fence	rw, rw */
+ 	j	_start_warm
+ 
+ 	/* waiting for boot hart to be done (_boot_status == 2) */
+diff --git a/platform/fpga/ariane/platform.c b/platform/fpga/ariane/platform.c
+index c6f0ffd..a5db97a 100644
+--- a/platform/fpga/ariane/platform.c
++++ b/platform/fpga/ariane/platform.c
+@@ -25,7 +25,7 @@
+ #define ARIANE_UART_REG_WIDTH			4
+ #define ARIANE_PLIC_ADDR			0xc000000
+ #define ARIANE_PLIC_NUM_SOURCES			3
+-#define ARIANE_HART_COUNT			1
++#define ARIANE_HART_COUNT			2
+ #define ARIANE_CLINT_ADDR			0x2000000
+ #define ARIANE_ACLINT_MTIMER_FREQ		1000000
+ #define ARIANE_ACLINT_MSWI_ADDR			(ARIANE_CLINT_ADDR + \
+@@ -33,6 +33,11 @@
+ #define ARIANE_ACLINT_MTIMER_ADDR		(ARIANE_CLINT_ADDR + \
+ 						 CLINT_MTIMER_OFFSET)
+ 
++static struct platform_uart_data uart = {
++	ARIANE_UART_ADDR,
++	ARIANE_UART_FREQ,
++	ARIANE_UART_BAUDRATE,
++};
+ static struct plic_data plic = {
+ 	.addr = ARIANE_PLIC_ADDR,
+ 	.num_src = ARIANE_PLIC_NUM_SOURCES,
+@@ -63,7 +68,38 @@ static struct aclint_mtimer_data mtimer = {
+  */
+ static int ariane_early_init(bool cold_boot)
+ {
+-	/* For now nothing to do. */
++	void *fdt;
++	struct platform_uart_data uart_data;
++	struct plic_data plic_data;
++	unsigned long aclint_freq;
++	uint64_t clint_addr;
++	int rc;
++
++	if (!cold_boot)
++		return 0;
++	fdt = fdt_get_address();
++
++	rc = fdt_parse_uart8250(fdt, &uart_data, "ns16550");
++	if (!rc)
++		uart = uart_data;
++
++	rc = fdt_parse_plic(fdt, &plic_data, "riscv,plic0");
++	if (!rc)
++		plic = plic_data;
++
++	rc = fdt_parse_timebase_frequency(fdt, &aclint_freq);
++	if (!rc)
++		mtimer.mtime_freq = aclint_freq;
++
++	rc = fdt_parse_compat_addr(fdt, &clint_addr, "riscv,clint0");
++	if (!rc) {
++		mswi.addr = clint_addr;
++		mtimer.mtime_addr = clint_addr + CLINT_MTIMER_OFFSET +
++				    ACLINT_DEFAULT_MTIME_OFFSET;
++		mtimer.mtimecmp_addr = clint_addr + CLINT_MTIMER_OFFSET +
++				    ACLINT_DEFAULT_MTIMECMP_OFFSET;
++	}
++
+ 	return 0;
+ }
+ 
