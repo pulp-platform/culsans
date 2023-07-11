@@ -171,20 +171,20 @@ module ccu_master_logger #(
     log_name = $sformatf("./ace_log/%s/write.log", LoggerName);
     fd = $fopen(log_name, "w");
     if (fd) begin
-      $display("File was opened successfully : %0d", fd);
+      $display("File was opened successfully : %s", log_name);
       $fdisplay(fd, "This is the write log file");
       $fclose(fd);
     end else
-      $display("File was NOT opened successfully : %0d", fd);
+      $display("File was NOT opened successfully : %s", log_name);
     for (int unsigned i = 0; i < NoIds; i++) begin
       log_name = $sformatf("./ace_log/%s/read_%0h.log", LoggerName, i);
       fd = $fopen(log_name, "w");
       if (fd) begin
-        $display("File was opened successfully : %0d", fd);
+        $display("File was opened successfully : %s", log_name);
         $fdisplay(fd, "This is the read log file for ID: %0h", i);
         $fclose(fd);
       end else
-        $display("File was NOT opened successfully : %0d", fd);
+        $display("File was NOT opened successfully : %s", log_name);
     end
 
     // on each clock cycle update the logs if there is something in the queues
@@ -429,20 +429,20 @@ module ccu_slave_logger #(
     log_name = $sformatf("./axi_log/%s/write.log", LoggerName);
     fd = $fopen(log_name, "w");
     if (fd) begin
-      $display("File was opened successfully : %0d", fd);
+      $display("File was opened successfully : %s", log_name);
       $fdisplay(fd, "This is the write log file");
       $fclose(fd);
     end else
-      $display("File was NOT opened successfully : %0d", fd);
+      $display("File was NOT opened successfully : %s", log_name);
     for (int unsigned i = 0; i < NoIds; i++) begin
       log_name = $sformatf("./axi_log/%s/read_%0h.log", LoggerName, i);
       fd = $fopen(log_name, "w");
       if (fd) begin
-        $display("File was opened successfully : %0d", fd);
+        $display("File was opened successfully : %s", log_name);
         $fdisplay(fd, "This is the read log file for ID: %0h", i);
         $fclose(fd);
       end else
-        $display("File was NOT opened successfully : %0d", fd);
+        $display("File was NOT opened successfully : %s", log_name);
     end
 
     // on each clock cycle update the logs if there is something in the queues
