@@ -39,24 +39,30 @@ read_ip { \
 }
 # read_ip xilinx/xlnx_protocol_checker/ip/xlnx_protocol_checker.xci
 
-set_property include_dirs { "src/axi_sd_bridge/include" "../modules/cva6/common/submodules/common_cells/include" "../modules/cva6/corev_apu/axi/include" "../modules/cva6/corev_apu/register_interface/include"} [current_fileset]
+set_property include_dirs { 
+      "src/axi_sd_bridge/include" 
+      "../modules/cva6/vendor/pulp-platform/common_cells/include" 
+      "../modules/cva6/vendor/pulp-platform/axi/include" 
+      "../modules/cva6/vendor/planv/ace/include" 
+      "../modules/cva6/corev_apu/register_interface/include"
+} [current_fileset]
 
 source scripts/add_sources.tcl
 
 set_property top ${project}_xilinx [current_fileset]
 
 if {$::env(BOARD) eq "genesys2"} {
-    read_verilog -sv {src/genesysii.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+    read_verilog -sv {src/genesysii.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
     set file "src/genesysii.svh"
-    set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+    set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } elseif {$::env(BOARD) eq "kc705"} {
-      read_verilog -sv {src/kc705.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+      read_verilog -sv {src/kc705.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
       set file "src/kc705.svh"
-      set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+      set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } elseif {$::env(BOARD) eq "vc707"} {
-      read_verilog -sv {src/vc707.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+      read_verilog -sv {src/vc707.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
       set file "src/vc707.svh"
-      set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+      set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } else {
     exit 1
 }
