@@ -127,9 +127,13 @@ module culsans_tb
     // DUT
     //--------------------------------------------------------------------------
     culsans_top #(
-        .InclSimDTM  (1'b0),
-        .NUM_WORDS   (NUM_WORDS), // 4Kwords
-        .BootAddress (culsans_pkg::DRAMBase + 64'h10_0000)
+        .InclSimDTM       (1'b0),
+        .NUM_WORDS        (NUM_WORDS), // 4Kwords
+        .StallRandomInput (1'b0),
+        .StallRandomOutput(1'b0),
+        .FixedDelayInput  (0),
+        .FixedDelayOutput (0),
+        .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i  ( clk      ),
         .rtc_i  ( rtc      ),
@@ -996,7 +1000,7 @@ module culsans_tb
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
                                         if ($urandom_range(99) < 99) begin
-                                            port   = $urandom_range(2);                                            
+                                            port   = $urandom_range(2);
                                             offset = (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
 
                                             if (port == 2) begin
