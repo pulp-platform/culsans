@@ -40,14 +40,12 @@ CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/snoop_intf.sv
 CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ccu_fsm.sv
 CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_trs_dec.sv
 CULSANS_SRC += $(CVA6_DIR)/vendor/planv/ace/src/ace_ccu_top.sv
-CULSANS_SRC += $(wildcard $(CULSANS_DIR)/src/*.sv)
-
-CULSANS_INCDIR := $(CULSANS_DIR)/include
-CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
+CULSANS_SRC += $(CULSANS_DIR)/src/culsans_xilinx.sv
 
 TOP_LEVEL := culsans_xilinx
 
 fpga_filter += $(addprefix $(CVA6_DIR), corev_apu/fpga/src/ariane_xilinx.sv)
+fpga_filter += $(wildcard $(addprefix $(CVA6_DIR), corev_apu/tb/ariene_*.sv))
 
 all: $(bit)
 
@@ -89,7 +87,7 @@ scripts/add_sources.tcl: $(ariane_pkg) $(src) $(fpga_src) $(uart_src) $(src_flis
 	@echo read_verilog -sv {$(filter-out $(fpga_filter), $(src))} 	              >> scripts/add_sources.tcl
 	@echo read_verilog -sv {$(CULSANS_PKG)}                                      >> scripts/add_sources.tcl
 	@echo read_verilog -sv {$(filter-out $(fpga_filter), $(CULSANS_SRC))} 	>> scripts/add_sources.tcl
-	@echo read_verilog -sv {$(fpga_src)}                                         >> scripts/add_sources.tcl
+	@echo read_verilog -sv {$(filter-out $(fpga_filter), $(fpga_src))}           >> scripts/add_sources.tcl
 
 .PHONY: clean
 

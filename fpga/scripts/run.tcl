@@ -35,28 +35,33 @@ read_ip { \
       "xilinx/xlnx_axi_gpio/xlnx_axi_gpio.srcs/sources_1/ip/xlnx_axi_gpio/xlnx_axi_gpio.xci" \
       "xilinx/xlnx_axi_quad_spi/xlnx_axi_quad_spi.srcs/sources_1/ip/xlnx_axi_quad_spi/xlnx_axi_quad_spi.xci" \
       "xilinx/xlnx_clk_gen/xlnx_clk_gen.srcs/sources_1/ip/xlnx_clk_gen/xlnx_clk_gen.xci" \
-              "xilinx/xlnx_ila/xlnx_ila.srcs/sources_1/ip/xlnx_ila/xlnx_ila.xci" \
+      "xilinx/xlnx_ila/xlnx_ila.srcs/sources_1/ip/xlnx_ila/xlnx_ila.xci" \
 }
-# read_ip xilinx/xlnx_protocol_checker/ip/xlnx_protocol_checker.xci
 
-set_property include_dirs { "src/axi_sd_bridge/include" "../modules/cva6/common/submodules/common_cells/include" "../modules/cva6/corev_apu/axi/include" "../modules/cva6/corev_apu/register_interface/include"} [current_fileset]
+set_property include_dirs { \
+      "src/axi_sd_bridge/include" \
+      "../modules/cva6/vendor/pulp-platform/common_cells/include" \
+      "../modules/cva6/vendor/pulp-platform/axi/include" \
+      "../modules/cva6/vendor/planv/ace/include" \
+      "../modules/cva6/corev_apu/register_interface/include" \
+} [current_fileset]
 
 source scripts/add_sources.tcl
 
 set_property top ${project}_xilinx [current_fileset]
 
 if {$::env(BOARD) eq "genesys2"} {
-    read_verilog -sv {src/genesysii.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+    read_verilog -sv {src/genesysii.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
     set file "src/genesysii.svh"
-    set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+    set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } elseif {$::env(BOARD) eq "kc705"} {
-      read_verilog -sv {src/kc705.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+      read_verilog -sv {src/kc705.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
       set file "src/kc705.svh"
-      set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+      set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } elseif {$::env(BOARD) eq "vc707"} {
-      read_verilog -sv {src/vc707.svh ../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh}
+      read_verilog -sv {src/vc707.svh ../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh}
       set file "src/vc707.svh"
-      set registers "../modules/cva6/common/submodules/common_cells/include/common_cells/registers.svh"
+      set registers "../modules/cva6/vendor/pulp-platform/common_cells/include/common_cells/registers.svh"
 } else {
     exit 1
 }
