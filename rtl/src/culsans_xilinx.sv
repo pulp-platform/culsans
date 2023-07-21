@@ -712,9 +712,10 @@ end
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
 
-  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin
+  for (genvar i = 0; i < culsans_pkg::NB_CORES; i++) begin : gen_ariane
 
     assign hart_id[i] = i;
+    logic tmp;
 
     ariane #(
       .ArianeCfg     ( culsans_pkg::ArianeFpgaSocCfg ),
@@ -1814,5 +1815,24 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   .s_axi_rready   ( pcie_dwidth_axi_rready   )
 );
 `endif
+
+  xlnx_ila i_ila (
+    .clk     (clk),
+    .probe0  (i_ccu.i_ccu_top.fsm.state_q),
+    .probe1  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q),
+    .probe2  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
+    .probe3  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
+    .probe4  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
+    .probe5  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
+    .probe6  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q),
+    .probe7  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
+    .probe8  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
+    .probe9  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
+    .probe10 (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
+    .probe11 ({gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q ,
+               gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q }),
+    .probe12 ('0)
+  );
+
 
 endmodule
