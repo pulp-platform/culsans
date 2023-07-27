@@ -64,7 +64,7 @@ module culsans_tb ();
         //if (error == 0) begin
 //        $readmemh(data_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h0000);
 //        $readmemh(instr_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h10_0000);
-        $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram);
+        $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].i_tc_sram_wrapper.i_tc_sram.sram);
         //end
     end
 
