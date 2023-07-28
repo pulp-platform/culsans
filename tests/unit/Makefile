@@ -14,6 +14,10 @@ FAIL_LIST += $(TESTS_DIR)/amo_lr_sc/                    # Triggers Jira Issue PR
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
+# other sets
+AMO_LIST := $(dir $(wildcard $(TESTS_DIR)/*amo*/.))
+
+
 help:
 	@echo ""
 	@echo "    make all                   run all tests"
@@ -60,6 +64,11 @@ pass: rtl
 # run all tests expected to fail
 fail: rtl
 	@-for d in $(FAIL_LIST); do make -C $$d all; done
+	@$(MAKE) status
+
+# run all tests expected to fail
+amo: rtl
+	@-for d in $(AMO_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run failed or not-executed tests
