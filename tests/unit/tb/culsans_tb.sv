@@ -285,7 +285,12 @@ module culsans_tb
         end
 
         // assign SRAM IF
-        assign dc_sram_if[core_idx].vld_sram  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[0].i_tc_sram_wrapper.i_tc_sram.sram;
+        localparam VLD_SRAM_BITS = (DCACHE_LINE_WIDTH+8)*DCACHE_SET_ASSOC;
+        localparam VLD_SRAM_CUTS = (VLD_SRAM_BITS+64-1)/64;
+        for (genvar cut = 0; cut<VLD_SRAM_CUTS; cut++) begin : vld_sram_assign
+            assign dc_sram_if[core_idx].vld_sram[cut] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.gen_cut[cut].i_tc_sram_wrapper.i_tc_sram.sram;
+        end
+
         assign dc_sram_if[core_idx].vld_req   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.req_i;
         assign dc_sram_if[core_idx].vld_we    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.we_i;
         assign dc_sram_if[core_idx].vld_index = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.addr_i;
@@ -314,7 +319,6 @@ module culsans_tb
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
         assign gnt_if[core_idx].bypass_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[1];
         assign gnt_if[core_idx].bypass_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[2];
-        assign gnt_if[core_idx].bypass_gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[3];
 
 
         // assign management IF
