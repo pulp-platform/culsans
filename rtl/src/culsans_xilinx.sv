@@ -1819,19 +1819,72 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   xlnx_ila i_ila (
     .clk     (clk),
     .probe0  (i_ccu.i_ccu_top.fsm.state_q),
-    .probe1  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q),
+    .probe1  ({master[culsans_pkg::DRAM].aw_valid,         // 1
+               master[culsans_pkg::DRAM].aw_lock,          // 1
+               master[culsans_pkg::DRAM].aw_atop,          // 6
+               master[culsans_pkg::DRAM].aw_addr[23:0]}),  // 24
+
+    .probe6  ({master[culsans_pkg::DRAM].ar_valid,         // 1
+               master[culsans_pkg::DRAM].ar_lock,          // 1
+               master[culsans_pkg::DRAM].ar_addr[29:0]}),  // 30
+
     .probe2  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
     .probe3  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
     .probe4  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
     .probe5  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
-    .probe6  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q),
     .probe7  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
     .probe8  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
     .probe9  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
     .probe10 (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
-    .probe11 ({gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q ,
-               gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q }),
-    .probe12 ('0)
+    .probe11 ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
+               gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].kill_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_we,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].tag_valid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[0].data_gnt,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[0].data_rvalid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].data_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].kill_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].data_we,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].tag_valid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[1].data_gnt,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[1].data_rvalid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].data_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].kill_req,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].data_we,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].tag_valid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[2].data_gnt,
+               gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_cache_ex[2].data_rvalid,
+               gen_ariane[0].i_ariane.i_cva6.dcache_flush_ctrl_cache,
+               gen_ariane[0].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl,
+               gen_ariane[0].i_ariane.i_cva6.icache_flush_ctrl_cache,
+               gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q}),
+
+    .probe12 ({gen_ariane[1].i_ariane.i_cva6.amo_req.req,
+               gen_ariane[1].i_ariane.i_cva6.amo_resp.ack,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].kill_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_we,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].tag_valid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[0].data_gnt,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[0].data_rvalid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].data_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].kill_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].data_we,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[1].tag_valid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[1].data_gnt,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[1].data_rvalid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].data_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].kill_req,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].data_we,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[2].tag_valid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[2].data_gnt,
+               gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_cache_ex[2].data_rvalid,
+               gen_ariane[1].i_ariane.i_cva6.dcache_flush_ctrl_cache,
+               gen_ariane[1].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl,
+               gen_ariane[1].i_ariane.i_cva6.icache_flush_ctrl_cache,
+               gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q})
   );
 
 
