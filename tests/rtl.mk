@@ -13,6 +13,42 @@ nb_cores_rtl:
 
 CVA6_DIR = $(root-dir)
 
+# LLC
+LLC_DIR = ../../modules/axi_llc
+LLC_PKG := src/axi_llc_pkg.sv \
+           src/axi_llc_reg_pkg.sv
+LLC_PKG := $(addprefix $(LLC_DIR)/, $(LLC_PKG))
+
+LLC_SRC := src/axi_llc_burst_cutter.sv \
+           src/axi_llc_data_way.sv \
+           src/axi_llc_merge_unit.sv \
+           src/axi_llc_read_unit.sv \
+           src/axi_llc_reg_top.sv \
+           src/axi_llc_write_unit.sv \
+           src/eviction_refill/axi_llc_ax_master.sv \
+           src/eviction_refill/axi_llc_r_master.sv \
+           src/eviction_refill/axi_llc_w_master.sv \
+           src/hit_miss_detect/axi_llc_evict_box.sv \
+           src/hit_miss_detect/axi_llc_lock_box_bloom.sv \
+           src/hit_miss_detect/axi_llc_miss_counters.sv \
+           src/hit_miss_detect/axi_llc_tag_pattern_gen.sv \
+           src/axi_llc_chan_splitter.sv \
+           src/axi_llc_evict_unit.sv \
+           src/axi_llc_refill_unit.sv \
+           src/axi_llc_ways.sv \
+           src/hit_miss_detect/axi_llc_tag_store.sv \
+           src/axi_llc_config.sv \
+           src/axi_llc_hit_miss.sv \
+           src/axi_llc_top.sv \
+           src/axi_llc_reg_wrap.sv
+LLC_SRC := $(addprefix $(LLC_DIR)/, $(LLC_SRC))
+
+LLC_INCDIR := $(LLC_DIR)/include
+LLC_INCDIR := $(foreach dir, ${LLC_INCDIR}, +incdir+$(dir))
+list_incdir += $(LLC_INCDIR)
+
+# culsans
+
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
 
@@ -25,6 +61,7 @@ CULSANS_SRC += $(CVA6_DIR)/corev_apu/tb/common/mock_uart.sv
 CULSANS_SRC += $(filter-out $(CULSANS_DIR)/src/culsans_xilinx.sv, $(wildcard $(CULSANS_DIR)/src/*.sv))
 CULSANS_INCDIR := $(CULSANS_DIR)/include
 CULSANS_INCDIR := $(foreach dir, ${CULSANS_INCDIR}, +incdir+$(dir))
+list_incdir += $(CULSANS_INCDIR)
 
 # Compile the test bench
 
@@ -38,7 +75,6 @@ CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/sram_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/amo_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_std_cache_subsystem_pkg.sv
 
-list_incdir += $(CULSANS_INCDIR)
 
 TB_DIR = ./tb
 TB_SRC := $(wildcard $(TB_DIR)/*.sv)
@@ -91,7 +127,12 @@ verilate_command := $(verilator) $(CVA6_DIR)/verilator_config.vlt               
                     --Mdir $(VERILATOR_LIB) -O3                                                                    \
                     --exe ./tb/culsans_tb.cpp 
 
-$(library)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) 
+$(library)/.build-llc-srcs: $(library) $(LLC_PKG) $(LLC_SRC) 
+	$(VLOG) $(VLOG_FLAGS) -work $(library) $(LLC_PKG) $(list_incdir)
+	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(library) -pedanticerrors $(LLC_SRC) $(list_incdir)
+	@touch $(library)/.build-llc-srcs
+
+$(library)/.build-culsans-srcs: $(library) $(library)/.build-llc-srcs $(CULSANS_PKG) $(CULSANS_SRC) 
 	$(VLOG) $(VLOG_FLAGS) -work $(library) $(CULSANS_PKG) $(list_incdir)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(library) -pedanticerrors $(CULSANS_SRC) $(list_incdir)
 	@touch $(library)/.build-culsans-srcs

@@ -14,7 +14,9 @@
 //              Instantiates an AXI-Bus and memories
 
 `include "axi/assign.svh"
+`include "axi/typedef.svh"
 `include "ace/assign.svh"
+`include "register_interface/typedef.svh"
 
 module culsans_top #(
   parameter int unsigned AXI_USER_WIDTH    = ariane_pkg::AXI_USER_WIDTH,
@@ -30,7 +32,8 @@ module culsans_top #(
   parameter bit          StallRandomOutput = 1'b0,
   parameter bit          StallRandomInput  = 1'b0,
   parameter int unsigned FixedDelayInput   = 0,
-  parameter int unsigned FixedDelayOutput  = 0,  
+  parameter int unsigned FixedDelayOutput  = 0,
+  parameter bit          HasLLC            = 1'b1,
   parameter BootAddress = 64'h8010_0000 //culsans_pkg::ROMBase
 ) (
   input  logic                           clk_i,
@@ -38,6 +41,9 @@ module culsans_top #(
   input  logic                           rst_ni,
   output logic [31:0]                    exit_o
 );
+
+  localparam ariane_pkg::ariane_cfg_t ArianeCfg = culsans_pkg::ArianeSocCfg;
+  localparam int unsigned AXI_ID_WIDTH_DRAM = HasLLC ? culsans_pkg::IdWidthSlave + 1 : culsans_pkg::IdWidthSlave;
 
   // disable test-enable
   logic        test_en;
@@ -389,11 +395,25 @@ module culsans_top #(
   // Memory + Exclusive Access
   // ------------------------------
   AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
+    .AXI_ID_WIDTH   ( AXI_ID_WIDTH_DRAM ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
   ) dram();
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
+    .AXI_ID_WIDTH   ( AXI_ID_WIDTH_DRAM ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
+  ) dram_delayed();
+
+  AXI_BUS #(
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH         ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH            ),
+    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH            )
+  ) to_llc();
 
   logic                         req;
   logic                         we;
@@ -404,6 +424,7 @@ module culsans_top #(
   logic [AXI_USER_WIDTH-1:0]    wuser;
   logic [AXI_USER_WIDTH-1:0]    ruser;
 
+  // AMO adapter
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
     .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
@@ -415,20 +436,152 @@ module culsans_top #(
     .clk_i,
     .rst_ni ( ndmreset_n               ),
     .slv    ( master[culsans_pkg::DRAM] ),
-    .mst    ( dram                     )
+    .mst    ( to_llc                    )
   );
+  if (HasLLC) begin : LLC
 
-  AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
-  ) dram_delayed();
+    // LLC
+    localparam int unsigned AxiStrbWidth = AXI_DATA_WIDTH / 32'd8;
 
+    typedef logic [culsans_pkg::IdWidthSlave-1:0] axi_slv_id_t;
+    typedef logic [AXI_ID_WIDTH_DRAM-1:0]         axi_mst_id_t;
+    typedef logic [AXI_ADDRESS_WIDTH-1:0]         axi_addr_t;
+    typedef logic [AXI_DATA_WIDTH-1:0]            axi_data_t;
+    typedef logic [AxiStrbWidth-1:0]              axi_strb_t;
+    typedef logic [AXI_USER_WIDTH-1:0]            axi_user_t;
+
+    `AXI_TYPEDEF_AW_CHAN_T(axi_slv_aw_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+    `AXI_TYPEDEF_AW_CHAN_T(axi_mst_aw_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+    `AXI_TYPEDEF_W_CHAN_T(axi_w_t, axi_data_t, axi_strb_t, axi_user_t)
+    `AXI_TYPEDEF_B_CHAN_T(axi_slv_b_t, axi_slv_id_t, axi_user_t)
+    `AXI_TYPEDEF_B_CHAN_T(axi_mst_b_t, axi_mst_id_t, axi_user_t)
+    `AXI_TYPEDEF_AR_CHAN_T(axi_slv_ar_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+    `AXI_TYPEDEF_AR_CHAN_T(axi_mst_ar_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+    `AXI_TYPEDEF_R_CHAN_T(axi_slv_r_t, axi_data_t, axi_slv_id_t, axi_user_t)
+    `AXI_TYPEDEF_R_CHAN_T(axi_mst_r_t, axi_data_t, axi_mst_id_t, axi_user_t)
+
+    `AXI_TYPEDEF_REQ_T(axi_slv_req_t, axi_slv_aw_t, axi_w_t, axi_slv_ar_t)
+    `AXI_TYPEDEF_RESP_T(axi_slv_resp_t, axi_slv_b_t, axi_slv_r_t)
+    `AXI_TYPEDEF_REQ_T(axi_mst_req_t, axi_mst_aw_t, axi_w_t, axi_mst_ar_t)
+    `AXI_TYPEDEF_RESP_T(axi_mst_resp_t, axi_mst_b_t, axi_mst_r_t)
+
+    `REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
+
+    typedef struct packed {
+      int unsigned idx;
+      axi_addr_t   start_addr;
+      axi_addr_t   end_addr;
+    } rule_full_t;
+
+    axi_llc_pkg::events_t llc_events;
+    axi_slv_req_t         axi_cpu_req;
+    axi_slv_resp_t        axi_cpu_res;
+    axi_mst_req_t         axi_mem_req;
+    axi_mst_resp_t        axi_mem_res;
+    conf_req_t            reg_cfg_req;
+    conf_rsp_t            reg_cfg_rsp;
+
+    assign reg_cfg_req = '0;
+
+    localparam axi_addr_t SpmRegionStart       = axi_addr_t'(0);
+    localparam axi_addr_t SpmRegionLength      = 0;
+    localparam axi_addr_t L2CachedRegionStart  = axi_addr_t'(culsans_pkg::DRAMBase);
+    localparam axi_addr_t L2CachedRegionLength = axi_addr_t'(culsans_pkg::DRAMLength);
+
+    `AXI_ASSIGN_TO_REQ(axi_cpu_req, to_llc)
+    `AXI_ASSIGN_FROM_RESP(to_llc, axi_cpu_res)
+    `AXI_ASSIGN_FROM_REQ(dram, axi_mem_req)
+    `AXI_ASSIGN_TO_RESP(axi_mem_res, dram)
+
+    axi_llc_reg_wrap #(
+      .SetAssociativity ( 32'd8                     ),
+      .NumLines         ( 32'd128                   ),
+      .NumBlocks        ( 32'd8                     ),
+      .AxiIdWidth       ( culsans_pkg::IdWidthSlave ),
+      .AxiAddrWidth     ( AXI_ADDRESS_WIDTH         ),
+      .AxiDataWidth     ( AXI_DATA_WIDTH            ),
+      .AxiUserWidth     ( AXI_USER_WIDTH            ),
+      .slv_req_t        ( axi_slv_req_t             ),
+      .slv_resp_t       ( axi_slv_resp_t            ),
+      .mst_req_t        ( axi_mst_req_t             ),
+      .mst_resp_t       ( axi_mst_resp_t            ),
+      .reg_req_t        ( conf_req_t                ),
+      .reg_resp_t       ( conf_rsp_t                ),
+      .rule_full_t      ( rule_full_t               )
+    ) i_axi_llc (
+      .clk_i               ( clk_i                                      ),
+      .rst_ni              ( ndmreset_n                                 ),
+      .test_i              ( 1'b0                                       ),
+      .slv_req_i           ( axi_cpu_req                                ),
+      .slv_resp_o          ( axi_cpu_res                                ),
+      .mst_req_o           ( axi_mem_req                                ),
+      .mst_resp_i          ( axi_mem_res                                ),
+      .conf_req_i          ( reg_cfg_req                                ),
+      .conf_resp_o         ( reg_cfg_rsp                                ),
+      .cached_start_addr_i ( L2CachedRegionStart                        ),
+      .cached_end_addr_i   ( L2CachedRegionStart + L2CachedRegionLength ),
+      .spm_start_addr_i    ( SpmRegionStart                             ),
+      .axi_llc_events_o    ( llc_events                                 )
+    );
+
+    // get exit address from llc AXI IF (write to dram may not happen)
+    AXI_BUS #(
+      .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
+      .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
+      .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
+      .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+    ) to_llc_exit ();
+
+    logic                         exit_req;
+    logic                         exit_we;
+    logic [AXI_ADDRESS_WIDTH-1:0] exit_addr;
+    logic [AXI_DATA_WIDTH-1:0]    exit_wdata;
+
+    axi_slv_req_t         llc_exit_req;
+    axi_slv_req_t         llc_exit_req_aw_only;
+
+    // axi2mem can't handle parallel AW and AR requests
+    `AXI_ASSIGN_TO_REQ(llc_exit_req, to_llc);
+    always_comb begin
+      llc_exit_req_aw_only          = llc_exit_req;
+      llc_exit_req_aw_only.ar_valid = 0;
+    end
+    `AXI_ASSIGN_FROM_REQ(to_llc_exit, llc_exit_req_aw_only)
+
+    axi2mem #(
+      .AXI_ID_WIDTH        ( culsans_pkg::IdWidthSlave ),
+      .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH        ),
+      .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH           ),
+      .AXI_USER_WIDTH ( AXI_USER_WIDTH              )
+    ) i_axi2mem (
+      .clk_i  ( clk_i         ),
+      .rst_ni ( ndmreset_n    ),
+      .slave  ( to_llc_exit   ),
+      .req_o  ( exit_req      ),
+      .we_o   ( exit_we       ),
+      .addr_o ( exit_addr     ),
+      .be_o   (               ),
+      .user_o (               ),
+      .data_o ( exit_wdata    ),
+      .user_i ( '0            ),
+      .data_i ( '0            )
+    );
+
+    assign exit_o = (exit_req == 1'b1 && exit_we == 1'b1 && exit_addr == culsans_pkg::exitAddr) ? exit_wdata : '0;
+
+
+  end else begin : NO_LLC
+    `AXI_ASSIGN(dram, to_llc)
+
+    assign exit_o = (req == 1'b1 && we == 1'b1 && addr == culsans_pkg::exitAddr) ? wdata : '0;
+
+  end
+
+  // AXI delayer
   axi_delayer_intf #(
-    .AXI_ID_WIDTH        ( culsans_pkg::IdWidthSlave ),
-    .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH           ),
+    .AXI_ID_WIDTH        ( AXI_ID_WIDTH_DRAM           ),
+    .AXI_ADDR_WIDTH      ( AXI_ADDRESS_WIDTH           ),
+    .AXI_DATA_WIDTH      ( AXI_DATA_WIDTH              ),
     .AXI_USER_WIDTH      ( AXI_USER_WIDTH           ),
     .STALL_RANDOM_INPUT  ( StallRandomInput         ),
     .STALL_RANDOM_OUTPUT ( StallRandomOutput        ),
@@ -441,11 +594,12 @@ module culsans_top #(
     .mst    ( dram_delayed )
   );
 
+  // DRAM model
   axi2mem #(
-    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           )
+    .AXI_ID_WIDTH   ( AXI_ID_WIDTH_DRAM ),
+    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
+    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
+    .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
   ) i_axi2mem (
     .clk_i  ( clk_i        ),
     .rst_ni ( ndmreset_n   ),
@@ -486,7 +640,6 @@ module culsans_top #(
     .rdata_o    ( rdata                                                                       )
   );
 
-  assign exit_o = (req == 1'b1 && we == 1'b1 && addr == culsans_pkg::exitAddr) ? wdata : '0;
 
   // ---------------
   // CCU
@@ -677,7 +830,7 @@ module culsans_top #(
     assign hart_id[i] = i;
 
     ariane #(
-      .ArianeCfg     ( culsans_pkg::ArianeSocCfg ),
+      .ArianeCfg     ( ArianeCfg                 ),
       .AxiAddrWidth  ( AXI_ADDRESS_WIDTH         ),
       .AxiDataWidth  ( AXI_DATA_WIDTH            ),
       .AxiIdWidth    ( culsans_pkg::IdWidth      ),

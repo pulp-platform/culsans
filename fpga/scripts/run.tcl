@@ -43,6 +43,7 @@ set_property include_dirs { \
       "../modules/cva6/vendor/pulp-platform/common_cells/include" \
       "../modules/cva6/vendor/pulp-platform/axi/include" \
       "../modules/cva6/vendor/planv/ace/include" \
+      "../modules/axi_llc/include" 
       "../modules/cva6/corev_apu/register_interface/include" \
 } [current_fileset]
 
@@ -76,6 +77,9 @@ add_files -fileset constrs_1 -norecurse constraints/ariane.xdc
 synth_design -rtl -name rtl_1
 
 set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true [get_runs synth_1]
+
+# Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
+set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_mux/gen_mux.i_w_fifo/mst_w_ready_i]
 
 launch_runs synth_1
 wait_on_run synth_1
