@@ -1043,6 +1043,7 @@ module culsans_tb
                         endcase
 
                         rep_cnt   = 1000;
+                        timeout   = 150000; // long test
 
                         for (int c=0; c < NB_CORES; c++) begin
                             // any core may have to wait for AMO/flush, increase timeouts
