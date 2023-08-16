@@ -129,8 +129,8 @@ module culsans_tb
     culsans_top #(
         .InclSimDTM       (1'b0),
         .NUM_WORDS        (NUM_WORDS), // 4Kwords
-        .StallRandomInput (1'b0),
-        .StallRandomOutput(1'b0),
+        .StallRandomInput (1'b1),
+        .StallRandomOutput(1'b1),
         .FixedDelayInput  (0),
         .FixedDelayOutput (0),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
@@ -622,7 +622,13 @@ module culsans_tb
                         test_header(testname, "Flush the cache while other core is accessing its contents");
 
                         // core 1 will have to wait for flush, increase timeout
-                        cache_scbd[1].set_cache_msg_timeout(10000);
+                        cache_scbd[1].set_cache_msg_timeout(50000);
+
+                        // core 0 mgmt will have to wait for flush, increase timeout
+                        cache_scbd[0].set_mgmt_trans_timeout (50000);
+
+                        timeout = 200000; // long tests
+
 
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
@@ -650,7 +656,7 @@ module culsans_tb
                             end
                         join
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        `WAIT_CYC(clk, 50000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -935,7 +941,12 @@ module culsans_tb
                         test_header(testname, "AMO request flushing the cache while other core is accessing its contents");
 
                         // core 1 will have to wait for flush, increase timeout
-                        cache_scbd[1].set_cache_msg_timeout(10000);
+                        cache_scbd[1].set_cache_msg_timeout(50000);
+
+                        // core 0 will have to wait for flush, increase timeout
+                        cache_scbd[0].set_amo_msg_timeout(50000);
+
+                        timeout = 200000; // long tests
 
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
@@ -962,6 +973,8 @@ module culsans_tb
                                 end
                             end
                         join
+
+                        `WAIT_CYC(clk, 50000) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
