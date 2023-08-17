@@ -43,7 +43,7 @@ set_property include_dirs { \
       "../modules/cva6/vendor/pulp-platform/common_cells/include" \
       "../modules/cva6/vendor/pulp-platform/axi/include" \
       "../modules/cva6/vendor/planv/ace/include" \
-      "../modules/axi_llc/include" 
+      "../modules/axi_llc/include"
       "../modules/cva6/corev_apu/register_interface/include" \
 } [current_fileset]
 
@@ -78,9 +78,6 @@ synth_design -rtl -name rtl_1
 
 set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true [get_runs synth_1]
 
-# Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
-set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_mux/gen_mux.i_w_fifo/mst_w_ready_i]
-
 launch_runs synth_1
 wait_on_run synth_1
 open_run synth_1
@@ -98,6 +95,31 @@ report_clock_interaction                                                -file re
 # set for RuntimeOptimized implementation
 set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
 set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+
+
+# Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
+set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[13].i_in_flight_cnt/gen_demux.lock_aw_valid_q_reg_0]
+
+# CRITICAL WARNING: [DRC LUTLP-1] Combinatorial Loop Alert: 10 LUT cells form a combinatorial loop.
+# This can create a race condition. Timing analysis may not be accurate. The preferred resolution is
+# to modify the design to remove combinatorial logic loops. If the loop is known and understood,
+# this DRC can be bypassed by acknowledging the condition and setting the following XDC constraint
+# on any one of the nets in the loop:
+# 'set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets <myHier/myNet>]'.
+# One net in the loop is
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[13].i_in_flight_cnt/gen_demux.lock_aw_valid_q_reg_0
+# Please evaluate your design. The cells in the loop are:
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[13].i_in_flight_cnt/counter_q[4]_i_4__21,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[5].i_in_flight_cnt/gen_demux.lock_aw_valid_q_i_2,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/gen_demux.lock_aw_valid_q_i_4,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[13].i_in_flight_cnt/i_axi_riscv_atomics_i_2,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[13].i_in_flight_cnt/i_axi_riscv_atomics_i_91,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/i_axi_riscv_atomics_i_92,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_art/mst\\.aw_valid_INST_0,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_art/mst\\.aw_valid_INST_0_i_3,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_art/mst\\.aw_valid_INST_0_i_5,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/pending_w_q[4]_i_3.
+
 
 launch_runs impl_1
 wait_on_run impl_1
