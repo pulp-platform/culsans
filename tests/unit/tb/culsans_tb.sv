@@ -22,11 +22,13 @@ module culsans_tb
     localparam int unsigned AxiUserWidth     = culsans_pkg::UserWidth;
     localparam ariane_cfg_t ArianeCfg        = culsans_pkg::ArianeSocCfg;
 
-    localparam time         CLK_PERIOD       = 10ns;
-    localparam int unsigned RTC_CLOCK_PERIOD = 30.517us;
-    localparam int unsigned DCACHE_PORTS     = 3;
-    localparam int unsigned NB_CORES         = culsans_pkg::NB_CORES;
-    localparam int unsigned NUM_WORDS        = 4**10;
+    localparam time         CLK_PERIOD         = 10ns;
+    localparam int unsigned RTC_CLOCK_PERIOD   = 30.517us;
+    localparam int unsigned DCACHE_PORTS       = 3;
+    localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
+    localparam int unsigned NUM_WORDS          = 4**10;
+    localparam bit          STALL_RANDOM_DELAY = 1'b0;
+    localparam bit          HAS_LLC            = 1'b1;
 
     // The length of cached, shared region is derived from other constants
     localparam int CachedSharedRegionLength =  ArianeCfg.SharedRegionAddrBase[0] + ArianeCfg.SharedRegionLength[0] - ArianeCfg.CachedRegionAddrBase[0];
@@ -129,8 +131,9 @@ module culsans_tb
     culsans_top #(
         .InclSimDTM       (1'b0),
         .NUM_WORDS        (NUM_WORDS), // 4Kwords
-        .StallRandomInput (1'b1),
-        .StallRandomOutput(1'b1),
+        .StallRandomInput (STALL_RANDOM_DELAY),
+        .StallRandomOutput(STALL_RANDOM_DELAY),
+//        .HasLLC           (HAS_LLC),
         .FixedDelayInput  (0),
         .FixedDelayOutput (0),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
@@ -435,6 +438,7 @@ module culsans_tb
     endtask
 
     int timeout = 100000; // default
+    int wait_time = 0;
     int test_id = -1;
     int rep_cnt;
     // select one core randomly for tests that need one core that behaves differently
@@ -1002,6 +1006,16 @@ module culsans_tb
                             end
                         endcase
 
+                        // LLC and random AXI delay cause longer tests
+                        wait_time = 10000;
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 20000;
+                            for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+                                cache_scbd[core_idx].set_cache_msg_timeout(20000);
+                            end
+                        end
+
                         rep_cnt   = 1000;
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -1032,7 +1046,7 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -1057,11 +1071,21 @@ module culsans_tb
 
                         rep_cnt   = 1000;
                         timeout   = 150000; // long test
+                        wait_time = 10000;
+
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 20000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_amo_msg_timeout(wait_time);
+                            end
+                        end
 
                         for (int c=0; c < NB_CORES; c++) begin
                             // any core may have to wait for AMO/flush, increase timeouts
-                            cache_scbd[c].set_cache_msg_timeout(10000);
-                            cache_scbd[c].set_snoop_msg_timeout(10000);
+                            cache_scbd[c].set_cache_msg_timeout(wait_time);
+                            cache_scbd[c].set_snoop_msg_timeout(wait_time);
                         end
 
                         for (int c=0; c < NB_CORES; c++) begin
@@ -1100,7 +1124,7 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -1161,6 +1185,16 @@ module culsans_tb
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  shareable, non-cacheable");
 
                         rep_cnt   = 1000;
+                        wait_time = 1000;
+
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 10000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
+                            end
+                        end
 
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -1199,6 +1233,8 @@ module culsans_tb
                         end
                         wait fork;
 
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+
                         `WAIT_CYC(clk, 100)
                     end
 
@@ -1207,7 +1243,19 @@ module culsans_tb
                     "random_cached_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  cacheable\n  non-shareable, non-cacheable");
 
-                        rep_cnt = 1000;
+                        rep_cnt   = 1000;
+                        wait_time = 1000;
+
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 10000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
+                            end
+                        end
+
+
 
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -1246,6 +1294,8 @@ module culsans_tb
                         end
                         wait fork;
 
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+
                         `WAIT_CYC(clk, 1000)
                     end
 
@@ -1254,7 +1304,18 @@ module culsans_tb
                     "random_shared_non-shared" : begin
                         test_header(testname, "Writes and reads to random addresses:\n  shareable, non-cacheable\n  non-shareable, non-cacheable");
 
-                        rep_cnt = 1000;
+                        rep_cnt   = 1000;
+                        wait_time = 1000;
+
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 10000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
+                            end
+                        end
+
 
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -1293,6 +1354,8 @@ module culsans_tb
                         end
                         wait fork;
 
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+
                         `WAIT_CYC(clk, 100)
                     end
 
@@ -1302,6 +1365,17 @@ module culsans_tb
                         test_header(testname, "Writes and reads to random addresses in all address areas");
 
                         rep_cnt   = 1000;
+
+
+                        // LLC and random AXI delay cause longer tests
+                        wait_time = 10000;
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 20000;
+                            for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+                                cache_scbd[core_idx].set_cache_msg_timeout(20000);
+                            end
+                        end
 
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
@@ -1343,6 +1417,8 @@ module culsans_tb
                             join_none
                         end
                         wait fork;
+
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
