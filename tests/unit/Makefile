@@ -58,7 +58,7 @@ endif
 
 # run all tests expected to pass
 pass: rtl
-	@for d in $(PASS_LIST); do make -C $$d all; done
+	@-for d in $(PASS_LIST); do make -C $$d all; done
 	@$(MAKE) status
 
 # run all tests expected to fail
