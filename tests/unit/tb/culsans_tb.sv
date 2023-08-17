@@ -133,7 +133,7 @@ module culsans_tb
         .NUM_WORDS        (NUM_WORDS), // 4Kwords
         .StallRandomInput (STALL_RANDOM_DELAY),
         .StallRandomOutput(STALL_RANDOM_DELAY),
-//        .HasLLC           (HAS_LLC),
+        .HasLLC           (HAS_LLC),
         .FixedDelayInput  (0),
         .FixedDelayOutput (0),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
