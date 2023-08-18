@@ -983,6 +983,7 @@ axi_riscv_atomics_wrap #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     ),
+    .AXI_MAX_READ_TXNS  ( 1  ),
     .AXI_MAX_WRITE_TXNS ( 1  ),
     .RISCV_WORD_WIDTH   ( 64 )
 ) i_axi_riscv_atomics (
