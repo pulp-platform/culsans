@@ -412,8 +412,8 @@ if (riscv::XLEN==32 ) begin
 
     assign master[culsans_pkg::Debug].r_user ='0;
     assign master[culsans_pkg::Debug].b_user ='0;
- 
-    xlnx_axi_dwidth_converter_dm_slave  i_axi_dwidth_converter_dm_slave( 
+
+    xlnx_axi_dwidth_converter_dm_slave  i_axi_dwidth_converter_dm_slave(
         .s_axi_aclk(clk),
         .s_axi_aresetn(ndmreset_n),
         .s_axi_awid(master[culsans_pkg::Debug].aw_id),
@@ -549,7 +549,7 @@ end else begin
 
     assign master[culsans_pkg::Debug].r_ready = master_to_dm[0].r_ready;
 
-end 
+end
 
 
 
@@ -595,7 +595,7 @@ if (riscv::XLEN==32 ) begin
 
     logic [31 : 0] dm_master_s_rdata;
 
-    assign dm_axi_m_resp.r.data = {32'h0000_0000, dm_master_s_rdata}; 
+    assign dm_axi_m_resp.r.data = {32'h0000_0000, dm_master_s_rdata};
 
     assign to_xbar[1].aw_user = '0;
     assign to_xbar[1].w_user = '0;
@@ -605,7 +605,7 @@ if (riscv::XLEN==32 ) begin
     assign to_xbar[1].ar_id = dm_axi_m_req.ar.id;
     assign to_xbar[1].aw_atop = dm_axi_m_req.aw.atop;
 
-    xlnx_axi_dwidth_converter_dm_master  i_axi_dwidth_converter_dm_master( 
+    xlnx_axi_dwidth_converter_dm_master  i_axi_dwidth_converter_dm_master(
         .s_axi_aclk(clk),
         .s_axi_aresetn(ndmreset_n),
         .s_axi_awid(dm_axi_m_req.aw.id),
@@ -1817,27 +1817,87 @@ axi_clock_converter_0 pcie_axi_clock_converter (
 );
 `endif
 
-  xlnx_ila i_ila (
+  //////////////////////////////////////////////////////////////////////////////
+  // Debug probes
+  //////////////////////////////////////////////////////////////////////////////
+
+  // can't concatenate different enums, use temp variables for states here
+  wire [3:0] cache_ctrL_0_0_state = gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q;
+  wire [3:0] cache_ctrL_0_1_state = gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q;
+  wire [3:0] cache_ctrL_0_2_state = gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q;
+
+  wire [3:0] cache_ctrL_1_0_state = gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.state_q;
+  wire [3:0] cache_ctrL_1_1_state = gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q;
+  wire [3:0] cache_ctrL_1_2_state = gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q;
+
+  wire [2:0] snoop_ctrL_0_state   = gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q;
+  wire [2:0] snoop_ctrL_1_state   = gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q;
+
+  wire [4:0] miss_handler_0_state = gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q;
+  wire [4:0] miss_handler_1_state = gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q;
+
+  wire [5:0] ccu_fsm_state = i_ccu.i_ccu_top.fsm.state_q;
+
+  xlnx_ila i_ila_top (
     .clk     (clk),
-    .probe0  (i_ccu.i_ccu_top.fsm.state_q),
-    .probe1  ({master[culsans_pkg::DRAM].aw_valid,         // 1
+
+    .probe0  ({cache_ctrL_0_0_state, // 4
+               cache_ctrL_0_1_state, // 4
+               cache_ctrL_0_2_state, // 4
+               cache_ctrL_1_0_state, // 4
+               cache_ctrL_1_1_state, // 4
+               cache_ctrL_1_1_state, // 4
+               snoop_ctrL_0_state,   // 3
+               snoop_ctrL_1_state}), // 3 = 30
+
+    .probe1  ({miss_handler_0_state, // 5
+               miss_handler_1_state, // 5
+               ccu_fsm_state}),      // 6 = 16
+
+    .probe2  ({master[culsans_pkg::DRAM].aw_valid,         // 1
                master[culsans_pkg::DRAM].aw_lock,          // 1
                master[culsans_pkg::DRAM].aw_atop,          // 6
-               master[culsans_pkg::DRAM].aw_addr[23:0]}),  // 24
+               master[culsans_pkg::DRAM].aw_id,            // 9
+               master[culsans_pkg::DRAM].aw_user[7:0],     // 8
+               master[culsans_pkg::DRAM].aw_ready,         // 1
+               master[culsans_pkg::DRAM].w_valid,          // 1
+               master[culsans_pkg::DRAM].w_ready}),        // 1  = 27
 
-    .probe6  ({master[culsans_pkg::DRAM].ar_valid,         // 1
+    .probe3  (master[culsans_pkg::DRAM].aw_addr[31:0]),    // 32 = 32
+
+    .probe4  ({master[culsans_pkg::DRAM].b_valid,          // 1
+               master[culsans_pkg::DRAM].b_id,             // 9
+               master[culsans_pkg::DRAM].b_resp,           // 2
+               master[culsans_pkg::DRAM].b_ready}),        // 1  = 13
+
+    .probe5  ({master[culsans_pkg::DRAM].ar_valid,         // 1
                master[culsans_pkg::DRAM].ar_lock,          // 1
-               master[culsans_pkg::DRAM].ar_addr[29:0]}),  // 30
+               master[culsans_pkg::DRAM].ar_id,            // 9
+               master[culsans_pkg::DRAM].ar_user[1:0],     // 2
+               master[culsans_pkg::DRAM].ar_ready,         // 1
+               master[culsans_pkg::DRAM].r_valid,          // 1
+               master[culsans_pkg::DRAM].r_id,             // 9
+               master[culsans_pkg::DRAM].r_resp,           // 2
+               master[culsans_pkg::DRAM].r_ready}),        // 1  = 27
 
-    .probe2  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
-    .probe3  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
-    .probe4  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
-    .probe5  (gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
-    .probe7  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.state_q),
-    .probe8  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[3].i_cache_ctrl.state_q),
-    .probe9  (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_snoop_cache_ctrl.state_q),
-    .probe10 (gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q),
-    .probe11 ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
+    .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
+
+    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 9
+
+    .probe8  ('0),
+    .probe9  ('0),
+    .probe10 ('0),
+    .probe11 ('0),
+
+    .probe12  ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
                gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,
                gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_req,
                gen_ariane[0].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].kill_req,
@@ -1860,9 +1920,8 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                gen_ariane[0].i_ariane.i_cva6.dcache_flush_ctrl_cache,
                gen_ariane[0].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl,
                gen_ariane[0].i_ariane.i_cva6.icache_flush_ctrl_cache,
-               gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q}),
-
-    .probe12 ({gen_ariane[1].i_ariane.i_cva6.amo_req.req,
+               gen_ariane[0].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q, // 24
+               gen_ariane[1].i_ariane.i_cva6.amo_req.req,
                gen_ariane[1].i_ariane.i_cva6.amo_resp.ack,
                gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].data_req,
                gen_ariane[1].i_ariane.i_cva6.dcache_req_ports_ex_cache[0].kill_req,
@@ -1885,8 +1944,7 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                gen_ariane[1].i_ariane.i_cva6.dcache_flush_ctrl_cache,
                gen_ariane[1].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl,
                gen_ariane[1].i_ariane.i_cva6.icache_flush_ctrl_cache,
-               gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q})
+               gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q})  // 24 = 48
   );
-
 
 endmodule
