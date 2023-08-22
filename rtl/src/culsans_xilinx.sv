@@ -1882,15 +1882,16 @@ axi_clock_converter_0 pcie_axi_clock_converter (
 
     .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
 
-    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 9
+    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_addr[19:7], // 12
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,             // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,       // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,            // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,        // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,        // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.ar_push_addr[19:7],       // 12
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,               // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,              // 1
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}),            // 1 = 32
 
     .probe8  ('0),
     .probe9  ('0),
