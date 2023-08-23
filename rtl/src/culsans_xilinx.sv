@@ -1845,7 +1845,7 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                cache_ctrL_0_2_state, // 4
                cache_ctrL_1_0_state, // 4
                cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_1_state, // 4
+               cache_ctrL_1_2_state, // 4
                snoop_ctrL_0_state,   // 3
                snoop_ctrL_1_state}), // 3 = 30
 
