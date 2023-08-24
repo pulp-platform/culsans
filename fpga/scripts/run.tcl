@@ -93,8 +93,14 @@ report_cdc                                                              -file re
 report_clock_interaction                                                -file reports/$project.clock_interaction.rpt
 
 # set for RuntimeOptimized implementation
-set_property "steps.place_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
-set_property "steps.route_design.args.directive" "RuntimeOptimized" [get_runs impl_1]
+set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE RuntimeOptimized    [get_runs impl_1]
+set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE RuntimeOptimized    [get_runs impl_1]
+set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE RuntimeOptimized [get_runs impl_1]
+set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE RuntimeOptimized      [get_runs impl_1]
+
+# disable power optimization
+set_property STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED false    [get_runs impl_1]
+set_property STEPS.POWER_OPT_DESIGN.IS_ENABLED false               [get_runs impl_1]
 
 
 # Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
