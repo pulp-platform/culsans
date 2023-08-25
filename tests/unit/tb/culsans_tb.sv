@@ -27,7 +27,7 @@ module culsans_tb
     localparam int unsigned DCACHE_PORTS       = 3;
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
-    localparam bit          STALL_RANDOM_DELAY = 1'b0;
+    localparam bit          STALL_RANDOM_DELAY = 1'b1;
     localparam bit          HAS_LLC            = 1'b1;
 
     // The length of cached, shared region is derived from other constants

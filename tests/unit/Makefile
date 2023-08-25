@@ -24,6 +24,7 @@ help:
 	@echo "    make fail                  run all tests that are expected to fail"
 	@echo "    make all TEST=<testname>   run test $(TESTS_DIR)/<testname>"
 	@echo "    make rerun                 run all tests that failed or that has not been run"
+	@echo "    make rerun_pass            run all tests expected to pass that failed or that has not been run"
 	@echo "    make status                list result from latest run of each test"
 	@echo "    make list_tests            list all available tests"
 	@echo "    make clean                 clean all test results"
@@ -73,6 +74,18 @@ amo: rtl
 # run failed or not-executed tests
 rerun: rtl
 	@-for d in $(TESTLIST); do \
+		if [ -e $$d/$(TEST_REPORT) ]; then \
+			if grep -q Error $$d/$(TEST_REPORT) ; then \
+				make -C $$d all; \
+			fi; \
+		else \
+			make -C $$d all; \
+		fi; \
+	done
+	@$(MAKE) status
+
+rerun_pass: rtl
+	@-for d in $(PASS_LIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q Error $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \

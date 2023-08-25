@@ -1845,7 +1845,7 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                cache_ctrL_0_2_state, // 4
                cache_ctrL_1_0_state, // 4
                cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_1_state, // 4
+               cache_ctrL_1_2_state, // 4
                snoop_ctrL_0_state,   // 3
                snoop_ctrL_1_state}), // 3 = 30
 
@@ -1881,7 +1881,13 @@ axi_clock_converter_0 pcie_axi_clock_converter (
 
     .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
 
-    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
+    .probe7  ({gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i_i,
+               gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i,
+               gen_ariane[0].i_ariane.i_cva6.controller_i.fence_t_i,
+               gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i_i,
+               gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i,
+               gen_ariane[1].i_ariane.i_cva6.controller_i.fence_t_i,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
@@ -1889,7 +1895,7 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 9
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 15
 
     .probe8  ('0),
     .probe9  ('0),
