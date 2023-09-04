@@ -317,7 +317,10 @@ module culsans_tb
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
         assign gnt_if[core_idx].bypass_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[1];
         assign gnt_if[core_idx].bypass_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[2];
-        assign gnt_if[core_idx].bypass_gnt[3] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[3];
+
+        assign gnt_if[core_idx].miss_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[0];
+        assign gnt_if[core_idx].miss_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[1];
+        assign gnt_if[core_idx].miss_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[2];
 
 
         // assign management IF
@@ -345,6 +348,8 @@ module culsans_tb
             assign dcache_if[core_idx][port].resp   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_cache_ex[port];
             assign dcache_if[core_idx][port].wr_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[port+2] &&
                                                       (i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[port+1].i_cache_ctrl.state_q == 0); // IDLE
+
+
             initial begin : DCACHE_MON
                 dcache_req_mbox  [core_idx][port] = new();
                 dcache_resp_mbox [core_idx][port] = new();
@@ -1020,28 +1025,48 @@ module culsans_tb
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
-                                automatic int port;
-                                automatic int offset;
-                                automatic bit hit;
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
-                                        // add none or a few cycles between requests
-                                        `WAIT_CYC(clk, $urandom_range(4,0));
-                                        port   = $urandom_range(2);
-                                        hit    = $urandom_range(1);
-                                        case (testname)
-                                            "random_cached"     : offset = hit ? $urandom_range(8) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
-                                            "random_shared"     : offset = hit ? $urandom_range(8) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
-                                            "random_non-shared" : offset = hit ? $urandom_range(8) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
-                                        endcase
-                                        if (port == 2) begin
-                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                        end else begin
-                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                        automatic int offset [3];
+                                        for (int p=0; p<3; p++) begin
+                                            automatic bit hit;
+                                            // Randomize address, make sure write address is different from read addresses.
+                                            // This emulates to some extent how the core schedules requests.
+                                            // Only use 8-byte aligned addresses to make final comparison less complex
+                                            do begin
+                                                hit = $urandom_range(1);
+                                                case (testname)
+                                                    "random_cached"     : offset[p] = hit ? $urandom_range(64) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                    "random_shared"     : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                                    "random_non-shared" : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                                endcase
+
+                                                offset[p] = (offset[p] / 8) * 8;
+
+                                            end while ((p == 2) && ((offset[2] == offset[1]) ||
+                                                                    (offset[2] == offset[0])));
                                         end
+
+                                        for (int p=0; p<3; p++) begin
+                                            fork
+                                                automatic int port = p;
+                                                begin
+                                                    // add none or a few cycles between requests
+                                                    `WAIT_CYC(clk, $urandom_range(4,0));
+                                                    // submit a request on each port with a probability
+                                                    if ($urandom_range(100) > 50) begin
+                                                        if (port == 2) begin
+                                                            dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]));
+                                                        end else begin
+                                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]));
+                                                        end
+                                                    end
+                                                end
+                                            join_none
+                                        end
+                                        wait fork;
                                     end
                                 end
-
                             join_none
                         end
                         wait fork;
@@ -1082,7 +1107,6 @@ module culsans_tb
                             end
                         end
 
-
                         for (int c=0; c < NB_CORES; c++) begin
                             // any core may have to wait for AMO/flush, increase timeouts
                             cache_scbd[c].set_cache_msg_timeout(wait_time);
@@ -1092,35 +1116,54 @@ module culsans_tb
                         for (int c=0; c < NB_CORES; c++) begin
                             fork
                                 automatic int cc = c;
-                                automatic int port;
-                                automatic int offset;
-                                automatic bit hit;
-
                                 begin
                                     for (int i=0; i<rep_cnt; i++) begin
-                                        // add none or a few cycles between requests
-                                        `WAIT_CYC(clk, $urandom_range(4,0));
-                                        if ($urandom_range(100) > 99) begin
-                                            // possibly an AMO
-                                            amo_drv[cc].req(.addr(base_addr+offset), .rand_op(1),. rand_data(1));
-                                        end else begin
-                                            port   = $urandom_range(2);
-                                            hit    = $urandom_range(1);
-                                            case (testname)
-                                                "random_cached_amo"     : offset = hit ? $urandom_range(8) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
-                                                "random_shared_amo"     : offset = hit ? $urandom_range(8) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
-                                                "random_non-shared_amo" : offset = hit ? $urandom_range(8) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
-                                            endcase
+                                        automatic int offset [3];
+                                        for (int p=0; p<3; p++) begin
+                                            automatic bit hit;
+                                            // Randomize address, make sure write address is different from read addresses.
+                                            // This emulates to some extent how the core schedules requests.
+                                            // Only use 8-byte aligned addresses to make final comparison less complex
+                                            do begin
+                                                hit = $urandom_range(1);
+                                                case (testname)
+                                                    "random_cached_amo"     : offset[p] = hit ? $urandom_range(64) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                    "random_shared_amo"     : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                                    "random_non-shared_amo" : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                                endcase
 
-                                            if (port == 2) begin
-                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
-                                            end else begin
-                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                                offset[p] = (offset[p] / 8) * 8;
+
+                                            end while ((p == 2) && ((offset[2] == offset[1]) ||
+                                                                    (offset[2] == offset[0])));
+                                        end
+
+                                        // submit requests, or possibly an AMO
+                                        if ($urandom_range(100) > 99) begin
+                                            amo_drv[cc].req(.addr(base_addr+offset[0]), .rand_op(1),. rand_data(1));
+                                        end else begin
+                                            for (int p=0; p<3; p++) begin
+                                                fork
+                                                    automatic int port = p;
+                                                    begin
+                                                        // add none or a few cycles between requests
+                                                        `WAIT_CYC(clk, $urandom_range(4,0));
+                                                        // submit a request on each port with a probability
+                                                        if ($urandom_range(100) > 50) begin
+                                                            if (port == 2) begin
+                                                                dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]));
+                                                            end else begin
+                                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]));
+                                                            end
+
+                                                        end
+                                                    end
+                                                join_none
                                             end
+                                            wait fork;
                                         end
                                     end
                                 end
-
                             join_none
                         end
                         wait fork;
