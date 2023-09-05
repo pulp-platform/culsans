@@ -787,15 +787,16 @@ module culsans_tb
                         // Core 1 reserves the target, expect data
                         amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                         `WAIT_CYC(clk, 100)
-
+/*
                         // core 1 writes new data to target address
+                        // results in clearing the reservation => a subsequent store conditional would not succeed
                         dcache_drv[1][2].wr(.addr(addr), .data(data+1));
                         `WAIT_CYC(clk, 100)
 
                         // core 0 reads the value in target, expect value from regular write
                         dcache_drv[0][0].rd_wait(.addr(addr),  .check_result(1), .exp_result(data+1));
                         `WAIT_CYC(clk, 100)
-
+*/
                         // core 1 store-conditional to the target, expect success
                         amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
                         `WAIT_CYC(clk, 100)
