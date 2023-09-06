@@ -19,8 +19,6 @@ fpga:
 	make -C fpga all
 
 sdk:
-	cd cva6-sdk/opensbi && git apply ../../patch/opensbi.patch
-	cd cva6-sdk && git apply ../patch/cva6-sdk.patch
 	make -C cva6-sdk images
 
 clean:
