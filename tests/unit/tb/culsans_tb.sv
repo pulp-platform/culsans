@@ -1138,12 +1138,17 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         rep_cnt   = 1000;
+                        wait_time = 1000;
                         timeout   = 100000; // long test
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            // any core may have to wait for flush, increase timeouts
-                            cache_scbd[c].set_cache_msg_timeout(10000);
-                            cache_scbd[c].set_snoop_msg_timeout(10000);
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            wait_time = 10000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
+                                cache_scbd[c].set_snoop_msg_timeout(wait_time);
+                            end
                         end
 
                         for (int c=0; c < NB_CORES; c++) begin
@@ -1175,7 +1180,7 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
 
                         `WAIT_CYC(clk, 100)
                     end
