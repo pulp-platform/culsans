@@ -54,8 +54,12 @@ ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
 	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
-	if [[ "$$PWD" =~ integration ]]; then python3.6 ../../test_automation/testParser.py; fi
-	if [ -f postproc.sh ]; then ./postproc.sh; fi
+	@if [[ "$$PWD" =~ integration ]]; then \
+		if [ -f test.yaml ]; then \
+			python3.6 ../../test_automation/testParser.py; \
+		fi \
+	fi
+	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
