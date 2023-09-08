@@ -68,6 +68,7 @@ endif
 
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
+	@(! grep -q -n "FAIL" $(TEST_REPORT))
 
 clean:
 	rm -rf objs
