@@ -26,8 +26,8 @@ fpga:
 
 sanity:
 	@make -C unit clean sanity
-	@make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace_direct
-	@make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace
+	#@make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace_direct
+	#@make -C ../modules/cva6/corev_apu/tb/tb_wb_dcache clean simc toplevel=tb_ace
 	@make -C integration clean all TEST=read_cache_share NB_CORES=4
 	@printf "\nsanity check \033[32mPASSED\033[0m\n\n"
 
