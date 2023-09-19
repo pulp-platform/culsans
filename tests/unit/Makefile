@@ -75,7 +75,7 @@ amo: rtl
 rerun: rtl
 	@-for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT) ; then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
 			fi; \
 		else \
@@ -87,7 +87,7 @@ rerun: rtl
 rerun_pass: rtl
 	@-for d in $(PASS_LIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT) ; then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
 			fi; \
 		else \
@@ -100,7 +100,7 @@ rerun_pass: rtl
 status:
 	@for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT); then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT); then \
 				printf "%-40s\t : \033[31mFAILED\033[0m\n" $$d; \
 			else \
 				printf "%-40s\t : \033[32mPASSED\033[0m\n" $$d; \
