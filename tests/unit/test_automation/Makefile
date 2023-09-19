@@ -33,6 +33,9 @@ GUI ?= 0
 # the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
 ENABLE_CCU_MON ?= 1
 
+# enable check of cache contents vs main memory
+ENABLE_MEM_CHECK ?= 0
+
 VSIM_LIB      = ../../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
@@ -45,6 +48,7 @@ VSIM_FLAGS += -classdebug
 VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
+VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 #VSIM_FLAGS += -coverage
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW

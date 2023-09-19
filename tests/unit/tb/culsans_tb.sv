@@ -314,6 +314,9 @@ module culsans_tb
         assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[4] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[4];
 
+        assign gnt_if[core_idx].snoop_wr_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[1] &&
+            i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[1];
+
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
         assign gnt_if[core_idx].bypass_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[1];
         assign gnt_if[core_idx].bypass_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[2];
@@ -321,6 +324,18 @@ module culsans_tb
         assign gnt_if[core_idx].miss_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[0];
         assign gnt_if[core_idx].miss_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[1];
         assign gnt_if[core_idx].miss_gnt[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_gnt[2];
+
+        assign gnt_if[core_idx].wr_gnt[0] = (i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q == 0) && // IDLE
+                                            i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[0];
+
+        assign gnt_if[core_idx].wr_gnt[1] = (i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q == 0) && // IDLE
+                                            i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[1] &&
+                                            !i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[0];
+
+        assign gnt_if[core_idx].wr_gnt[2] = (i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.state_q == 0) && // IDLE
+                                            i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[2] &&
+                                            !i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[1] &&
+                                            !i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.miss_req[0];
 
 
         // assign management IF
@@ -497,7 +512,6 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "write_collision" : begin
                         test_header(testname, "Part 1 : Write conflicts to single address");
@@ -640,7 +654,7 @@ module culsans_tb
                         // core 0 mgmt will have to wait for flush, increase timeout
                         cache_scbd[0].set_mgmt_trans_timeout (50000);
 
-                        timeout = 200000; // long tests
+                        timeout = 200000; // long test
 
 
                         // other snooped cores will have to wait for flush, increase timeout
@@ -674,6 +688,71 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "evict_collision" : begin
+                        test_header(testname, "Collision between eviction in one core and access in others");
+
+                        base_addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt   = 200;
+                        timeout   = 400000; // long test
+
+                        for (int r=0; r<rep_cnt; r++) begin
+
+                            // fill up cache set
+                            for (int i=0; i<8; i++) begin
+                                automatic logic [63:0] laddr = base_addr + (i << DCACHE_INDEX_WIDTH);
+                                dcache_drv[cid][2].wr(.addr(laddr), .data(i + cid*1024));
+                            end
+
+                            `WAIT_CYC(clk, 100)
+
+                            // cause collision
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    automatic int port;
+                                    automatic logic [63:0] laddr;
+                                    begin
+                                        if (cc == cid) begin
+                                            // cause evictions in one core
+                                            for (int i=8; i<16; i++) begin
+                                                laddr = base_addr + (i << DCACHE_INDEX_WIDTH);
+                                                port = $urandom_range(2);
+                                                // add none or a few cycles between requests
+                                                `WAIT_CYC(clk, $urandom_range(4,0));
+                                                // evictions are caused by read or write
+                                                case (port)
+                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr));
+                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024));
+                                                endcase
+                                            end
+                                        end else begin
+                                            // access the evicted addresses in other cores
+                                            for (int i=0; i<8; i++) begin
+                                                automatic int offset;
+                                                offset  = (i + cc) % 8;
+                                                laddr = base_addr + (offset << DCACHE_INDEX_WIDTH);
+                                                port  = $urandom_range(3);
+                                                // add none or a few cycles between requests
+                                                `WAIT_CYC(clk, $urandom_range(4,0));
+                                                // create conflict with read, write, or AMO
+                                                case (port)
+                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr));
+                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024));
+                                                    3    : amo_drv[cc].req(.addr(laddr), .rand_op(1), .data(i + cc*1024));
+                                                endcase
+                                            end
+                                        end
+                                    end
+                                join_none
+                            end
+                            wait fork;
+
+                            `WAIT_CYC(clk, 100)
+                        end
+
+                    end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_read_write" : begin
@@ -1015,7 +1094,7 @@ module culsans_tb
                         // LLC and random AXI delay cause longer tests
                         wait_time = 10000;
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout   = 400000;
                             wait_time = 20000;
                             for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                                 cache_scbd[core_idx].set_cache_msg_timeout(20000);
@@ -1101,7 +1180,7 @@ module culsans_tb
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout   = 400000;
                             wait_time = 20000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_amo_msg_timeout(wait_time);
