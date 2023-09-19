@@ -512,6 +512,7 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
+
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "write_collision" : begin
                         test_header(testname, "Part 1 : Write conflicts to single address");
@@ -531,13 +532,13 @@ module culsans_tb
                                     automatic int cc = c;
                                     begin
                                         if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, ((i+cc)%19))
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
                                         end
                                     end
                                 join_none
@@ -556,14 +557,14 @@ module culsans_tb
                                     automatic int cc = c;
                                     begin
                                         if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, 10)
                                         end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, (i+cc)%19)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, 10)
                                         end
                                     end
@@ -595,9 +596,9 @@ module culsans_tb
                                     begin
                                         `WAIT_CYC(clk, $urandom_range(5))
                                         if ((cc % 2) == 0 ) begin
-                                            dcache_drv[cc][0].rd(.addr(addr));
+                                            dcache_drv[cc][0].rd(.addr(addr), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
                                         end
                                     end
                                 join_none
@@ -612,7 +613,7 @@ module culsans_tb
                         // read x 8 - fill cache set 0 in CPU 0
                         for (int c=0; c < NB_CORES; c++) begin
                             for (int i=0; i<8; i++) begin
-                                dcache_drv[c][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)));
+                                dcache_drv[c][1].rd(.addr(addr + (i << DCACHE_INDEX_WIDTH)), .rand_size_be(1));
                             end
                         end
 
@@ -623,13 +624,13 @@ module culsans_tb
                                     automatic int cc = c;
                                     begin
                                         if ((cc % 2) == 0 ) begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH)),     .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
                                             `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i));
+                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)));
+                                            dcache_drv[cc][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH)), .rand_size_be(1));
                                             `WAIT_CYC(clk, $urandom_range(20))
-                                            dcache_drv[cc][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8));
+                                            dcache_drv[cc][0].rd(.addr(addr+ ((i%8) << DCACHE_INDEX_WIDTH) + 8), .rand_size_be(1));
                                         end
                                     end
                                 join_none
@@ -654,7 +655,7 @@ module culsans_tb
                         // core 0 mgmt will have to wait for flush, increase timeout
                         cache_scbd[0].set_mgmt_trans_timeout (50000);
 
-                        timeout = 200000; // long test
+                        timeout = 200000; // long tests
 
 
                         // other snooped cores will have to wait for flush, increase timeout
@@ -723,8 +724,8 @@ module culsans_tb
                                                 `WAIT_CYC(clk, $urandom_range(4,0));
                                                 // evictions are caused by read or write
                                                 case (port)
-                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr));
-                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024));
+                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr), .rand_size_be(1));
+                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024), .rand_size_be(1));
                                                 endcase
                                             end
                                         end else begin
@@ -738,8 +739,8 @@ module culsans_tb
                                                 `WAIT_CYC(clk, $urandom_range(4,0));
                                                 // create conflict with read, write, or AMO
                                                 case (port)
-                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr));
-                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024));
+                                                    0, 1 : dcache_drv[cc][port].rd_wait(.addr(laddr), .rand_size_be(1));
+                                                    2    : dcache_drv[cc][port].wr(.addr(laddr), .data(i + cc*1024), .rand_size_be(1));
                                                     3    : amo_drv[cc].req(.addr(laddr), .rand_op(1), .data(i + cc*1024));
                                                 endcase
                                             end
@@ -929,9 +930,9 @@ module culsans_tb
                                             port   = $urandom_range(2);
                                             offset = $urandom_range(1024);
                                             if (port == 2) begin
-                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                             end else begin
-                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                             end
                                         end
                                     end
@@ -1094,7 +1095,7 @@ module culsans_tb
                         // LLC and random AXI delay cause longer tests
                         wait_time = 10000;
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 400000;
+                            timeout   = 300000;
                             wait_time = 20000;
                             for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                                 cache_scbd[core_idx].set_cache_msg_timeout(20000);
@@ -1136,9 +1137,9 @@ module culsans_tb
                                                     // submit a request on each port with a probability
                                                     if ($urandom_range(100) > 50) begin
                                                         if (port == 2) begin
-                                                            dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]));
+                                                            dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]), .rand_size_be(1));
                                                         end else begin
-                                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]));
+                                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]), .rand_size_be(1));
                                                         end
                                                     end
                                                 end
@@ -1180,7 +1181,7 @@ module culsans_tb
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 400000;
+                            timeout   = 300000;
                             wait_time = 20000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_amo_msg_timeout(wait_time);
@@ -1231,9 +1232,9 @@ module culsans_tb
                                                         // submit a request on each port with a probability
                                                         if ($urandom_range(100) > 50) begin
                                                             if (port == 2) begin
-                                                                dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]));
+                                                                dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]), .rand_size_be(1));
                                                             end else begin
-                                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]));
+                                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset[port]), .rand_size_be(1));
                                                             end
 
                                                         end
@@ -1284,9 +1285,9 @@ module culsans_tb
                                             offset = hit ? $urandom_range(8) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
 
                                             if (port == 2) begin
-                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                             end else begin
-                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                                dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                             end
                                         end else begin
                                             dcache_mgmt_drv[cc].flush();
@@ -1346,9 +1347,9 @@ module culsans_tb
                                         endcase
 
                                         if (port == 2) begin
-                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                         end
                                     end
                                 end
@@ -1407,9 +1408,9 @@ module culsans_tb
                                         endcase
 
                                         if (port == 2) begin
-                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                         end
                                     end
                                 end
@@ -1467,9 +1468,9 @@ module culsans_tb
                                         endcase
 
                                         if (port == 2) begin
-                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                         end
                                     end
                                 end
@@ -1531,9 +1532,9 @@ module culsans_tb
                                         endcase
 
                                         if (port == 2) begin
-                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset));
+                                            dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
                                         end else begin
-                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset));
+                                            dcache_drv[cc][port].rd_wait(.addr(base_addr + offset), .rand_size_be(1));
                                         end
                                     end
                                 end
