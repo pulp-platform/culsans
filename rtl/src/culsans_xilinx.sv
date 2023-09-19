@@ -1853,33 +1853,33 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                miss_handler_1_state, // 5
                ccu_fsm_state}),      // 6 = 16
 
-    .probe2  ({master[culsans_pkg::DRAM].aw_valid,         // 1
-               master[culsans_pkg::DRAM].aw_lock,          // 1
-               master[culsans_pkg::DRAM].aw_atop,          // 6
-               master[culsans_pkg::DRAM].aw_id,            // 9
-               master[culsans_pkg::DRAM].aw_user[7:0],     // 8
-               master[culsans_pkg::DRAM].aw_ready,         // 1
-               master[culsans_pkg::DRAM].w_valid,          // 1
-               master[culsans_pkg::DRAM].w_ready}),        // 1  = 27
+    .probe2  ({to_xbar[0].aw_valid,         // 1
+               to_xbar[0].aw_lock,          // 1
+               to_xbar[0].aw_atop,          // 6
+               to_xbar[0].aw_id,            // 9
+               to_xbar[0].aw_user[7:0],     // 8
+               to_xbar[0].aw_ready,         // 1
+               to_xbar[0].w_valid,          // 1
+               to_xbar[0].w_ready}),        // 1  = 27
 
-    .probe3  (master[culsans_pkg::DRAM].aw_addr[31:0]),    // 32 = 32
+    .probe3  (to_xbar[0].aw_addr[31:0]),    // 32 = 32
 
-    .probe4  ({master[culsans_pkg::DRAM].b_valid,          // 1
-               master[culsans_pkg::DRAM].b_id,             // 9
-               master[culsans_pkg::DRAM].b_resp,           // 2
-               master[culsans_pkg::DRAM].b_ready}),        // 1  = 13
+    .probe4  ({to_xbar[0].b_valid,          // 1
+               to_xbar[0].b_id,             // 9
+               to_xbar[0].b_resp,           // 2
+               to_xbar[0].b_ready}),        // 1  = 13
 
-    .probe5  ({master[culsans_pkg::DRAM].ar_valid,         // 1
-               master[culsans_pkg::DRAM].ar_lock,          // 1
-               master[culsans_pkg::DRAM].ar_id,            // 9
-               master[culsans_pkg::DRAM].ar_user[1:0],     // 2
-               master[culsans_pkg::DRAM].ar_ready,         // 1
-               master[culsans_pkg::DRAM].r_valid,          // 1
-               master[culsans_pkg::DRAM].r_id,             // 9
-               master[culsans_pkg::DRAM].r_resp,           // 2
-               master[culsans_pkg::DRAM].r_ready}),        // 1  = 27
+    .probe5  ({to_xbar[0].ar_valid,         // 1
+               to_xbar[0].ar_lock,          // 1
+               to_xbar[0].ar_id,            // 9
+               to_xbar[0].ar_user[1:0],     // 2
+               to_xbar[0].ar_ready,         // 1
+               to_xbar[0].r_valid,          // 1
+               to_xbar[0].r_id,             // 9
+               to_xbar[0].r_resp,           // 2
+               to_xbar[0].r_ready}),        // 1  = 27
 
-    .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
+    .probe6  (to_xbar[0].ar_addr[31:0]),    // 32 = 32
 
     .probe7  ({gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i,
@@ -1898,9 +1898,16 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 15
 
     .probe8  ('0),
-    .probe9  ('0),
-    .probe10 ('0),
-    .probe11 ('0),
+
+    .probe9  ({gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid, // 1
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,         // 1
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,     // 1
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,     // 1
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.spec}),      // 1 = 5
+
+    .probe10 (gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+
+    .probe11 (gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
 
     .probe12  ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
                gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,
