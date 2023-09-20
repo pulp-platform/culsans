@@ -356,7 +356,6 @@ module culsans_tb
             dcache_mgmt_mon[core_idx].monitor();
         end
 
-
         for (genvar port=0; port<=2; port++) begin : PORT
             // assign dcache request/response to dcache_if
             assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_req_ports_ex_cache[port] = dcache_if[core_idx][port].req;
@@ -381,6 +380,33 @@ module culsans_tb
                 dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], ArianeCfg, $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
             end
 
+            //------------------------------------------------------------------
+            // check that the read responds match the read requests
+            //------------------------------------------------------------------
+/* Don't commit these just yet
+            int cnt = 0;
+            logic check_neg = 1;
+            logic check_pos = 1;
+            always @ (posedge clk) begin
+                if (dcache_if[core_idx][port].req.data_req && !dcache_if[core_idx][port].req.data_we && dcache_if[core_idx][port].resp.data_gnt) begin
+                    cnt++;
+                end
+                if (dcache_if[core_idx][port].resp.data_rvalid) begin
+                    cnt--;
+                end
+
+                a_rd_resp_neg : assert (!check_neg || cnt >= 0) else begin
+                   $error("too many read responds in core %0d, dcache port %0d", core_idx, port);
+                    check_neg = 0;
+                end
+
+                a_rd_resp_pos : assert (!check_pos || cnt <= 2) else begin
+                   $error("too many outstanding read requests in core %0d, dcache port %0d", core_idx, port);
+                    check_pos = 0;
+                end
+            end
+            final a_req_resp_match : assert (cnt == 0) else $error("read requests and responds dont match in core %0d, dcache port %0d", core_idx, port);
+*/
         end
 
         // assign AMO IF
@@ -512,7 +538,6 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
                     end
 
-
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "write_collision" : begin
                         test_header(testname, "Part 1 : Write conflicts to single address");
@@ -643,8 +668,58 @@ module culsans_tb
 
 
                     //******************************************************************************
-                    //*** NOTE: this test currently fails at it hits bug described in PROJ-161
+                    //*** NOTE: this test currently fails at it hits bug described in PROJ-269
                     //******************************************************************************
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "cacheline_rw_collision" : begin
+                        test_header(testname, "Read cacheline while it is being updated");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+
+                        repeat (100) begin
+                            addr = addr + 32;
+                            // write data in one core
+                            dcache_drv[cid][2].wr(.addr(addr),    .data(64'hBEEFCAFE0000));
+                            dcache_drv[cid][2].wr(.addr(addr+8),  .data(64'hBEEFCAFE8888));
+                            dcache_drv[cid][2].wr(.addr(addr+16), .data(64'hDEADABBA0000));
+                            `WAIT_CYC(clk, 100)
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    begin
+                                        if (cc != cid) begin
+                                            // read data in other cores
+                                            dcache_drv[cc][1].rd_wait(.addr(addr));
+                                            dcache_drv[cc][1].rd_wait(.addr(addr+8));
+                                            dcache_drv[cc][1].rd_wait(.addr(addr+16));
+                                            // data is now shared in this core
+                                            `WAIT_CYC(clk, $urandom_range(10))
+                                            fork
+                                                begin
+                                                    // write to one part of cacheline (causing cache update)
+                                                    `WAIT_CYC(clk, $urandom_range(5))
+                                                    dcache_drv[cc][2].wr(.addr(addr+8), .rand_data(1));
+                                                end
+                                                begin
+                                                    // at the same time, read other cache line
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                    dcache_drv[cc][1].rd(.addr(addr));
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                    dcache_drv[cc][1].rd_wait(.addr(addr+16), .check_result(1), .exp_result(64'hDEADABBA0000));
+                                                end
+                                            join
+                                        end
+                                    end
+                                join_none
+                            end
+                            wait fork;
+                            `WAIT_CYC(clk, 100)
+                        end
+                    end
+
+
+
+
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "flush_collision" : begin
                         test_header(testname, "Flush the cache while other core is accessing its contents");
