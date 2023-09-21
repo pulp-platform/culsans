@@ -383,7 +383,6 @@ module culsans_tb
             //------------------------------------------------------------------
             // check that the read responds match the read requests
             //------------------------------------------------------------------
-/* Don't commit these just yet
             int cnt = 0;
             logic check_neg = 1;
             logic check_pos = 1;
@@ -406,7 +405,7 @@ module culsans_tb
                 end
             end
             final a_req_resp_match : assert (cnt == 0) else $error("read requests and responds dont match in core %0d, dcache port %0d", core_idx, port);
-*/
+
         end
 
         // assign AMO IF
