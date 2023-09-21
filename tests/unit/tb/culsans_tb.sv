@@ -724,19 +724,19 @@ module culsans_tb
                     "flush_collision" : begin
                         test_header(testname, "Flush the cache while other core is accessing its contents");
 
-                        // core 1 will have to wait for flush, increase timeout
-                        cache_scbd[1].set_cache_msg_timeout(50000);
 
                         // core 0 mgmt will have to wait for flush, increase timeout
-                        cache_scbd[0].set_mgmt_trans_timeout (50000);
+                        wait_time = STALL_RANDOM_DELAY ? 50000 : 20000;
+                        cache_scbd[cid].set_mgmt_trans_timeout (wait_time);
 
-                        timeout = 200000; // long tests
-
+                        timeout = 200000 + wait_time; // long tests
 
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
-                            if (core_idx != 1) begin
-                                cache_scbd[core_idx].set_snoop_msg_timeout(10000);
+                            cache_scbd[core_idx].set_snoop_msg_timeout(wait_time);
+                            if (core_idx != cid) begin
+                                // other cores will have to wait for flush, increase timeout
+                                cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
                             end
                         end
 
@@ -744,24 +744,31 @@ module culsans_tb
 
                         // fill up cache
                         for (int i=0; i<2048; i++) begin
-                            dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
+                            dcache_drv[cid][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
-                        fork
-                            begin
-                                // flush
-                                dcache_mgmt_drv[0].flush();
-                            end
-                            begin
-                                for (int i=2047;  i>=0; i--) begin
-                                    dcache_drv[1][1].rd_wait(.addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                        for (int c=0; c < NB_CORES; c++) begin
+                            fork
+                                automatic int cc = c;
+                                automatic int port;
+                                automatic logic [63:0] laddr;
+                                begin
+                                    if (cc == cid) begin
+                                        // flush
+                                        dcache_mgmt_drv[cc].flush();
+                                    end else begin
+                                        for (int i=2047;  i>=0; i--) begin
+                                            dcache_drv[cc][1].rd_wait(.addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                        end
+                                    end
                                 end
-                            end
-                        join
+                            join_none
+                        end
+                        wait fork;
 
-                        `WAIT_CYC(clk, 50000) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -835,8 +842,10 @@ module culsans_tb
                         test_header(testname, "AMO reads and writes to single address");
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
+                        wait_time = 10000;
+
                         for (int c=0; c < NB_CORES; c++) begin
-                            cache_scbd[c].set_amo_msg_timeout(10000);
+                            cache_scbd[c].set_amo_msg_timeout(wait_time);
                         end
 
 
@@ -861,9 +870,9 @@ module culsans_tb
                             wait fork;
                         end
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -981,11 +990,12 @@ module culsans_tb
 
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 1000;
+                        wait_time = 10000;
 
                         for (int c=0; c < NB_CORES; c++) begin
                             // other cores may have to wait for AMO
                             if (c != cid) begin
-                                cache_scbd[c].set_cache_msg_timeout(10000);
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
                             end
                         end
 
@@ -1016,9 +1026,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1109,18 +1119,20 @@ module culsans_tb
                     "amo_snoop_collision" : begin
                         test_header(testname, "AMO request flushing the cache while other core is accessing its contents");
 
+                        wait_time = 50000;
+                        timeout = 200000; // long test
+
                         // core 1 will have to wait for flush, increase timeout
-                        cache_scbd[1].set_cache_msg_timeout(50000);
+                        cache_scbd[1].set_cache_msg_timeout(wait_time);
 
                         // core 0 will have to wait for flush, increase timeout
-                        cache_scbd[0].set_amo_msg_timeout(50000);
+                        cache_scbd[0].set_amo_msg_timeout(wait_time);
 
-                        timeout = 200000; // long tests
 
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             if (core_idx != 1) begin
-                                cache_scbd[core_idx].set_snoop_msg_timeout(10000);
+                                cache_scbd[core_idx].set_snoop_msg_timeout(wait_time);
                             end
                         end
 
@@ -1143,9 +1155,9 @@ module culsans_tb
                             end
                         join
 
-                        `WAIT_CYC(clk, 50000) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1227,9 +1239,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1324,9 +1336,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1337,12 +1349,13 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         rep_cnt   = 1000;
-                        timeout   = 100000; // long test
+                        timeout   = 200000; // long test
+                        wait_time = 10000;
 
                         for (int c=0; c < NB_CORES; c++) begin
                             // any core may have to wait for flush, increase timeouts
-                            cache_scbd[c].set_cache_msg_timeout(10000);
-                            cache_scbd[c].set_snoop_msg_timeout(10000);
+                            cache_scbd[c].set_cache_msg_timeout(wait_time);
+                            cache_scbd[c].set_snoop_msg_timeout(wait_time);
                         end
 
                         for (int c=0; c < NB_CORES; c++) begin
@@ -1374,9 +1387,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, 10000) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1433,9 +1446,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1494,10 +1507,10 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
-
-                        `WAIT_CYC(clk, 1000)
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
                     end
+
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1554,9 +1567,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
@@ -1618,9 +1631,9 @@ module culsans_tb
                         end
                         wait fork;
 
-                        `WAIT_CYC(clk, wait_time) // make sure we see timeouts
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
-                        `WAIT_CYC(clk, 100)
                     end
 
 
