@@ -33,11 +33,16 @@ GUI ?= 0
 # the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
 ENABLE_CCU_MON ?= 1
 
+# enable check of cache contents vs main memory
+ENABLE_MEM_CHECK ?= 0
+
 VSIM_LIB      = ../../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
+
+SIM_RUNTIME ?= 30ms
 
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -suppress 2879       # allow calling tasks in final procedure
@@ -45,20 +50,22 @@ VSIM_FLAGS += -classdebug
 VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
+VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 #VSIM_FLAGS += -coverage
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
+	VSIM_CMD = -do "run $(SIM_RUNTIME);"
 else
 	ifneq ($(GUI), 1)
 		$(error GUI must be 0 or 1)
 	else
 		GTKWAVE_CMD = gtkwave waveform.vcd
 	endif
+	VSIM_CMD = -do "source $(SIM_TCL); run $(SIM_RUNTIME);"
 endif
-VSIM_CMD = -do $(SIM_TCL)
 
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
