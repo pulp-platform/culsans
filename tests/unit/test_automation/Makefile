@@ -42,6 +42,8 @@ VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
+SIM_RUNTIME ?= 30ms
+
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -suppress 2879       # allow calling tasks in final procedure
 VSIM_FLAGS += -classdebug
@@ -55,14 +57,15 @@ VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
+	VSIM_CMD = -do "run $(SIM_RUNTIME);"
 else
 	ifneq ($(GUI), 1)
 		$(error GUI must be 0 or 1)
 	else
 		GTKWAVE_CMD = gtkwave waveform.vcd
 	endif
+	VSIM_CMD = -do "source $(SIM_TCL); run $(SIM_RUNTIME);"
 endif
-VSIM_CMD = -do $(SIM_TCL)
 
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
