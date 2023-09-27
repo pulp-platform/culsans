@@ -27,8 +27,8 @@ module culsans_tb
     localparam int unsigned DCACHE_PORTS       = 3;
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
-    localparam bit          STALL_RANDOM_DELAY = 1'b1;
-    localparam int unsigned FIXED_AXI_DELAY    = 0;
+    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b0 `endif;
+    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0    `endif;
     localparam bit          HAS_LLC            = 1'b1;
 
     // The length of cached, shared region is derived from other constants
@@ -920,6 +920,30 @@ module culsans_tb
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
+
+                    end
+
+
+                    "amo_lr_sc_upper" : begin
+                        test_header(testname, "AMO collision with 8 byte offset, triggers JIRA issue ####");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0] + 8;
+
+                        // write known data to target address
+                        data = 64'h00000000DEADBEEF;
+                        dcache_drv[0][2].wr(.addr(addr),  .data(data));
+
+                        // Reserve the target, expect data
+                        amo_drv[0].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                        `WAIT_CYC(clk, 100)
+
+                        // other core writes to target address
+                        dcache_drv[1][2].wr(.addr(addr),  .rand_data(1));
+                        `WAIT_CYC(clk, 100)
+
+                        // store-conditional to the target, expect failure
+                        amo_drv[0].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                        `WAIT_CYC(clk, 100)
 
                     end
 
