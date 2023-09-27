@@ -27,8 +27,8 @@ module culsans_tb
     localparam int unsigned DCACHE_PORTS       = 3;
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
-    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b0 `endif;
-    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0    `endif;
+    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1 `endif;
+    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0   `endif;
     localparam bit          HAS_LLC            = 1'b1;
 
     // The length of cached, shared region is derived from other constants
@@ -929,23 +929,62 @@ module culsans_tb
 
                         addr = ArianeCfg.CachedRegionAddrBase[0] + 8;
 
-                        // write known data to target address
-                        data = 64'h00000000DEADBEEF;
-                        dcache_drv[0][2].wr(.addr(addr),  .data(data));
+                        rep_cnt = 10;
 
-                        // Reserve the target, expect data
-                        amo_drv[0].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                        `WAIT_CYC(clk, 100)
+                        for (int i=0; i<rep_cnt; i++) begin
+                            // write known data to target address
+                            data = 64'h00000000DEADBEEF;
+                            dcache_drv[0][2].wr(.addr(addr),  .data(data));
 
-                        // other core writes to target address
-                        dcache_drv[1][2].wr(.addr(addr),  .rand_data(1));
-                        `WAIT_CYC(clk, 100)
+                            // Reserve the target, expect data
+                            amo_drv[0].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
 
-                        // store-conditional to the target, expect failure
-                        amo_drv[0].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
-                        `WAIT_CYC(clk, 100)
+                            // other core writes to target address
+                            dcache_drv[1][2].wr(.addr(addr),  .rand_data(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect failure
+                            amo_drv[0].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+                        end
 
                     end
+
+
+                    "amo_lr_sc_delay" : begin
+                        test_header(testname, "Verify AMO LR/SC handling with delay on AXI, triggers JIRA issue ####");
+
+                        a_axi_delay : assert (STALL_RANDOM_DELAY == 1 || FIXED_AXI_DELAY > 5) else
+                            $error("Test %s requires AXI delay to trigger bug", testname);
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt = 10;
+
+                        for (int i=0; i<rep_cnt; i++) begin
+                            // write known data to target address
+                            data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Reserve the target, expect data
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect success
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_SC), .data(data+1), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional again to the target, expect failure
+                            amo_drv[cid].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from first store
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            `WAIT_CYC(clk, 100)
+                        end
+                    end
+
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
