@@ -923,6 +923,83 @@ module culsans_tb
                     end
 
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_cacheline_collision" : begin
+                        logic [63:0] addr_hi;
+                        test_header(testname, "AMO LR/SC targeting address in upper part of cache line, while other core accesses the lower part of cache line.\nTriggers JIRA issue ####");
+
+                        rep_cnt = 10;
+
+                        // first part, serial and deterministic
+                        for (int i=0; i<rep_cnt; i++) begin
+                            test_id = i;
+
+                            addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 16; // addr aligned with cache line
+                            addr_hi = addr + 8;                                                   // addr_hi targets upper part of cache line
+
+                            // write known data to addr_hi
+                            data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
+                            dcache_drv[0][2].wr(.addr(addr_hi),  .data(data));
+
+                            // Reserve the target, expect data
+                            amo_drv[0].req(.addr(addr_hi), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // other core writes to other part of cache line
+                            dcache_drv[1][2].wr(.addr(addr), .rand_data(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect success
+                            amo_drv[0].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+                        end
+
+                        rep_cnt = 100;
+
+                        // second part, parallel and randomized
+                        for (int i=0; i<rep_cnt; i++) begin
+                            test_id = i + 10*rep_cnt;
+
+                            addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 16; // addr aligned with cache line
+                            addr_hi = addr + 8;                                                      // addr_hi targets upper part of cache line
+
+                            for (int c=0; c<NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    begin
+                                        if (cc == cid) begin
+                                            `WAIT_CYC(clk, $urandom_range(10))
+
+                                            // write known data to addr_hi
+                                            data = 64'h00000000DEADBEEF + (i * 64'h0000000100000000);
+                                            dcache_drv[cc][2].wr(.addr(addr_hi),  .data(data));
+                                            `WAIT_CYC(clk, $urandom_range(10))
+
+                                            // Reserve the target, expect data
+                                            amo_drv[cc].req(.addr(addr_hi), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                                            `WAIT_CYC(clk, $urandom_range(10))
+
+                                            // store-conditional to the target, expect success
+                                            amo_drv[cc].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+
+                                        end else begin
+                                            // other core writes to other part of cache line
+                                            `WAIT_CYC(clk, $urandom_range(10))
+                                            dcache_drv[cc][2].wr(.addr(addr), .rand_data(1));
+
+                                            `WAIT_CYC(clk, $urandom_range(10))
+                                            dcache_drv[cc][2].wr(.addr(addr), .rand_data(1));
+                                        end
+                                    end
+                                join_none
+                            end
+                            wait fork;
+                        end
+
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_upper" : begin
                         test_header(testname, "AMO collision with 8 byte offset, triggers JIRA issue ####");
 
@@ -951,6 +1028,7 @@ module culsans_tb
                     end
 
 
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_delay" : begin
                         test_header(testname, "Verify AMO LR/SC handling with delay on AXI, triggers JIRA issue ####");
 
@@ -983,7 +1061,6 @@ module culsans_tb
                             `WAIT_CYC(clk, 100)
                         end
                     end
-
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1123,7 +1200,6 @@ module culsans_tb
 
                         `WAIT_CYC(clk, 100)
                     end
-
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
