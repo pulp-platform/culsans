@@ -313,8 +313,9 @@ module culsans_top #(
     .id_o                  (                           ),
     .critical_word_o       (                           ),
     .critical_word_valid_o (                           ),
-    .dirty_o (),
-    .shared_o(),
+    .dirty_o               (                           ),
+    .shared_o              (                           ),
+    .busy_o                (                           ),
     .axi_req_o             ( dm_axi_m_req              ),
     .axi_resp_i            ( dm_axi_m_resp             )
   );
@@ -618,9 +619,10 @@ module culsans_top #(
   logic [culsans_pkg::NumTargets-1:0] irqs;
 
   culsans_peripherals #(
-    .AxiAddrWidth ( AXI_ADDRESS_WIDTH        ),
-    .AxiDataWidth ( AXI_DATA_WIDTH           ),
+    .AxiAddrWidth ( AXI_ADDRESS_WIDTH         ),
+    .AxiDataWidth ( AXI_DATA_WIDTH            ),
     .AxiIdWidth   ( culsans_pkg::IdWidthSlave ),
+    .AxiUserWidth ( AXI_USER_WIDTH            ),
 `ifndef VERILATOR
   // disable UART when using Spike, as we need to rely on the mockuart
   `ifdef SPIKE_TANDEM
@@ -842,7 +844,8 @@ module culsans_top #(
     ) rvfi_tracer_i (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
-      .rvfi_i(rvfi[i])
+      .rvfi_i(rvfi[i]),
+      .end_of_test_o()
     );
   end
 
