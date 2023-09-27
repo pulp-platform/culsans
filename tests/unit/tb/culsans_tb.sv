@@ -927,7 +927,7 @@ module culsans_tb
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_cacheline_collision" : begin
                         logic [63:0] addr_hi;
-                        test_header(testname, "AMO LR/SC targeting address in upper part of cache line, while other core accesses the lower part of cache line.\nTriggers JIRA issue ####");
+                        test_header(testname, "AMO LR/SC targeting address in upper part of cache line, while other core accesses the lower part of cache line.\nTriggers JIRA issue PROJ-272");
 
                         rep_cnt = 10;
 
@@ -1002,7 +1002,7 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_upper" : begin
-                        test_header(testname, "AMO collision with 8 byte offset, triggers JIRA issue ####");
+                        test_header(testname, "AMO collision with 8 byte offset, triggers JIRA issue PROJ-270");
 
                         addr = ArianeCfg.CachedRegionAddrBase[0] + 8;
 
@@ -1031,7 +1031,7 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_delay" : begin
-                        test_header(testname, "Verify AMO LR/SC handling with delay on AXI, triggers JIRA issue ####");
+                        test_header(testname, "Verify AMO LR/SC handling with delay on AXI, triggers JIRA issue PROJ-271");
 
                         a_axi_delay : assert (STALL_RANDOM_DELAY == 1 || FIXED_AXI_DELAY > 5) else
                             $error("Test %s requires AXI delay to trigger bug", testname);
