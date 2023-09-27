@@ -10,8 +10,14 @@ nb_cores_rtl:
 
 # Compile the RTL
 
-
 CVA6_DIR = $(root-dir)
+
+.PHONY: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
+$(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
+	cd $$(dirname $@); \
+	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
+
+$(library) : $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
 
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
@@ -91,7 +97,7 @@ verilate_command := $(verilator) $(CVA6_DIR)/verilator_config.vlt               
                     --Mdir $(VERILATOR_LIB) -O3                                                                    \
                     --exe ./tb/culsans_tb.cpp 
 
-$(library)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC) 
+$(library)/.build-culsans-srcs: $(library) $(CULSANS_PKG) $(CULSANS_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(library) $(CULSANS_PKG) $(list_incdir)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(library) -pedanticerrors $(CULSANS_SRC) $(list_incdir)
 	@touch $(library)/.build-culsans-srcs
@@ -102,7 +108,7 @@ $(library)/.build-culsans-tb: $(library)/.build-culsans-srcs $(library) $(TB_SRC
 	@touch $(library)/.build-culsans-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(library)/.build-srcs $(library)/.build-culsans-srcs $(library)/.build-culsans-tb
+rtl: nb_cores_rtl $(library)/.build-srcs $(library)/.build-culsans-srcs $(library)/.build-culsans-tb
 	$(VOPT) $(VLOG_FLAGS) -work $(library)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1
@@ -114,7 +120,7 @@ endif
 
 # Cleanup
 
-clean_rtl:
+clean_rtl: nb_cores_rtl
 	rm -rf $(library)
 	rm -rf $(VERILATOR_LIB)
 
