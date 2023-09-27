@@ -3,8 +3,6 @@ include ../rtl.mk
 # add dummy version of cva6 for injecting cache requests from test bench drivers
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/cva6_cache_dummy.sv
 
-NB_CORES := 4
-
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
@@ -117,6 +115,6 @@ list_tests:
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
-clean: clean_tests
+clean: clean_tests clean_rtl
 
 .PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw
