@@ -10,7 +10,6 @@ TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PROJ-147
 FAIL_LIST += $(TESTS_DIR)/amo_lr_sc/
 FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_upper/
-FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_delay/
 FAIL_LIST += $(TESTS_DIR)/amo_cacheline_collision/
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
