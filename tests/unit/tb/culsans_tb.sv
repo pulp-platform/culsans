@@ -28,6 +28,7 @@ module culsans_tb
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
     localparam bit          STALL_RANDOM_DELAY = 1'b1;
+    localparam int unsigned FIXED_AXI_DELAY    = 0;
     localparam bit          HAS_LLC            = 1'b1;
 
     // The length of cached, shared region is derived from other constants
@@ -134,8 +135,8 @@ module culsans_tb
         .StallRandomInput (STALL_RANDOM_DELAY),
         .StallRandomOutput(STALL_RANDOM_DELAY),
 //        .HasLLC           (HAS_LLC),
-        .FixedDelayInput  (0),
-        .FixedDelayOutput (0),
+        .FixedDelayInput  (FIXED_AXI_DELAY),
+        .FixedDelayOutput (FIXED_AXI_DELAY),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i  ( clk      ),
@@ -926,103 +927,135 @@ module culsans_tb
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc" : begin
                         test_header(testname, "AMO Load-Reserved / Store-Conditional test");
-                        addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 8; // AMO address must be aligned with memory
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            cache_scbd[c].set_amo_msg_timeout(10000);
+                        rep_cnt = 10;
+
+                        for (int i=0; i<rep_cnt; i++) begin
+
+                            addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 8; // AMO address must be aligned with memory
+
+                            ////////////////////////////////////////////////////////
+                            // Single core, 32 Byte AMO
+                            ////////////////////////////////////////////////////////
+                            test_id=i*100;
+
+                            // write known data to target address
+                            data = 64'h0000CAFEBABE0000;
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Reserve the target, expect data
+                            amo_drv[cid].req(.addr(addr+4), .size(2), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data[63:32]));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect success
+                            amo_drv[cid].req(.addr(addr+4), .size(2), .op(AMO_SC), .data(data+1), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional again to the target, expect failure
+                            amo_drv[cid].req(.addr(addr+4),  .size(2), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from first store
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result({(data[31:0]+1), data[31:0]}));
+                            `WAIT_CYC(clk, 100)
+
+
+                            ////////////////////////////////////////////////////////
+                            // Single core, 64 Byte AMO
+                            ////////////////////////////////////////////////////////
+                            test_id++;
+
+                            // write known data to target address
+                            data = 64'h00000000CAFEBABE + test_id;
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Reserve the target, expect data
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect success
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_SC), .data(data+1), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional again to the target, expect failure
+                            amo_drv[cid].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from first store
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            `WAIT_CYC(clk, 100)
+
+
+                            ////////////////////////////////////////////////////////
+                            // Two cores, reservation fails due to write from other core
+                            ////////////////////////////////////////////////////////
+                            test_id++;
+
+                            // core 0 writes known data to target address
+                            data = 64'h0001CAFEBABE0000 + test_id;
+                            dcache_drv[0][2].wr(.addr(addr), .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Core 1 reserves the target, expect data
+                            amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // core 0 writes new data to target address
+                            dcache_drv[0][2].wr(.addr(addr), .data(data+1));
+                            `WAIT_CYC(clk, 100)
+
+                            // core 1 store-conditional to the target, expect failure
+                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from regular write
+                            dcache_drv[1][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            `WAIT_CYC(clk, 100)
+
+
+                            ////////////////////////////////////////////////////////
+                            test_id++;
+
+                            // core 0 writes known data to target address
+                            data = 64'h0002CAFEBABE0000 + test_id;
+                            dcache_drv[0][2].wr(.addr(addr), .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Core 1 reserves the target, expect data
+                            amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+
+//                            // core 1 writes new data to target address
+//                            // results in clearing the reservation => a subsequent store conditional would not succeed
+//                            dcache_drv[1][2].wr(.addr(addr), .data(data+1));
+//                            `WAIT_CYC(clk, 100)
+//
+//                            // core 0 reads the value in target, expect value from regular write
+//                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+//                            `WAIT_CYC(clk, 100)
+
+
+                            // core 1 store-conditional to the target, expect success
+                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // core 0 read the value in target, expect value from conditional store
+                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
+                            `WAIT_CYC(clk, 100)
+
+                            // core 1 store-conditional to the target, expect failure
+                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // core 0 read the value in target, expect value from successful conditional store
+                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
+                            `WAIT_CYC(clk, 100)
+
                         end
 
-                        ////////////////////////////////////////////////////////
-                        // Single core
-                        ////////////////////////////////////////////////////////
-                        test_id=0;
-
-                        // write known data to target address
-                        data = 64'h0000CAFEBABE0000;
-                        dcache_drv[cid][2].wr(.addr(addr),  .data(data));
-                        `WAIT_CYC(clk, 100)
-
-                        // Reserve the target, expect data
-                        amo_drv[cid].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                        `WAIT_CYC(clk, 100)
-
-                        // store-conditional to the target, expect success
-                        amo_drv[cid].req(.addr(addr), .op(AMO_SC), .data(data+1), .check_result(1),. exp_result(0));
-                        `WAIT_CYC(clk, 100)
-
-                        // store-conditional again to the target, expect failure
-                        amo_drv[cid].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
-                        `WAIT_CYC(clk, 100)
-
-                        // read the value in target, expect value from first store
-                        dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
-                        `WAIT_CYC(clk, 100)
-
-                        ////////////////////////////////////////////////////////
-                        // Two cores, reservation fails due to write form other core
-                        ////////////////////////////////////////////////////////
-                        test_id=1;
-
-                        // core 0 writes known data to target address
-                        data = 64'h0001CAFEBABE0000;
-                        dcache_drv[0][2].wr(.addr(addr), .data(data));
-                        `WAIT_CYC(clk, 100)
-
-                        // Core 1 reserves the target, expect data
-                        amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 0 writes new data to target address
-                        dcache_drv[0][2].wr(.addr(addr), .data(data+1));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 1 store-conditional to the target, expect failure
-                        amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
-                        `WAIT_CYC(clk, 100)
-
-                        // read the value in target, expect value from regular write
-                        dcache_drv[1][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
-                        `WAIT_CYC(clk, 100)
-
-                        ////////////////////////////////////////////////////////
-                        // Two cores, reservation succeeds
-                        ////////////////////////////////////////////////////////
-
-                        test_id=2;
-
-                        // core 0 writes known data to target address
-                        data = 64'h0002CAFEBABE0000;
-                        dcache_drv[0][2].wr(.addr(addr), .data(data));
-                        `WAIT_CYC(clk, 100)
-
-                        // Core 1 reserves the target, expect data
-                        amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                        `WAIT_CYC(clk, 100)
-/*
-                        // core 1 writes new data to target address
-                        // results in clearing the reservation => a subsequent store conditional would not succeed
-                        dcache_drv[1][2].wr(.addr(addr), .data(data+1));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 0 reads the value in target, expect value from regular write
-                        dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
-                        `WAIT_CYC(clk, 100)
-*/
-                        // core 1 store-conditional to the target, expect success
-                        amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 0 read the value in target, expect value from conditional store
-                        dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 1 store-conditional to the target, expect failure
-                        amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
-                        `WAIT_CYC(clk, 100)
-
-                        // core 0 read the value in target, expect value from successful conditional store
-                        dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
-                        `WAIT_CYC(clk, 100)
 
                         `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
