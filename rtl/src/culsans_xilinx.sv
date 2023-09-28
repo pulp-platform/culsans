@@ -978,19 +978,25 @@ AXI_BUS #(
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) dram();
 
+
 axi_riscv_atomics_wrap #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     ),
-    .AXI_MAX_WRITE_TXNS ( 1  ),
-    .RISCV_WORD_WIDTH   ( 64 )
+    .AXI_ADDR_WIDTH     ( AxiAddrWidth                    ),
+    .AXI_DATA_WIDTH     ( AxiDataWidth                    ),
+    .AXI_ID_WIDTH       ( AxiIdWidthSlaves                ),
+    .AXI_USER_WIDTH     ( AxiUserWidth                    ),
+    .AXI_USER_AS_ID     ( 1'b1                            ),
+    .AXI_USER_ID_LSB    ( 0                               ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
+    .AXI_MAX_READ_TXNS  ( 1                               ),
+    .AXI_MAX_WRITE_TXNS ( 1                               ),
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
 ) i_axi_riscv_atomics (
-    .clk_i  ( clk                      ),
-    .rst_ni ( ndmreset_n               ),
+    .clk_i  ( clk                       ),
+    .rst_ni ( ndmreset_n                ),
     .slv    ( master[culsans_pkg::DRAM] ),
-    .mst    ( dram                     )
+    .mst    ( dram                      )
 );
+
 
 `ifdef PROTOCOL_CHECKER
 logic pc_status;
@@ -1887,15 +1893,14 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_t_i,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 15
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 14
 
     .probe8  ('0),
 
