@@ -415,13 +415,14 @@ module culsans_top #(
     .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES-1) ),
     .AXI_MAX_READ_TXNS  ( 1                               ),
     .AXI_MAX_WRITE_TXNS ( 1                               ),
-    .RISCV_WORD_WIDTH   ( 64                              )
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
   ) i_axi_riscv_atomics (
     .clk_i,
     .rst_ni ( ndmreset_n               ),
     .slv    ( master[culsans_pkg::DRAM] ),
     .mst    ( dram                     )
   );
+
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
