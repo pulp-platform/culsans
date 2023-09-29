@@ -408,7 +408,6 @@ module culsans_top #(
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH     ( AXI_ADDRESS_WIDTH               ),
     .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH                  ),
-    .AXI_ADDR_LSB       ( ),
     .AXI_ID_WIDTH       ( culsans_pkg::IdWidthSlave       ),
     .AXI_USER_WIDTH     ( AXI_USER_WIDTH                  ),
     .AXI_USER_AS_ID     ( 1'b1                            ),
