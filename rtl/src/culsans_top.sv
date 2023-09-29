@@ -408,11 +408,12 @@ module culsans_top #(
   axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH     ( AXI_ADDRESS_WIDTH               ),
     .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH                  ),
+    .AXI_ADDR_LSB       ( ),
     .AXI_ID_WIDTH       ( culsans_pkg::IdWidthSlave       ),
     .AXI_USER_WIDTH     ( AXI_USER_WIDTH                  ),
     .AXI_USER_AS_ID     ( 1'b1                            ),
     .AXI_USER_ID_LSB    ( 0                               ),
-    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES-1) ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
     .AXI_MAX_READ_TXNS  ( 1                               ),
     .AXI_MAX_WRITE_TXNS ( 1                               ),
     .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
