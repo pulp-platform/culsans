@@ -360,7 +360,7 @@ dm_top #(
     .dmactive_o       ( dmactive          ), // active debug session
     .debug_req_o      ( debug_req_irq     ),
     .unavailable_i    ( '0                ),
-    .hartinfo_i       ( {ariane_pkg::DebugHartInfo} ),
+    .hartinfo_i       (  {culsans_pkg::NB_CORES{ariane_pkg::DebugHartInfo}} ),
     .slave_req_i      ( dm_slave_req      ),
     .slave_we_i       ( dm_slave_we       ),
     .slave_addr_i     ( dm_slave_addr     ),
@@ -978,11 +978,15 @@ AXI_BUS #(
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) dram();
 
+
 axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
     .AXI_USER_WIDTH ( AxiUserWidth     ),
+    .AXI_USER_AS_ID     ( 1'b1                            ),
+    .AXI_USER_ID_LSB    ( 0                               ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
     .AXI_MAX_READ_TXNS  ( 1  ),
     .AXI_MAX_WRITE_TXNS ( 1  ),
     .RISCV_WORD_WIDTH   ( 64 )
@@ -1882,13 +1886,13 @@ axi_clock_converter_0 pcie_axi_clock_converter (
 
     .probe6  (to_xbar[0].ar_addr[31:0]),    // 32 = 32
 
-    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_addr[19:7], // 12
+    .probe7  ({i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_addr[19:8], // 12
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,             // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,       // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,            // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,        // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,        // 1
-               i_axi_riscv_atomics.i_atomics.i_lrsc.ar_push_addr[19:7],       // 12
+               i_axi_riscv_atomics.i_atomics.i_lrsc.ar_push_addr[19:8],       // 12
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,               // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,              // 1
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}),            // 1 = 32

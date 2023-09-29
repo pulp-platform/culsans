@@ -495,7 +495,9 @@ module culsans_tb
     int test_id = -1;
     int rep_cnt;
     // select one core randomly for tests that need one core that behaves differently
-    int cid = $urandom_range(NB_CORES-1);
+    int cid  = $urandom_range(NB_CORES-1);
+    // select one more core for tests that need one more core that behaves differently
+    int cid2 = (cid + NB_CORES/2) % NB_CORES;
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
@@ -1194,7 +1196,6 @@ module culsans_tb
                             `WAIT_CYC(clk, 100)
 
                         end
-
 
                         `WAIT_CYC(clk, 10000) // make sure we see timeouts
 
