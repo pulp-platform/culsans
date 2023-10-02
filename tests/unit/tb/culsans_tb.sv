@@ -529,7 +529,6 @@ module culsans_tb
 
                 case (testname)
 
-/*
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "read_miss" : begin
                         test_header(testname, "8 consecutive read misses in the same cache set");
@@ -548,7 +547,7 @@ module culsans_tb
 
                         `WAIT_CYC(clk, 100)
                     end
-*/
+
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "write_collision" : begin
                         test_header(testname, "Part 1 : Write conflicts to single address");
