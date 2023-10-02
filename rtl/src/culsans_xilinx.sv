@@ -1913,8 +1913,6 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 14
 
-    .probe8  ('0),
-
     .probe9  ({gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid, // 1
                gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,         // 1
                gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,     // 1
