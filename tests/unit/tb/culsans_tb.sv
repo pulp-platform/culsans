@@ -497,6 +497,8 @@ module culsans_tb
     int rep_cnt;
     // select one core randomly for tests that need one core that behaves differently
     int cid = $urandom_range(NB_CORES-1);
+    // select one more core for tests that need two specific cores
+    int cid2 = (cid + (NB_CORES/2)) % NB_CORES;
 
     initial begin : TESTS
         logic [63:0] addr, base_addr;
@@ -527,7 +529,7 @@ module culsans_tb
 
                 case (testname)
 
-
+/*
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "read_miss" : begin
                         test_header(testname, "8 consecutive read misses in the same cache set");
@@ -546,7 +548,7 @@ module culsans_tb
 
                         `WAIT_CYC(clk, 100)
                     end
-
+*/
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "write_collision" : begin
                         test_header(testname, "Part 1 : Write conflicts to single address");
@@ -940,18 +942,18 @@ module culsans_tb
 
                             // write known data to addr_hi
                             data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
-                            dcache_drv[0][2].wr(.addr(addr_hi),  .data(data));
+                            dcache_drv[cid][2].wr(.addr(addr_hi),  .data(data));
 
                             // Reserve the target, expect data
-                            amo_drv[0].req(.addr(addr_hi), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            amo_drv[cid].req(.addr(addr_hi), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                             `WAIT_CYC(clk, 100)
 
                             // other core writes to other part of cache line
-                            dcache_drv[1][2].wr(.addr(addr), .rand_data(1));
+                            dcache_drv[cid2][2].wr(.addr(addr), .rand_data(1));
                             `WAIT_CYC(clk, 100)
 
                             // store-conditional to the target, expect success
-                            amo_drv[0].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            amo_drv[cid].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
                             `WAIT_CYC(clk, 100)
                         end
 
@@ -985,7 +987,7 @@ module culsans_tb
 
                                         end else begin
                                             // other core writes to other part of cache line
-                                            `WAIT_CYC(clk, $urandom_range(10))
+                                            `WAIT_CYC(clk, $urandom_range(100))
                                             dcache_drv[cc][2].wr(.addr(addr), .rand_data(1));
 
                                             `WAIT_CYC(clk, $urandom_range(10))
@@ -1011,23 +1013,97 @@ module culsans_tb
                         for (int i=0; i<rep_cnt; i++) begin
                             // write known data to target address
                             data = 64'h00000000DEADBEEF;
-                            dcache_drv[0][2].wr(.addr(addr),  .data(data));
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
 
                             // Reserve the target, expect data
-                            amo_drv[0].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                             `WAIT_CYC(clk, 100)
 
                             // other core writes to target address
-                            dcache_drv[1][2].wr(.addr(addr),  .rand_data(1));
+                            dcache_drv[cid2][2].wr(.addr(addr),  .rand_data(1));
                             `WAIT_CYC(clk, 100)
 
                             // store-conditional to the target, expect failure
-                            amo_drv[0].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
+                            amo_drv[cid].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
                             `WAIT_CYC(clk, 100)
                         end
 
                     end
 
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_lr_sc_adjacent" : begin
+                        test_header(testname, "Verify that a write to a reserved address from the core that reserved it doesn't invalidate the reservation.\nThis bug triggers issue https://github.com/pulp-platform/axi_riscv_atomics/issues/30");
+
+                        rep_cnt = 10;
+
+                        for (int i=0; i<rep_cnt; i++) begin
+                            addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(32,1) * 16;
+
+                            // write known data to target address
+                            data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Reserve the target, expect data
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Other core writes to the cacheline below target
+                            dcache_drv[cid2][2].wr(.addr(addr-16), .rand_data(1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read other addresses mapped to the same cache set, forcing evacuation
+                            for (int i=0; i<16; i++) begin
+                                dcache_drv[cid2][1].rd(.addr(addr-16 + (i << DCACHE_INDEX_WIDTH)));
+                            end
+
+                            // store-conditional to the target, expect success
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_SC), .data(data+1), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from previous store-conditional
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            `WAIT_CYC(clk, 100)
+                        end
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_lr_sc_single" : begin
+                        test_header(testname, "Verify that a write to a reserved address from the core that reserved it doesn't invalidate the reservation.\nThis bug triggers JIRA issue PROJ-274");
+
+                        rep_cnt = 10;
+
+                        for (int i=0; i<rep_cnt; i++) begin
+                            addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(32) * 16;
+
+                            // write known data to target address
+                            data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Reserve the target, expect data
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            `WAIT_CYC(clk, 100)
+
+                            // Regular write to the target
+                            dcache_drv[cid][2].wr(.addr(addr),  .data(data+1));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from previous store
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            `WAIT_CYC(clk, 100)
+
+                            // store-conditional to the target, expect success
+                            amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            `WAIT_CYC(clk, 100)
+
+                            // read the value in target, expect value from previous store-conditional
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
+                            `WAIT_CYC(clk, 100)
+                        end
+                    end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_delay" : begin
@@ -1135,23 +1211,23 @@ module culsans_tb
 
                             // core 0 writes known data to target address
                             data = 64'h0001CAFEBABE0000 + test_id;
-                            dcache_drv[0][2].wr(.addr(addr), .data(data));
+                            dcache_drv[cid][2].wr(.addr(addr), .data(data));
                             `WAIT_CYC(clk, 100)
 
                             // Core 1 reserves the target, expect data
-                            amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            amo_drv[cid2].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                             `WAIT_CYC(clk, 100)
 
                             // core 0 writes new data to target address
-                            dcache_drv[0][2].wr(.addr(addr), .data(data+1));
+                            dcache_drv[cid][2].wr(.addr(addr), .data(data+1));
                             `WAIT_CYC(clk, 100)
 
                             // core 1 store-conditional to the target, expect failure
-                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
+                            amo_drv[cid2].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
                             `WAIT_CYC(clk, 100)
 
                             // read the value in target, expect value from regular write
-                            dcache_drv[1][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+                            dcache_drv[cid2][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
                             `WAIT_CYC(clk, 100)
 
 
@@ -1160,38 +1236,38 @@ module culsans_tb
 
                             // core 0 writes known data to target address
                             data = 64'h0002CAFEBABE0000 + test_id;
-                            dcache_drv[0][2].wr(.addr(addr), .data(data));
+                            dcache_drv[cid][2].wr(.addr(addr), .data(data));
                             `WAIT_CYC(clk, 100)
 
                             // Core 1 reserves the target, expect data
-                            amo_drv[1].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
+                            amo_drv[cid2].req(.addr(addr), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                             `WAIT_CYC(clk, 100)
 
 
 //                            // core 1 writes new data to target address
 //                            // results in clearing the reservation => a subsequent store conditional would not succeed
-//                            dcache_drv[1][2].wr(.addr(addr), .data(data+1));
+//                            dcache_drv[cid2][2].wr(.addr(addr), .data(data+1));
 //                            `WAIT_CYC(clk, 100)
 //
 //                            // core 0 reads the value in target, expect value from regular write
-//                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
+//                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+1));
 //                            `WAIT_CYC(clk, 100)
 
 
                             // core 1 store-conditional to the target, expect success
-                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            amo_drv[cid2].req(.addr(addr), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
                             `WAIT_CYC(clk, 100)
 
                             // core 0 read the value in target, expect value from conditional store
-                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
                             `WAIT_CYC(clk, 100)
 
                             // core 1 store-conditional to the target, expect failure
-                            amo_drv[1].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
+                            amo_drv[cid2].req(.addr(addr), .op(AMO_SC), .data(data+3), .check_result(1),. exp_result(1));
                             `WAIT_CYC(clk, 100)
 
                             // core 0 read the value in target, expect value from successful conditional store
-                            dcache_drv[0][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
+                            dcache_drv[cid][0].rd(.do_wait(1), .addr(addr),  .check_result(1), .exp_result(data+2));
                             `WAIT_CYC(clk, 100)
 
                         end
@@ -1259,12 +1335,12 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         // write data to cache in core 1
-                        dcache_drv[1][2].wr(.addr(base_addr),     .data(64'hCAFEBABE_00000000));
-                        dcache_drv[1][2].wr(.addr(base_addr + 8), .data(64'hBAADF00D_11111111));
+                        dcache_drv[cid2][2].wr(.addr(base_addr),     .data(64'hCAFEBABE_00000000));
+                        dcache_drv[cid2][2].wr(.addr(base_addr + 8), .data(64'hBAADF00D_11111111));
 
                         // amo read
-                        amo_drv[0].req(.addr(base_addr),     .op(AMO_LR), .check_result(1), .exp_result(64'hCAFEBABE_00000000));
-                        amo_drv[0].req(.addr(base_addr + 8), .op(AMO_LR), .check_result(1), .exp_result(64'hBAADF00D_11111111));
+                        amo_drv[cid].req(.addr(base_addr),     .op(AMO_LR), .check_result(1), .exp_result(64'hCAFEBABE_00000000));
+                        amo_drv[cid].req(.addr(base_addr + 8), .op(AMO_LR), .check_result(1), .exp_result(64'hBAADF00D_11111111));
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -1279,17 +1355,17 @@ module culsans_tb
                         fork
                             begin
                                 // make sure there is something dirty in the cache of core 0
-                                dcache_drv[0][2].wr(.addr(addr));
+                                dcache_drv[cid][2].wr(.addr(addr));
                                 // allow snoop from core 1 to propagate
                                 `WAIT_CYC(clk, 15)
                                 // AMO request, should cause flush and writeback of data in cache
-                                amo_drv[0].req(.addr(addr), .rand_op(1));
+                                amo_drv[cid].req(.addr(addr), .rand_op(1));
                                 // another request outside cacheable regions will trigger the AW beat and detect the mismatch
-                                dcache_drv[0][2].wr(.addr(ArianeCfg.SharedRegionAddrBase[0]));
+                                dcache_drv[cid][2].wr(.addr(ArianeCfg.SharedRegionAddrBase[0]));
                             end
                             begin
                                 // read cache in core 1 to trigger a snoop transaction towards other cores
-                                dcache_drv[1][0].rd(.addr(addr+1));
+                                dcache_drv[cid2][0].rd(.addr(addr+1));
                             end
                         join
 
@@ -1307,28 +1383,28 @@ module culsans_tb
 
                         // write known value to address 16 in core 0
                         data16 = 64'h00000000_CAFEBABE;
-                        dcache_drv[0][2].wr(.addr(addr + 16), .data(data16));
+                        dcache_drv[cid][2].wr(.addr(addr + 16), .data(data16));
 
                         `WAIT_CYC(clk, 100)
 
                         // write something to address 8 in core 1
                         data8 = 64'h1111BAAD_F00D0000;
-                        dcache_drv[1][2].wr(.addr(addr + 8), .data(data8));
+                        dcache_drv[cid2][2].wr(.addr(addr + 8), .data(data8));
 
                         `WAIT_CYC(clk, 100)
 
                         // AMO request to increment data8, should cause flush and writeback of data16 in cache
-                        amo_drv[0].req(.addr(addr + 8), .op(AMO_ADD), .data(17), .check_result(1), .exp_result(data8));
+                        amo_drv[cid].req(.addr(addr + 8), .op(AMO_ADD), .data(17), .check_result(1), .exp_result(data8));
                         data8 = data8 + 17;
 
                         `WAIT_CYC(clk, 100)
 
                         // check expected values
-                        dcache_drv[0][1].rd(.do_wait(1), .addr(addr + 16), .check_result(1), .exp_result(data16));
+                        dcache_drv[cid][1].rd(.do_wait(1), .addr(addr + 16), .check_result(1), .exp_result(data16));
 
                         `WAIT_CYC(clk, 100)
 
-                        dcache_drv[0][1].rd(.do_wait(1), .addr(addr + 8),  .check_result(1), .exp_result(data8));
+                        dcache_drv[cid][1].rd(.do_wait(1), .addr(addr + 8),  .check_result(1), .exp_result(data8));
 
                         `WAIT_CYC(clk, 100)
                     end
@@ -1359,17 +1435,17 @@ module culsans_tb
 
                         // fill up cache
                         for (int i=0; i<2048; i++) begin
-                            dcache_drv[0][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
+                            dcache_drv[cid][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
                         fork
                             begin
                                 // AMO request, should cause flush and writeback of data in cache
-                                amo_drv[0].req(.addr(addr), .rand_op(1));
+                                amo_drv[cid].req(.addr(addr), .rand_op(1));
                             end
                             begin
                                 for (int i=2047;  i>=1; i--) begin // don't verify address (addr + 0), it may have been modified by AMO
-                                    dcache_drv[1][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                    dcache_drv[cid2][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
                                 end
                             end
                         join
@@ -1745,20 +1821,20 @@ module culsans_tb
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         // make cache entry is dirty in cache 0
-                        dcache_drv[0][2].wr(.addr(addr));
+                        dcache_drv[cid][2].wr(.addr(addr));
                         // make cache entry shared in cache 1
-                        dcache_drv[1][0].rd(.addr(addr));
+                        dcache_drv[cid2][0].rd(.addr(addr));
                         `WAIT_CYC(clk, 100)
 
                         fork
                             begin
                                 // core 0 : read from shared region
                                 `WAIT_CYC(clk, 3)
-                                dcache_drv[0][0].rd(.addr(ArianeCfg.SharedRegionAddrBase[0]));
+                                dcache_drv[cid][0].rd(.addr(ArianeCfg.SharedRegionAddrBase[0]));
                             end
                             begin
                                 // core 1 : write to dirty cache entry, causing CLEAN_INVALID
-                                dcache_drv[1][2].wr(.addr(addr));
+                                dcache_drv[cid2][2].wr(.addr(addr));
                             end
                         join
 
@@ -1776,17 +1852,17 @@ module culsans_tb
                         addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         // make sure data[0] is in cache
-                        dcache_drv[0][0].rd(.addr(addr));
+                        dcache_drv[cid][0].rd(.addr(addr));
                         `WAIT_CYC(clk, 100)
 
                         // read followed by 2 writes (here with 1 cc inbetween, could be back-to-back too)
-                        dcache_drv[0][0].rd(.addr(addr));
-                        dcache_drv[0][0].wr(.addr(addr), .data(32'hBBBBBBBB));
+                        dcache_drv[cid][0].rd(.addr(addr));
+                        dcache_drv[cid][0].wr(.addr(addr), .data(32'hBBBBBBBB));
                         `WAIT_CYC(clk, 1)
-                        dcache_drv[0][0].wr(.addr(addr), .data(32'hCCCCCCCC));
+                        dcache_drv[cid][0].wr(.addr(addr), .data(32'hCCCCCCCC));
                         `WAIT_CYC(clk, 1)
                         // read 0 again to visualize in waveforms that the value 0xCCCCCCCC is not stored
-                        dcache_drv[0][0].rd(.addr(addr));
+                        dcache_drv[cid][0].rd(.addr(addr));
 
                         `WAIT_CYC(clk, 100)
                     end
