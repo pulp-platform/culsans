@@ -932,12 +932,11 @@ module culsans_tb
 
                         rep_cnt = 10;
 
-                        // first part, serial and deterministic
                         for (int i=0; i<rep_cnt; i++) begin
                             test_id = i;
 
                             addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 16; // addr aligned with cache line
-                            addr_hi = addr + 8;                                                   // addr_hi targets upper part of cache line
+                            addr_hi = addr + 8;                                                      // addr_hi targets upper part of cache line
 
                             // write known data to addr_hi
                             data = 64'h00000000CAFEBABE + (i * 64'h0000000100000000);
@@ -951,51 +950,9 @@ module culsans_tb
                             dcache_drv[cid2][2].wr(.addr(addr), .rand_data(1));
                             `WAIT_CYC(clk, 100)
 
-                            // store-conditional to the target, expect success
-                            amo_drv[cid].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
+                            // store-conditional to the target, expect failure
+                            amo_drv[cid].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
                             `WAIT_CYC(clk, 100)
-                        end
-
-                        rep_cnt = 100;
-
-                        // second part, parallel and randomized
-                        for (int i=0; i<rep_cnt; i++) begin
-                            test_id = i + 10*rep_cnt;
-
-                            addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 16; // addr aligned with cache line
-                            addr_hi = addr + 8;                                                      // addr_hi targets upper part of cache line
-
-                            for (int c=0; c<NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            `WAIT_CYC(clk, $urandom_range(10))
-
-                                            // write known data to addr_hi
-                                            data = 64'h00000000DEADBEEF + (i * 64'h0000000100000000);
-                                            dcache_drv[cc][2].wr(.addr(addr_hi),  .data(data));
-                                            `WAIT_CYC(clk, $urandom_range(10))
-
-                                            // Reserve the target, expect data
-                                            amo_drv[cc].req(.addr(addr_hi), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                                            `WAIT_CYC(clk, $urandom_range(10))
-
-                                            // store-conditional to the target, expect success
-                                            amo_drv[cc].req(.addr(addr_hi), .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(0));
-
-                                        end else begin
-                                            // other core writes to other part of cache line
-                                            `WAIT_CYC(clk, $urandom_range(100))
-                                            dcache_drv[cc][2].wr(.addr(addr), .rand_data(1));
-
-                                            `WAIT_CYC(clk, $urandom_range(10))
-                                            dcache_drv[cc][2].wr(.addr(addr), .rand_data(1));
-                                        end
-                                    end
-                                join_none
-                            end
-                            wait fork;
                         end
 
                     end

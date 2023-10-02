@@ -406,16 +406,17 @@ module culsans_top #(
   logic [AXI_USER_WIDTH-1:0]    ruser;
 
   axi_riscv_atomics_wrap #(
-    .AXI_ADDR_WIDTH     ( AXI_ADDRESS_WIDTH               ),
-    .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH                  ),
-    .AXI_ID_WIDTH       ( culsans_pkg::IdWidthSlave       ),
-    .AXI_USER_WIDTH     ( AXI_USER_WIDTH                  ),
-    .AXI_USER_AS_ID     ( 1'b1                            ),
-    .AXI_USER_ID_LSB    ( 0                               ),
-    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
-    .AXI_MAX_READ_TXNS  ( 1                               ),
-    .AXI_MAX_WRITE_TXNS ( 1                               ),
-    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
+    .AXI_ADDR_WIDTH     ( AXI_ADDRESS_WIDTH                       ),
+    .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH                          ),
+    .AXI_ADDR_LSB       ( $clog2(ariane_pkg::DCACHE_LINE_WIDTH/8) ), // LR/SC reservation must be at least cache line size
+    .AXI_ID_WIDTH       ( culsans_pkg::IdWidthSlave               ),
+    .AXI_USER_WIDTH     ( AXI_USER_WIDTH                          ),
+    .AXI_USER_AS_ID     ( 1'b1                                    ),
+    .AXI_USER_ID_LSB    ( 0                                       ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1         ),
+    .AXI_MAX_READ_TXNS  ( 1                                       ),
+    .AXI_MAX_WRITE_TXNS ( 1                                       ),
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                             )
   ) i_axi_riscv_atomics (
     .clk_i,
     .rst_ni ( ndmreset_n               ),

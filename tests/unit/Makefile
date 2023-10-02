@@ -11,7 +11,6 @@ FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PR
 FAIL_LIST += $(TESTS_DIR)/amo_lr_sc/
 FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_adjacent/
 FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/
-FAIL_LIST += $(TESTS_DIR)/amo_cacheline_collision/
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
