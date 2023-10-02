@@ -982,6 +982,7 @@ AXI_BUS #(
 axi_riscv_atomics_wrap #(
     .AXI_ADDR_WIDTH     ( AxiAddrWidth                    ),
     .AXI_DATA_WIDTH     ( AxiDataWidth                    ),
+    .AXI_ADDR_LSB       ( $clog2(ariane_pkg::DCACHE_LINE_WIDTH/8) ), // LR/SC reservation must be at least cache line size
     .AXI_ID_WIDTH       ( AxiIdWidthSlaves                ),
     .AXI_USER_WIDTH     ( AxiUserWidth                    ),
     .AXI_USER_AS_ID     ( 1'b1                            ),
