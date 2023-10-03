@@ -1847,14 +1847,14 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   xlnx_ila i_ila_top (
     .clk     (clk),
 
-    .probe0  ({cache_ctrL_0_0_state, // 4
-               cache_ctrL_0_1_state, // 4
-               cache_ctrL_0_2_state, // 4
-               cache_ctrL_1_0_state, // 4
-               cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_2_state, // 4
-               snoop_ctrL_0_state,   // 3
-               snoop_ctrL_1_state}), // 3 = 30
+    .probe0  ({cache_ctrL_0_0_state, // 4 [29:26]
+               cache_ctrL_0_1_state, // 4 [25:22]
+               cache_ctrL_0_2_state, // 4 [21:18]
+               cache_ctrL_1_0_state, // 4 [17:!4]
+               cache_ctrL_1_1_state, // 4 [13:10]
+               cache_ctrL_1_2_state, // 4 [9:6]
+               snoop_ctrL_0_state,   // 3 [5:3]
+               snoop_ctrL_1_state}), // 3 [2:0] = 30
 
     .probe1  ({miss_handler_0_state, // 5
                miss_handler_1_state, // 5
