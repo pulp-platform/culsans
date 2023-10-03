@@ -51,6 +51,8 @@ VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interfa
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
+VSIM_FLAGS += -sv_seed $(SEED)
+
 #VSIM_FLAGS += -coverage
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW

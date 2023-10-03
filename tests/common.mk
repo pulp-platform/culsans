@@ -24,6 +24,7 @@ VMAP = vmap
 VERILATOR = verilator
 
 VERILATE ?= 0
+SEED ?= 0
 
 # Check tools - inspired by https://stackoverflow.com/questions/5618615/check-if-a-program-exists-from-a-makefile
 
