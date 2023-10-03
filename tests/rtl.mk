@@ -10,7 +10,6 @@ nb_cores_rtl:
 
 # Compile the RTL
 
-
 CVA6_DIR = $(root-dir)
 
 # LLC
@@ -48,6 +47,12 @@ LLC_INCDIR := $(foreach dir, ${LLC_INCDIR}, +incdir+$(dir))
 list_incdir += $(LLC_INCDIR)
 
 # culsans
+.PHONY: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
+$(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
+	cd $$(dirname $@); \
+	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
+
+$(library) : $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
 
 CULSANS_DIR := ../../rtl
 CULSANS_PKG := $(wildcard $(CULSANS_DIR)/include/*_pkg.sv)
@@ -69,7 +74,7 @@ CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/common_verification/src/rand_id_queue.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/pulp-platform/axi/src/axi_test.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/ace_test.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/snoop_test.sv
-CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_ace_ccu_pkg.sv
+CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/test/tb_ace_ccu_pkg.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/dcache_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/sram_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/amo_intf.sv
@@ -143,7 +148,7 @@ $(library)/.build-culsans-tb: $(library)/.build-culsans-srcs $(library) $(TB_SRC
 	@touch $(library)/.build-culsans-tb
 
 ifeq ($(VERILATE), 0)
-rtl: $(library)/.build-srcs $(library)/.build-culsans-srcs $(library)/.build-culsans-tb
+rtl: nb_cores_rtl $(library)/.build-srcs $(library)/.build-culsans-srcs $(library)/.build-culsans-tb
 	$(VOPT) $(VLOG_FLAGS) -work $(library)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
 else
 VERILATOR_JOBS = 1
@@ -155,7 +160,7 @@ endif
 
 # Cleanup
 
-clean_rtl:
+clean_rtl: nb_cores_rtl
 	rm -rf $(library)
 	rm -rf $(VERILATOR_LIB)
 

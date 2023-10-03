@@ -29,13 +29,13 @@ The top level file for FPGA synthesis is [`rtl/src/culsans_xilinx.sv`](rtl/src/c
 
 ### SD image generation
 
-Make sure all dependencies specified in [`cva6-sdk`](cva6-sdk/README.md) are fulfilled.
+Make sure all dependencies specified in [`cva6-sdk`](https://github.com/planvtech/cva6-sdk/blob/culsans_pulp/README.md) are fulfilled.
 
 ```
 make sdk
 ```
 
-Then follow the instruction in [`cva6-sdk`](cva6-sdk/README.md) to copy the generated image to the SD.
+Then follow the instruction in [`cva6-sdk`](https://github.com/planvtech/cva6-sdk/blob/culsans_pulp/README.md) to copy the generated image to the SD.
 
 
 ### RTL tests

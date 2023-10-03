@@ -319,8 +319,9 @@ module culsans_top #(
     .id_o                  (                           ),
     .critical_word_o       (                           ),
     .critical_word_valid_o (                           ),
-    .dirty_o (),
-    .shared_o(),
+    .dirty_o               (                           ),
+    .shared_o              (                           ),
+    .busy_o                (                           ),
     .axi_req_o             ( dm_axi_m_req              ),
     .axi_resp_i            ( dm_axi_m_resp             )
   );
@@ -426,12 +427,17 @@ module culsans_top #(
 
   // AMO adapter
   axi_riscv_atomics_wrap #(
-    .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH        ),
-    .AXI_DATA_WIDTH ( AXI_DATA_WIDTH           ),
-    .AXI_ID_WIDTH   ( culsans_pkg::IdWidthSlave ),
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH           ),
-    .AXI_MAX_WRITE_TXNS ( 1  ),
-    .RISCV_WORD_WIDTH   ( 64 )
+    .AXI_ADDR_WIDTH     ( AXI_ADDRESS_WIDTH                       ),
+    .AXI_DATA_WIDTH     ( AXI_DATA_WIDTH                          ),
+    .AXI_ADDR_LSB       ( $clog2(ariane_pkg::DCACHE_LINE_WIDTH/8) ), // LR/SC reservation must be at least cache line size
+    .AXI_ID_WIDTH       ( culsans_pkg::IdWidthSlave               ),
+    .AXI_USER_WIDTH     ( AXI_USER_WIDTH                          ),
+    .AXI_USER_AS_ID     ( 1'b1                                    ),
+    .AXI_USER_ID_LSB    ( 0                                       ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1         ),
+    .AXI_MAX_READ_TXNS  ( 1                                       ),
+    .AXI_MAX_WRITE_TXNS ( 1                                       ),
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                             )
   ) i_axi_riscv_atomics (
     .clk_i,
     .rst_ni ( ndmreset_n               ),
@@ -771,9 +777,10 @@ module culsans_top #(
   logic [culsans_pkg::NumTargets-1:0] irqs;
 
   culsans_peripherals #(
-    .AxiAddrWidth ( AXI_ADDRESS_WIDTH        ),
-    .AxiDataWidth ( AXI_DATA_WIDTH           ),
+    .AxiAddrWidth ( AXI_ADDRESS_WIDTH         ),
+    .AxiDataWidth ( AXI_DATA_WIDTH            ),
     .AxiIdWidth   ( culsans_pkg::IdWidthSlave ),
+    .AxiUserWidth ( AXI_USER_WIDTH            ),
 `ifndef VERILATOR
   // disable UART when using Spike, as we need to rely on the mockuart
   `ifdef SPIKE_TANDEM
@@ -995,7 +1002,8 @@ module culsans_top #(
     ) rvfi_tracer_i (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
-      .rvfi_i(rvfi[i])
+      .rvfi_i(rvfi[i]),
+      .end_of_test_o()
     );
   end
 

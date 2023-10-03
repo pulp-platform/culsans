@@ -19,8 +19,3 @@ if { [file exists $local_wave] == 1} {
 # ...
 
 add log * -r
-
-# set a timeout
-run 30ms
-
-quit

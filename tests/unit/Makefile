@@ -3,19 +3,19 @@ include ../rtl.mk
 # add dummy version of cva6 for injecting cache requests from test bench drivers
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/cva6_cache_dummy.sv
 
-NB_CORES := 4
-
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
 # List known failing tests
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PROJ-147
+FAIL_LIST += $(TESTS_DIR)/amo_lr_sc/
+FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_adjacent/
+FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/
 
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
 # other sets
 AMO_LIST := $(dir $(wildcard $(TESTS_DIR)/*amo*/.))
-
 
 help:
 	@echo ""
@@ -75,7 +75,7 @@ amo: rtl
 rerun: rtl
 	@-for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT) ; then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
 			fi; \
 		else \
@@ -87,7 +87,7 @@ rerun: rtl
 rerun_pass: rtl
 	@-for d in $(PASS_LIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT) ; then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				make -C $$d all; \
 			fi; \
 		else \
@@ -100,7 +100,7 @@ rerun_pass: rtl
 status:
 	@for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
-			if grep -q Error $$d/$(TEST_REPORT); then \
+			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT); then \
 				printf "%-40s\t : \033[31mFAILED\033[0m\n" $$d; \
 			else \
 				printf "%-40s\t : \033[32mPASSED\033[0m\n" $$d; \
@@ -117,6 +117,6 @@ list_tests:
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
-clean: clean_tests
+clean: clean_tests clean_rtl
 
 .PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw

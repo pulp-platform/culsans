@@ -361,7 +361,7 @@ dm_top #(
     .dmactive_o       ( dmactive          ), // active debug session
     .debug_req_o      ( debug_req_irq     ),
     .unavailable_i    ( '0                ),
-    .hartinfo_i       ( {ariane_pkg::DebugHartInfo} ),
+    .hartinfo_i       (  {culsans_pkg::NB_CORES{ariane_pkg::DebugHartInfo}} ),
     .slave_req_i      ( dm_slave_req      ),
     .slave_we_i       ( dm_slave_we       ),
     .slave_addr_i     ( dm_slave_addr     ),
@@ -987,17 +987,22 @@ AXI_BUS #(
 ) to_llc();
 
 axi_riscv_atomics_wrap #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     ),
-    .AXI_MAX_WRITE_TXNS ( 1  ),
-    .RISCV_WORD_WIDTH   ( 64 )
+    .AXI_ADDR_WIDTH     ( AxiAddrWidth                    ),
+    .AXI_DATA_WIDTH     ( AxiDataWidth                    ),
+    .AXI_ADDR_LSB       ( $clog2(ariane_pkg::DCACHE_LINE_WIDTH/8) ), // LR/SC reservation must be at least cache line size
+    .AXI_ID_WIDTH       ( AxiIdWidthSlaves                ),
+    .AXI_USER_WIDTH     ( AxiUserWidth                    ),
+    .AXI_USER_AS_ID     ( 1'b1                            ),
+    .AXI_USER_ID_LSB    ( 0                               ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
+    .AXI_MAX_READ_TXNS  ( 1                               ),
+    .AXI_MAX_WRITE_TXNS ( 1                               ),
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
 ) i_axi_riscv_atomics (
-    .clk_i  ( clk                      ),
-    .rst_ni ( ndmreset_n               ),
+    .clk_i  ( clk                       ),
+    .rst_ni ( ndmreset_n                ),
     .slv    ( master[culsans_pkg::DRAM] ),
-    .mst    ( to_llc                   )
+    .mst    ( to_llc                    )
 );
 
 localparam int unsigned   AxiStrbWidth = AxiDataWidth / 32'd8;
@@ -1081,7 +1086,6 @@ axi_llc_reg_wrap #(
    .spm_start_addr_i    ( SpmRegionStart                             ),
    .axi_llc_events_o    ( llc_events                                 )
 );
-
 
 `ifdef PROTOCOL_CHECKER
 logic pc_status;
@@ -1931,67 +1935,79 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   xlnx_ila i_ila_top (
     .clk     (clk),
 
-    .probe0  ({cache_ctrL_0_0_state, // 4
-               cache_ctrL_0_1_state, // 4
-               cache_ctrL_0_2_state, // 4
-               cache_ctrL_1_0_state, // 4
-               cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_2_state, // 4
-               snoop_ctrL_0_state,   // 3
-               snoop_ctrL_1_state}), // 3 = 30
+    .probe0  ({cache_ctrL_0_0_state, // 4 [29:26]
+               cache_ctrL_0_1_state, // 4 [25:22]
+               cache_ctrL_0_2_state, // 4 [21:18]
+               cache_ctrL_1_0_state, // 4 [17:!4]
+               cache_ctrL_1_1_state, // 4 [13:10]
+               cache_ctrL_1_2_state, // 4 [9:6]
+               snoop_ctrL_0_state,   // 3 [5:3]
+               snoop_ctrL_1_state}), // 3 [2:0] = 30
 
     .probe1  ({miss_handler_0_state, // 5
                miss_handler_1_state, // 5
                ccu_fsm_state}),      // 6 = 16
 
-    .probe2  ({master[culsans_pkg::DRAM].aw_valid,         // 1
-               master[culsans_pkg::DRAM].aw_lock,          // 1
-               master[culsans_pkg::DRAM].aw_atop,          // 6
-               master[culsans_pkg::DRAM].aw_id,            // 9
-               master[culsans_pkg::DRAM].aw_user[7:0],     // 8
-               master[culsans_pkg::DRAM].aw_ready,         // 1
-               master[culsans_pkg::DRAM].w_valid,          // 1
-               master[culsans_pkg::DRAM].w_ready}),        // 1  = 27
+    .probe2  ({to_xbar[0].aw_valid,         // 1
+               to_xbar[0].aw_lock,          // 1
+               to_xbar[0].aw_atop,          // 6
+               to_xbar[0].aw_id,            // 9
+               to_xbar[0].aw_user[7:0],     // 8
+               to_xbar[0].aw_ready,         // 1
+               to_xbar[0].w_valid,          // 1
+               to_xbar[0].w_ready}),        // 1  = 27
 
-    .probe3  (master[culsans_pkg::DRAM].aw_addr[31:0]),    // 32 = 32
+    .probe3  (to_xbar[0].aw_addr[31:0]),    // 32 = 32
 
-    .probe4  ({master[culsans_pkg::DRAM].b_valid,          // 1
-               master[culsans_pkg::DRAM].b_id,             // 9
-               master[culsans_pkg::DRAM].b_resp,           // 2
-               master[culsans_pkg::DRAM].b_ready}),        // 1  = 13
+    .probe4  ({to_xbar[0].b_valid,          // 1
+               to_xbar[0].b_id,             // 9
+               to_xbar[0].b_resp,           // 2
+               to_xbar[0].b_ready}),        // 1  = 13
 
-    .probe5  ({master[culsans_pkg::DRAM].ar_valid,         // 1
-               master[culsans_pkg::DRAM].ar_lock,          // 1
-               master[culsans_pkg::DRAM].ar_id,            // 9
-               master[culsans_pkg::DRAM].ar_user[1:0],     // 2
-               master[culsans_pkg::DRAM].ar_ready,         // 1
-               master[culsans_pkg::DRAM].r_valid,          // 1
-               master[culsans_pkg::DRAM].r_id,             // 9
-               master[culsans_pkg::DRAM].r_resp,           // 2
-               master[culsans_pkg::DRAM].r_ready}),        // 1  = 27
+    .probe5  ({to_xbar[0].ar_valid,         // 1
+               to_xbar[0].ar_lock,          // 1
+               to_xbar[0].ar_id,            // 9
+               to_xbar[0].ar_user[1:0],     // 2
+               to_xbar[0].ar_ready,         // 1
+               to_xbar[0].r_valid,          // 1
+               to_xbar[0].r_id,             // 9
+               to_xbar[0].r_resp,           // 2
+               to_xbar[0].r_ready}),        // 1  = 27
 
-    .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
+    .probe6  (to_xbar[0].ar_addr[31:0]),    // 32 = 32
 
     .probe7  ({gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_t_i,
+               gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.spec,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_t_i,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt,
+               gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.spec,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 15
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 24
 
-    .probe8  ('0),
-    .probe9  ('0),
-    .probe10 ('0),
-    .probe11 ('0),
+    .probe8  (gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+
+    .probe9  (gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
+
+    .probe10 (gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+
+    .probe11 (gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
 
     .probe12  ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
                gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,
