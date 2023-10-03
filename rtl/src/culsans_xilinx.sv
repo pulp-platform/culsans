@@ -360,7 +360,7 @@ dm_top #(
     .dmactive_o       ( dmactive          ), // active debug session
     .debug_req_o      ( debug_req_irq     ),
     .unavailable_i    ( '0                ),
-    .hartinfo_i       ( {ariane_pkg::DebugHartInfo} ),
+    .hartinfo_i       (  {culsans_pkg::NB_CORES{ariane_pkg::DebugHartInfo}} ),
     .slave_req_i      ( dm_slave_req      ),
     .slave_we_i       ( dm_slave_we       ),
     .slave_addr_i     ( dm_slave_addr     ),
@@ -1847,14 +1847,14 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   xlnx_ila i_ila_top (
     .clk     (clk),
 
-    .probe0  ({cache_ctrL_0_0_state, // 4
-               cache_ctrL_0_1_state, // 4
-               cache_ctrL_0_2_state, // 4
-               cache_ctrL_1_0_state, // 4
-               cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_2_state, // 4
-               snoop_ctrL_0_state,   // 3
-               snoop_ctrL_1_state}), // 3 = 30
+    .probe0  ({cache_ctrL_0_0_state, // 4 [29:26]
+               cache_ctrL_0_1_state, // 4 [25:22]
+               cache_ctrL_0_2_state, // 4 [21:18]
+               cache_ctrL_1_0_state, // 4 [17:!4]
+               cache_ctrL_1_1_state, // 4 [13:10]
+               cache_ctrL_1_2_state, // 4 [9:6]
+               snoop_ctrL_0_state,   // 3 [5:3]
+               snoop_ctrL_1_state}), // 3 [2:0] = 30
 
     .probe1  ({miss_handler_0_state, // 5
                miss_handler_1_state, // 5
@@ -1891,9 +1891,19 @@ axi_clock_converter_0 pcie_axi_clock_converter (
     .probe7  ({gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_t_i,
+               gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.spec,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_t_i,
+               gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.spec,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,
@@ -1901,19 +1911,15 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 14
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 24
 
-    .probe8  ('0),
+    .probe8  (gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
 
-    .probe9  ({gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid, // 1
-               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,         // 1
-               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,     // 1
-               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,     // 1
-               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.spec}),      // 1 = 5
+    .probe9  (gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
 
-    .probe10 (gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+    .probe10 (gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
 
-    .probe11 (gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
+    .probe11 (gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
 
     .probe12  ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
                gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,
