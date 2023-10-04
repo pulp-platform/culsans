@@ -925,6 +925,105 @@ module culsans_tb
 
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "amo_alu" : begin
+                        logic [63:0] data_op;   // operand to apply
+                        logic [63:0] data_res;  // expaected result in memory
+
+                        test_header(testname, "AMO ALU operations");
+
+                        rep_cnt = 500;
+                        timeout = 200000;
+
+                        // 32 bit
+                        for (int i=0; i<rep_cnt; i++) begin
+                            logic [7:0] be;
+                            int         shift;
+                            amo_t       op;
+                            logic       word_op;
+                            int         size;
+
+                            word_op = $urandom_range(1); // operate on word or double
+
+                            if (word_op) begin
+                                addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 4; // addr aligned with data size 32
+
+                                // only use unsigned
+                                data    = $urandom() >> 1;
+                                data_op = $urandom() >> 1;
+
+                                size = 2;
+                                if (addr % 8 == 4) begin
+                                    shift = 32;
+                                    be = 8'hf0;
+                                end else begin
+                                    shift = 0;
+                                    be = 8'h0f;
+                                end
+                            end else begin
+                                addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 8; // addr aligned with data size 64
+
+                                // only use unsigned
+                                data    = {$urandom(), $urandom()} >> 1;
+                                data_op = {$urandom(), $urandom()} >> 1;
+
+                                size  = 3;
+                                shift = 0;
+                                be    = 8'hff;
+                            end
+
+                            op = amo_t'($urandom_range(AMO_MINU, AMO_SWAP)); // only select supported ALU operations
+                            case (op)
+                                AMO_SWAP          : data_res = data_op;
+                                AMO_ADD           : data_res = data + data_op;
+                                AMO_AND           : data_res = data & data_op;
+                                AMO_OR            : data_res = data | data_op;
+                                AMO_XOR           : data_res = data ^ data_op;
+                                AMO_MAX, AMO_MAXU : data_res = data > data_op ? data : data_op;
+                                AMO_MIN, AMO_MINU : data_res = data < data_op ? data : data_op;
+                            endcase
+
+                            // core X or Y writes data
+                            if ($urandom_range(1)) begin
+                                dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                            end else begin
+                                dcache_drv[cid2][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                            end
+
+                            // core X possibly writes data to upper cache line
+                            if ($urandom_range(1)) begin
+                                dcache_drv[cid][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
+                            end
+                            // core Y possibly writes data to upper cache line
+                            if ($urandom_range(1)) begin
+                                dcache_drv[cid2][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
+                            end
+
+                            // core X possibly reads data
+                            if ($urandom_range(1)) begin
+                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data << shift));
+                            end
+
+                            // core X sends AMO request
+                            amo_drv[cid].req(.addr(addr), .op(op), .data(data_op), .size(size), .check_result(1), .exp_result(data));
+
+                            // core Y possibly reads data
+                            if ($urandom_range(1)) begin
+                                dcache_drv[cid2][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
+                            end
+
+                            // core X reads data
+                            dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
+
+                        end
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
+
+                    end
+
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_cacheline_collision" : begin
                         logic [63:0] addr_hi;
                         test_header(testname, "AMO LR/SC targeting address in upper part of cache line, while other core accesses the lower part of cache line.\nTriggers JIRA issue PROJ-272");
