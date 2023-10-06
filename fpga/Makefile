@@ -78,7 +78,7 @@ fpga_filter += $(wildcard $(addprefix $(CVA6_DIR), corev_apu/tb/ariene_*.sv))
 
 all: $(bit)
 
-$(bit): $(ips) scripts/add_sources.tcl
+$(bit): $(ips) scripts/add_sources.tcl $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
 	@echo "[FPGA] Generate Bitstream"
 	@mkdir -p $(work-dir)
 	@cp -r $(ip-dir) .
