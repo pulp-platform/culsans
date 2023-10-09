@@ -1058,7 +1058,7 @@ localparam axi_addr_t L2CachedRegionLength = axi_addr_t'(culsans_pkg::DRAMLength
 
 axi_llc_reg_wrap #(
    .SetAssociativity ( 32'd8              ),
-   .NumLines         ( 32'd128            ),
+   .NumLines         ( 32'd256            ),
    .NumBlocks        ( 32'd8              ),
    .AxiIdWidth       ( AxiIdWidthSlaves   ),
    .AxiAddrWidth     ( AxiAddrWidth       ),

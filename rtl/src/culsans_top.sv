@@ -501,7 +501,7 @@ module culsans_top #(
 
     axi_llc_reg_wrap #(
       .SetAssociativity ( 32'd8                     ),
-      .NumLines         ( 32'd128                   ),
+      .NumLines         ( 32'd256                   ),
       .NumBlocks        ( 32'd8                     ),
       .AxiIdWidth       ( culsans_pkg::IdWidthSlave ),
       .AxiAddrWidth     ( AXI_ADDRESS_WIDTH         ),
