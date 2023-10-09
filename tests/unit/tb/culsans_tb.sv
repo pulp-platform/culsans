@@ -30,6 +30,7 @@ module culsans_tb
     localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1 `endif;
     localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0   `endif;
     localparam bit          HAS_LLC            = 1'b1;
+    localparam int unsigned DCACHE_INDEX_DIST = std_cache_pkg::DCACHE_NUM_WORDS * DCACHE_LINE_WIDTH / 8; // Distance between two addresses mapping to the same index
 
     // The length of cached, shared region is derived from other constants
     localparam int CachedSharedRegionLength =  ArianeCfg.SharedRegionAddrBase[0] + ArianeCfg.SharedRegionLength[0] - ArianeCfg.CachedRegionAddrBase[0];
@@ -345,6 +346,10 @@ module culsans_tb
                                              !i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[2].i_cache_ctrl.miss_req_o.bypass) &&
                                             !(i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.miss_req_o.valid &&
                                              !i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.master_ports[1].i_cache_ctrl.miss_req_o.bypass);
+
+        assign gnt_if[core_idx].mshr_match[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.mshr_addr_matches[0];
+        assign gnt_if[core_idx].mshr_match[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.mshr_addr_matches[1];
+        assign gnt_if[core_idx].mshr_match[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.mshr_index_matches[2];
 
         // assign management IF
         assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_en_csr_nbdcache  = mgmt_if[core_idx].dcache_enable;
@@ -1556,12 +1561,12 @@ module culsans_tb
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
                                                 // Only use 8-byte aligned addresses to make final comparison less complex
-                                                hit = $urandom_range(1);
+                                                hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
-                                                        "random_cached"     : offset[p] = hit ? $urandom_range(64) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
-                                                        "random_shared"     : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
-                                                        "random_non-shared" : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                                        "random_cached"     : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                        "random_shared"     : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                                        "random_non-shared" : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                                     endcase
 
                                                     offset[p] = (offset[p] / 8) * 8;
@@ -1655,12 +1660,12 @@ module culsans_tb
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
                                                 // Only use 8-byte aligned addresses to make final comparison less complex
-                                                hit = $urandom_range(1);
+                                                hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
-                                                        "random_cached_amo"     : offset[p] = hit ? $urandom_range(64) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
-                                                        "random_shared_amo"     : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
-                                                        "random_non-shared_amo" : offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
+                                                        "random_cached_amo"     : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                        "random_shared_amo"     : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - base_addr); // don't enter the cached region
+                                                        "random_non-shared_amo" : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                                     endcase
 
                                                     offset[p] = (offset[p] / 8) * 8;
@@ -1745,7 +1750,7 @@ module culsans_tb
                                             if ($urandom_range(99) < 99) begin
                                                 port   = $urandom_range(2);
                                                 hit    = $urandom_range(1);
-                                                offset = hit ? $urandom_range(8) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                offset = hit ? $urandom_range(8) + $urandom_range(1) * DCACHE_INDEX_DIST : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
 
                                                 if (port == 2) begin
                                                     dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
@@ -1811,7 +1816,7 @@ module culsans_tb
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
                                                 // Only use 8-byte aligned addresses to make final comparison less complex
-                                                hit = $urandom_range(1);
+                                                hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
                                                         "random_cached_shared"     : addr_region = $urandom_range(1);     // [0, 1]
@@ -1823,15 +1828,15 @@ module culsans_tb
                                                     case (addr_region)
                                                         0 : begin // "cached" : cached, shared + cached, non-shared
                                                             baddr[p]  = ArianeCfg.CachedRegionAddrBase[0];
-                                                            offset[p] = hit ? $urandom_range(64) : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
+                                                            offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : (cc == cid) ? $urandom_range(ArianeCfg.CachedRegionLength[0]) : $urandom_range(CachedSharedRegionLength); // only one core should enter the cached, non-shared region
                                                         end
                                                         1 : begin // "shared" : non-cached, shared
                                                             baddr[p]  = ArianeCfg.SharedRegionAddrBase[0];
-                                                            offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - baddr[p]); // don't enter the cached region
+                                                            offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.CachedRegionAddrBase[0] - baddr[p]); // don't enter the cached region
                                                         end
                                                         2 : begin // "non-shared" : non-cached, non-shared
                                                             baddr[p]  = culsans_pkg::DRAMBase;
-                                                            offset[p] = hit ? $urandom_range(64) : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - baddr[p]); // don't enter the shared region
+                                                            offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - baddr[p]); // don't enter the shared region
                                                         end
                                                     endcase
 
