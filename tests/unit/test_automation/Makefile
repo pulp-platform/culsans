@@ -43,6 +43,7 @@ TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
 
 SIM_RUNTIME ?= 30ms
+SEED ?= 0
 
 VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -suppress 2879       # allow calling tasks in final procedure
