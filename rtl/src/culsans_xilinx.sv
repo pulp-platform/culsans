@@ -768,20 +768,21 @@ end
     AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
+    DcacheLineWidth: ariane_pkg::DCACHE_LINE_WIDTH,
     AxiAddrWidth: AxiAddrWidth,
+    AxiUserWidth: AxiUserWidth,
     AxiDataWidth: AxiDataWidth
   };
 
   ace_ccu_top_intf #(
-    .AXI_USER_WIDTH ( AxiUserWidth  ),
-    .Cfg            ( CCU_CFG       )
+    .Cfg ( CCU_CFG )
   ) i_ccu (
-    .clk_i                 ( clk        ),
-    .rst_ni                ( ndmreset_n ),
-    .test_i                ( test_en    ),
-    .slv_ports             ( core_to_CCU ),
-    .snoop_ports           ( CCU_to_core ),
-    .mst_ports             ( to_xbar[0]  )
+    .clk_i       ( clk        ),
+    .rst_ni      ( ndmreset_n ),
+    .test_i      ( test_en    ),
+    .slv_ports   ( core_to_CCU ),
+    .snoop_ports ( CCU_to_core ),
+    .mst_ports   ( to_xbar[0]  )
   );
 
 
