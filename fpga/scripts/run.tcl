@@ -43,6 +43,7 @@ set_property include_dirs { \
       "../modules/cva6/vendor/pulp-platform/common_cells/include" \
       "../modules/cva6/vendor/pulp-platform/axi/include" \
       "../modules/cva6/vendor/planv/ace/include" \
+      "../modules/axi_llc/include"
       "../modules/cva6/corev_apu/register_interface/include" \
 } [current_fileset]
 
@@ -100,6 +101,33 @@ set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE RuntimeOptimized      [get_runs imp
 # disable power optimization
 set_property STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED false    [get_runs impl_1]
 set_property STEPS.POWER_OPT_DESIGN.IS_ENABLED false               [get_runs impl_1]
+
+
+# Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
+set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[*].i_in_flight_cnt/* ]
+
+# CRITICAL WARNING: [DRC LUTLP-1] Combinatorial Loop Alert: 13 LUT cells form a combinatorial loop.
+# This can create a race condition. Timing analysis may not be accurate. The preferred resolution is
+# to modify the design to remove combinatorial logic loops. If the loop is known and understood, this
+# DRC can be bypassed by acknowledging the condition and setting the following XDC constraint on any
+# one of the nets in the loop: 'set_property ALLOW_COMBINATORIAL_LOOPS TRUE
+# [get_nets <myHier/myNet>]'. One net in the loop is
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[4].i_in_flight_cnt/gen_demux.lock_aw_valid_q_reg.
+# Please evaluate your design. The cells in the loop are:
+# i_axi_riscv_atomics/i_atomics/i_lrsc/art_check_gnt_inferred_i_1,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_art/art_check_res_inferred_i_1,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[4].i_in_flight_cnt/counter_q[3]_i_3,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[4].i_in_flight_cnt/counter_q[3]_i_5,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_non_excl_acc_arb/i_arb/gen_rr_arb.i_arbiter/gen_arbiter.gen_int_rr.gen_lock.lock_q_i_2,
+# i_axi_riscv_atomics/i_atomics/i_lrsc/i_non_excl_acc_arb/i_arb/gen_rr_arb.i_arbiter/gen_arbiter.gen_int_rr.gen_lock.req_q[0]_i_1,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/gen_demux.lock_aw_valid_q_i_3,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.i_counter_open_w/i_counter/i_axi_riscv_atomics_i_2,
+# i_axi_riscv_atomics/i_atomics/i_amos/mst\\.aw_valid_INST_0,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/pending_w_q[4]_i_3,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.i_counter_open_w/i_counter/pending_w_q[4]_i_4,
+# i_axi_llc/i_axi_llc_top_raw/i_axi_isolate_flush/i_axi_isolate/pending_w_q[4]_i_5, and
+# i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.i_counter_open_w/i_counter/pending_w_q[4]_i_11.
+
 
 launch_runs impl_1
 wait_on_run impl_1

@@ -135,7 +135,7 @@ module culsans_tb
         .NUM_WORDS        (NUM_WORDS), // 4Kwords
         .StallRandomInput (STALL_RANDOM_DELAY),
         .StallRandomOutput(STALL_RANDOM_DELAY),
-//        .HasLLC           (HAS_LLC),
+        .HasLLC           (HAS_LLC),
         .FixedDelayInput  (FIXED_AXI_DELAY),
         .FixedDelayOutput (FIXED_AXI_DELAY),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
@@ -1718,13 +1718,17 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         rep_cnt   = 1000;
+
                         timeout   = 200000; // long test
                         wait_time = 10000;
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            // any core may have to wait for flush, increase timeouts
-                            cache_scbd[c].set_cache_msg_timeout(wait_time);
-                            cache_scbd[c].set_snoop_msg_timeout(wait_time);
+                        // LLC and random AXI delay cause longer tests
+                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                            timeout   = 300000;
+                            for (int c=0; c < NB_CORES; c++) begin
+                                cache_scbd[c].set_cache_msg_timeout(wait_time);
+                                cache_scbd[c].set_snoop_msg_timeout(wait_time);
+                            end
                         end
 
                        // arm spurious kills
