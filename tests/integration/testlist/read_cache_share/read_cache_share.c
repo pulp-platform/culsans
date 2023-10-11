@@ -15,7 +15,7 @@ int read_cache_share(int cid, int nc)
     for (int i = 0; i < sizeof(data)/sizeof(data[0]); i++)
       data[i] = i+1;
     // writeback the data
-    asm volatile("fence");
+    asm volatile("fence.i");
   }
 
   if (data[cid] != cid+1)

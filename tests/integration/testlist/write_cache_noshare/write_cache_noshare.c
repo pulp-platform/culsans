@@ -21,7 +21,7 @@ int write_cache_noshare(int cid, int nc)
     exit(10*(cid+1));
 
   // writeback
-  asm volatile("fence");
+  asm volatile("fence.i");
 
   return 0;
 }
