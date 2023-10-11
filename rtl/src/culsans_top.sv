@@ -674,20 +674,21 @@ module culsans_top #(
     AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
+    DcacheLineWidth: ariane_pkg::DCACHE_LINE_WIDTH,
     AxiAddrWidth: AXI_ADDRESS_WIDTH,
+    AxiUserWidth: AXI_USER_WIDTH,
     AxiDataWidth: AXI_DATA_WIDTH
   };
 
   ace_ccu_top_intf #(
-    .AXI_USER_WIDTH ( AXI_USER_WIDTH          ),
-    .Cfg            ( CCU_CFG       )
+    .Cfg ( CCU_CFG )
   ) i_ccu (
-    .clk_i                 ( clk_i      ),
-    .rst_ni                ( ndmreset_n ),
-    .test_i                ( test_en    ),
-    .slv_ports             ( core_to_CCU ),
-    .snoop_ports           ( CCU_to_core ),
-    .mst_ports             ( to_xbar[0]  )
+    .clk_i       ( clk_i       ),
+    .rst_ni      ( ndmreset_n  ),
+    .test_i      ( test_en     ),
+    .slv_ports   ( core_to_CCU ),
+    .snoop_ports ( CCU_to_core ),
+    .mst_ports   ( to_xbar[0]  )
   );
 
   // ---------------
