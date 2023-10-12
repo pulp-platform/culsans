@@ -3,6 +3,7 @@ MKFILE_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # Common variables
 SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
+target = cv64a6_imafdc_sv39_wb
 
 include $(MKFILE_DIR)/../modules/cva6/Makefile
 
