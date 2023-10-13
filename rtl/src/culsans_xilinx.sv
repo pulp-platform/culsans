@@ -570,6 +570,7 @@ axi_adapter #(
     .rst_ni                ( rst_n                  ),
     .req_i                 ( dm_master_req          ),
     .type_i                ( ariane_axi::SINGLE_REQ ),
+    .trans_type_i          ( ace_pkg::READ_NO_SNOOP ),
     .amo_i                 ( ariane_pkg::AMO_NONE   ),
     .gnt_o                 ( dm_master_gnt          ),
     .addr_i                ( dm_master_add          ),
@@ -583,6 +584,9 @@ axi_adapter #(
     .id_o                  (                        ),
     .critical_word_o       (                        ),
     .critical_word_valid_o (                        ),
+    .dirty_o               (                        ),
+    .shared_o              (                        ),
+    .busy_o                (                        ),
     .axi_req_o             ( dm_axi_m_req           ),
     .axi_resp_i            ( dm_axi_m_resp          )
 );
