@@ -730,7 +730,7 @@ end
       .axi_ar_chan_t ( ariane_ace::ar_chan_t ),
       .axi_aw_chan_t ( ariane_ace::aw_chan_t ),
       .axi_w_chan_t  ( ariane_axi::w_chan_t  ),
-      .axi_req_t     ( ariane_ace::res_t     ),
+      .axi_req_t     ( ariane_ace::req_t     ),
       .axi_rsp_t     ( ariane_ace::resp_t    )
     ) i_ariane (
       .clk_i                ( clk                 ),
