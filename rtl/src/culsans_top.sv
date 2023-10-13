@@ -827,8 +827,8 @@ module culsans_top #(
   // ---------------
   // Cores
   // ---------------
-  ariane_ace::m2s_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
-  ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
+  ariane_ace::req_t       [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
+  ariane_ace::resp_t      [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
   ariane_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
   logic [culsans_pkg::NB_CORES-1:0][7:0] hart_id;
@@ -838,15 +838,15 @@ module culsans_top #(
     assign hart_id[i] = i;
 
     ariane #(
-      .ArianeCfg     ( ArianeCfg                 ),
-      .AxiAddrWidth  ( AXI_ADDRESS_WIDTH         ),
-      .AxiDataWidth  ( AXI_DATA_WIDTH            ),
-      .AxiIdWidth    ( culsans_pkg::IdWidth      ),
-      .axi_ar_chan_t ( ariane_ace::ar_chan_t     ),
-      .axi_aw_chan_t ( ariane_ace::aw_chan_t     ),
-      .axi_w_chan_t  ( ariane_axi::w_chan_t      ),
-      .axi_req_t     ( ariane_ace::m2s_t         ),
-      .axi_rsp_t     ( ariane_ace::s2m_t         )
+      .ArianeCfg     ( ArianeCfg             ),
+      .AxiAddrWidth  ( AXI_ADDRESS_WIDTH     ),
+      .AxiDataWidth  ( AXI_DATA_WIDTH        ),
+      .AxiIdWidth    ( culsans_pkg::IdWidth  ),
+      .axi_ar_chan_t ( ariane_ace::ar_chan_t ),
+      .axi_aw_chan_t ( ariane_ace::aw_chan_t ),
+      .axi_w_chan_t  ( ariane_axi::w_chan_t  ),
+      .axi_req_t     ( ariane_ace::req_t     ),
+      .axi_rsp_t     ( ariane_ace::resp_t    )
     ) i_ariane (
       .clk_i                ( clk_i               ),
       .rst_ni               ( ndmreset_n          ),
