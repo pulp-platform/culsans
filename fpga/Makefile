@@ -20,7 +20,7 @@ LLC_DIR = ../modules/axi_llc
 
 work-dir := work-fpga
 bit := $(work-dir)/culsans_xilinx.bit
-ip-dir := $(CVA6_DIR)/corev_apu/fpga/xilinx
+ip-dir := xilinx
 ips := xlnx_axi_clock_converter.xci  \
        xlnx_axi_dwidth_converter.xci \
        xlnx_axi_dwidth_converter_dm_master.xci \
@@ -82,7 +82,6 @@ all: $(bit)
 $(bit): $(ips) scripts/add_sources.tcl $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
 	@echo "[FPGA] Generate Bitstream"
 	@mkdir -p $(work-dir)
-	@cp -r $(ip-dir) .
 	export BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CLK_PERIOD_NS=$(CLK_PERIOD_NS); \
 	$(VIVADO) $(VIVADOFLAGS) -source scripts/run.tcl
 	#cp ariane.runs/impl_1/culsans_xilinx* ./$(work-dir)
