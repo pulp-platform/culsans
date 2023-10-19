@@ -91,12 +91,19 @@ DEFINES =
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
-VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -O0
+VLOG_FLAGS += -svinputport=compat -incr -64 -nologo -quiet -suppress 13262 -suppress 2583
 VLOG_FLAGS += -suppress 2986 # (vlog-2986) The hierarchical reference 'aw_chan_i.id' is not legal in a constant expression context.
 VLOG_FLAGS += -suppress 2879 # allow calling tasks in final procedure
 ifneq ($(DEFINES), "")
 VLOG_FLAGS += $(foreach def, $(DEFINES), +define+$(def))
 endif
+
+COVER ?= 0
+ifneq ($(COVER), 0)
+    VOPT_FLAGS += +cover=sbecft
+endif
+# why is this needed?
+VOPT_FLAGS += +acc
 
 verilate_command := $(verilator) $(CVA6_DIR)/verilator_config.vlt                                                \
                     -f $(CVA6_DIR)/core/Flist.cva6                                                               \
@@ -149,7 +156,7 @@ $(library)/.build-culsans-tb: $(library)/.build-culsans-srcs $(library) $(TB_SRC
 
 ifeq ($(VERILATE), 0)
 rtl: nb_cores_rtl $(library)/.build-srcs $(library)/.build-culsans-srcs $(library)/.build-culsans-tb
-	$(VOPT) $(VLOG_FLAGS) -work $(library)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized +acc -check_synthesis
+	$(VOPT) $(VOPT_FLAGS) -work $(library)  $(TOP_LEVEL) -o $(TOP_LEVEL)_optimized -check_synthesis
 else
 VERILATOR_JOBS = 1
 rtl:
@@ -163,5 +170,6 @@ endif
 clean_rtl: nb_cores_rtl
 	rm -rf $(library)
 	rm -rf $(VERILATOR_LIB)
+	rm -rf $(COVERAGE_DIR)
 
 .PHONY: rtl clean_rtl

@@ -5,6 +5,7 @@ SPIKE_ROOT ?= /opt/riscv-isa-sim
 RISCV ?= /opt/riscv
 target = cv64a6_imafdc_sv39_wb
 
+export XCELIUM_HOME=/dev/null
 include $(MKFILE_DIR)/../modules/cva6/Makefile
 
 TEST_REPORT = result.rpt
@@ -15,12 +16,15 @@ RV_AR := $(RV_TOOL_PREFIX)ar
 RV_OBJDUMP := $(RV_TOOL_PREFIX)objdump
 RV_OBJCOPY := $(RV_TOOL_PREFIX)objcopy
 
-VSIM = vsim
-VLOG = vlog
-VOPT = vopt
-VCOM = vcom
-VLIB = vlib
-VMAP = vmap
+COVERAGE_DIR = coverage
+
+VSIM   = vsim
+VLOG   = vlog
+VOPT   = vopt
+VCOM   = vcom
+VLIB   = vlib
+VMAP   = vmap
+VCOVER = vcover
 
 VERILATOR = verilator
 

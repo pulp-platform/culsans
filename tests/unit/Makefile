@@ -27,6 +27,7 @@ help:
 	@echo "    make rerun_pass            run all tests expected to pass that failed or that has not been run"
 	@echo "    make status                list result from latest run of each test"
 	@echo "    make list_tests            list all available tests"
+	@echo "    make report_coverage       generate coverage report (must run tests with COVER=1 first)"
 	@echo "    make clean                 clean all test results"
 	@echo "    make help                  print this message"
 	@echo ""
@@ -113,10 +114,22 @@ status:
 list_tests:
 	@for d in $(TESTLIST); do printf "$$d\n"; done
 
+
+MERGED_UCDB          = $(COVERAGE_DIR)/merged_coverage.ucdb
+COVERAGE_REPORT      = $(COVERAGE_DIR)/coverage.rpt
+COVERAGE_REPORT_HTML = $(COVERAGE_DIR)/html
+merge_coverage:
+	$(VCOVER) merge -out $(MERGED_UCDB) $(COVERAGE_DIR)
+
+report_coverage: merge_coverage
+	$(VCOVER) report -details       -output $(COVERAGE_REPORT)      $(MERGED_UCDB)
+	$(VCOVER) report -details -html -output $(COVERAGE_REPORT_HTML) $(MERGED_UCDB)
+
+
 # Cleanup
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
 clean: clean_tests clean_rtl
 
-.PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw
+.PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw merge_cover report_cover

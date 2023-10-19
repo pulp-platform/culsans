@@ -45,16 +45,21 @@ SIM_TCL = sim.tcl
 SIM_RUNTIME ?= 30ms
 SEED ?= 0
 
-VSIM_FLAGS += -voptargs=+acc -t 1ns -64 -suppress 12110
-VSIM_FLAGS += -suppress 2879       # allow calling tasks in final procedure
+VSIM_FLAGS += -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -classdebug
-VSIM_FLAGS += -permit_unmatched_virtual_intf # allow declaring a virtual interface without a matching instance of the real interface
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 VSIM_FLAGS += -sv_seed $(SEED)
+# allow calling tasks in final procedure
+VSIM_FLAGS += -suppress 2879
+# allow declaring a virtual interface without a matching instance of the real interface
+VSIM_FLAGS += -permit_unmatched_virtual_intf
 
-#VSIM_FLAGS += -coverage
+ifneq ($(COVER), 0)
+    VSIM_FLAGS += -coverage
+    VSIM_FLAGS += -coverstore ../../$(COVERAGE_DIR) -testname $(TESTNAME)
+endif
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
 
@@ -73,7 +78,7 @@ endif
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
 	rm -rf $(TEST_REPORT)
-	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
+	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee sim.log
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
@@ -103,5 +108,6 @@ clean:
 	rm -rf ace_log/
 	rm -rf axi_log/
 	rm -rf vsim.wlf
+	rm -rf $(COVERAGE_DIR)/$(TESTNAME)*
 
 .PHONY: all gui sw dis sw clean $(TEST_REPORT)
