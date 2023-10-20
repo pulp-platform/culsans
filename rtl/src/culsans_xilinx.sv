@@ -159,6 +159,7 @@ localparam AxiAddrWidth = 64;
 localparam AxiDataWidth = 64;
 localparam AxiIdWidthSlaves = culsans_pkg::IdWidthToXbar + $clog2(NBSlave);
 localparam AxiUserWidth = ariane_pkg::AXI_USER_WIDTH;
+localparam ariane_pkg::ariane_cfg_t ArianeCfg = culsans_pkg::ArianeFpgaSocCfg;
 
 `AXI_TYPEDEF_ALL(axi_slave,
                  logic [    AxiAddrWidth-1:0],
@@ -360,7 +361,7 @@ dm_top #(
     .dmactive_o       ( dmactive          ), // active debug session
     .debug_req_o      ( debug_req_irq     ),
     .unavailable_i    ( '0                ),
-    .hartinfo_i       ( {ariane_pkg::DebugHartInfo} ),
+    .hartinfo_i       (  {culsans_pkg::NB_CORES{ariane_pkg::DebugHartInfo}} ),
     .slave_req_i      ( dm_slave_req      ),
     .slave_we_i       ( dm_slave_we       ),
     .slave_addr_i     ( dm_slave_addr     ),
@@ -569,6 +570,7 @@ axi_adapter #(
     .rst_ni                ( rst_n                  ),
     .req_i                 ( dm_master_req          ),
     .type_i                ( ariane_axi::SINGLE_REQ ),
+    .trans_type_i          ( ace_pkg::READ_NO_SNOOP ),
     .amo_i                 ( ariane_pkg::AMO_NONE   ),
     .gnt_o                 ( dm_master_gnt          ),
     .addr_i                ( dm_master_add          ),
@@ -582,6 +584,9 @@ axi_adapter #(
     .id_o                  (                        ),
     .critical_word_o       (                        ),
     .critical_word_valid_o (                        ),
+    .dirty_o               (                        ),
+    .shared_o              (                        ),
+    .busy_o                (                        ),
     .axi_req_o             ( dm_axi_m_req           ),
     .axi_resp_i            ( dm_axi_m_resp          )
 );
@@ -692,8 +697,8 @@ end
 // ---------------
 // Cores
 // ---------------
-  ariane_ace::m2s_t [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
-  ariane_ace::s2m_t [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
+  ariane_ace::req_t       [culsans_pkg::NB_CORES-1:0] ace_ariane_req;
+  ariane_ace::resp_t      [culsans_pkg::NB_CORES-1:0] ace_ariane_resp;
   ariane_pkg::rvfi_port_t [culsans_pkg::NB_CORES-1:0] rvfi;
 
    ACE_BUS #(
@@ -718,15 +723,15 @@ end
     logic tmp;
 
     ariane #(
-      .ArianeCfg     ( culsans_pkg::ArianeFpgaSocCfg ),
-      .AxiAddrWidth  ( AxiAddrWidth                  ),
-      .AxiDataWidth  ( AxiDataWidth                  ),
-      .AxiIdWidth    ( culsans_pkg::IdWidth          ),
-      .axi_ar_chan_t ( ariane_ace::ar_chan_t         ),
-      .axi_aw_chan_t ( ariane_ace::aw_chan_t         ),
-      .axi_w_chan_t  ( ariane_axi::w_chan_t          ),
-      .axi_req_t     ( ariane_ace::m2s_t             ),
-      .axi_rsp_t     ( ariane_ace::s2m_t             )
+      .ArianeCfg     ( ArianeCfg             ),
+      .AxiAddrWidth  ( AxiAddrWidth          ),
+      .AxiDataWidth  ( AxiDataWidth          ),
+      .AxiIdWidth    ( culsans_pkg::IdWidth  ),
+      .axi_ar_chan_t ( ariane_ace::ar_chan_t ),
+      .axi_aw_chan_t ( ariane_ace::aw_chan_t ),
+      .axi_w_chan_t  ( ariane_axi::w_chan_t  ),
+      .axi_req_t     ( ariane_ace::req_t     ),
+      .axi_rsp_t     ( ariane_ace::resp_t    )
     ) i_ariane (
       .clk_i                ( clk                 ),
       .rst_ni               ( ndmreset_n          ),
@@ -768,20 +773,21 @@ end
     AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
+    DcacheLineWidth: ariane_pkg::DCACHE_LINE_WIDTH,
     AxiAddrWidth: AxiAddrWidth,
+    AxiUserWidth: AxiUserWidth,
     AxiDataWidth: AxiDataWidth
   };
 
   ace_ccu_top_intf #(
-    .AXI_USER_WIDTH ( AxiUserWidth  ),
-    .Cfg            ( CCU_CFG       )
+    .Cfg ( CCU_CFG )
   ) i_ccu (
-    .clk_i                 ( clk        ),
-    .rst_ni                ( ndmreset_n ),
-    .test_i                ( test_en    ),
-    .slv_ports             ( core_to_CCU ),
-    .snoop_ports           ( CCU_to_core ),
-    .mst_ports             ( to_xbar[0]  )
+    .clk_i       ( clk        ),
+    .rst_ni      ( ndmreset_n ),
+    .test_i      ( test_en    ),
+    .slv_ports   ( core_to_CCU ),
+    .snoop_ports ( CCU_to_core ),
+    .mst_ports   ( to_xbar[0]  )
   );
 
 
@@ -931,7 +937,7 @@ ariane_peripherals #(
 // ---------------
 // DDR
 // ---------------
-logic [AxiIdWidthSlaves-1:0] s_axi_awid;
+logic [AxiIdWidthSlaves:0]   s_axi_awid;
 logic [AxiAddrWidth-1:0]     s_axi_awaddr;
 logic [7:0]                  s_axi_awlen;
 logic [2:0]                  s_axi_awsize;
@@ -948,11 +954,11 @@ logic [AxiDataWidth/8-1:0]   s_axi_wstrb;
 logic                        s_axi_wlast;
 logic                        s_axi_wvalid;
 logic                        s_axi_wready;
-logic [AxiIdWidthSlaves-1:0] s_axi_bid;
+logic [AxiIdWidthSlaves:0]   s_axi_bid;
 logic [1:0]                  s_axi_bresp;
 logic                        s_axi_bvalid;
 logic                        s_axi_bready;
-logic [AxiIdWidthSlaves-1:0] s_axi_arid;
+logic [AxiIdWidthSlaves:0]   s_axi_arid;
 logic [AxiAddrWidth-1:0]     s_axi_araddr;
 logic [7:0]                  s_axi_arlen;
 logic [2:0]                  s_axi_arsize;
@@ -964,7 +970,7 @@ logic [3:0]                  s_axi_arregion;
 logic [3:0]                  s_axi_arqos;
 logic                        s_axi_arvalid;
 logic                        s_axi_arready;
-logic [AxiIdWidthSlaves-1:0] s_axi_rid;
+logic [AxiIdWidthSlaves:0]   s_axi_rid;
 logic [AxiDataWidth-1:0]     s_axi_rdata;
 logic [1:0]                  s_axi_rresp;
 logic                        s_axi_rlast;
@@ -974,22 +980,116 @@ logic                        s_axi_rready;
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
+    .AXI_ID_WIDTH   ( AxiIdWidthSlaves+1 ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
 ) dram();
 
-axi_riscv_atomics_wrap #(
+AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
-    .AXI_USER_WIDTH ( AxiUserWidth     ),
-    .AXI_MAX_WRITE_TXNS ( 1  ),
-    .RISCV_WORD_WIDTH   ( 64 )
+    .AXI_USER_WIDTH ( AxiUserWidth     )
+) to_llc();
+
+axi_riscv_atomics_wrap #(
+    .AXI_ADDR_WIDTH     ( AxiAddrWidth                    ),
+    .AXI_DATA_WIDTH     ( AxiDataWidth                    ),
+    .AXI_ADDR_LSB       ( $clog2(ariane_pkg::DCACHE_LINE_WIDTH/8) ), // LR/SC reservation must be at least cache line size
+    .AXI_ID_WIDTH       ( AxiIdWidthSlaves                ),
+    .AXI_USER_WIDTH     ( AxiUserWidth                    ),
+    .AXI_USER_AS_ID     ( 1'b1                            ),
+    .AXI_USER_ID_LSB    ( 0                               ),
+    .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
+    .AXI_MAX_READ_TXNS  ( 1                               ),
+    .AXI_MAX_WRITE_TXNS ( 1                               ),
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
 ) i_axi_riscv_atomics (
-    .clk_i  ( clk                      ),
-    .rst_ni ( ndmreset_n               ),
+    .clk_i  ( clk                       ),
+    .rst_ni ( ndmreset_n                ),
     .slv    ( master[culsans_pkg::DRAM] ),
-    .mst    ( dram                     )
+    .mst    ( to_llc                    )
+);
+
+localparam int unsigned   AxiStrbWidth = AxiDataWidth / 32'd8;
+typedef logic [AxiIdWidthSlaves-1:0]     axi_slv_id_t;
+typedef logic [AxiIdWidthSlaves:0]       axi_mst_id_t;
+typedef logic [AxiAddrWidth-1:0]   axi_addr_t;
+typedef logic [AxiDataWidth-1:0]   axi_data_t;
+typedef logic [AxiStrbWidth-1:0]   axi_strb_t;
+typedef logic [AxiUserWidth-1:0]   axi_user_t;
+
+`AXI_TYPEDEF_AW_CHAN_T(axi_slv_aw_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+`AXI_TYPEDEF_AW_CHAN_T(axi_mst_aw_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+`AXI_TYPEDEF_W_CHAN_T(axi_w_t, axi_data_t, axi_strb_t, axi_user_t)
+`AXI_TYPEDEF_B_CHAN_T(axi_slv_b_t, axi_slv_id_t, axi_user_t)
+`AXI_TYPEDEF_B_CHAN_T(axi_mst_b_t, axi_mst_id_t, axi_user_t)
+`AXI_TYPEDEF_AR_CHAN_T(axi_slv_ar_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+`AXI_TYPEDEF_AR_CHAN_T(axi_mst_ar_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+`AXI_TYPEDEF_R_CHAN_T(axi_slv_r_t, axi_data_t, axi_slv_id_t, axi_user_t)
+`AXI_TYPEDEF_R_CHAN_T(axi_mst_r_t, axi_data_t, axi_mst_id_t, axi_user_t)
+
+`AXI_TYPEDEF_REQ_T(axi_slv_req_t, axi_slv_aw_t, axi_w_t, axi_slv_ar_t)
+`AXI_TYPEDEF_RESP_T(axi_slv_resp_t, axi_slv_b_t, axi_slv_r_t)
+`AXI_TYPEDEF_REQ_T(axi_mst_req_t, axi_mst_aw_t, axi_w_t, axi_mst_ar_t)
+`AXI_TYPEDEF_RESP_T(axi_mst_resp_t, axi_mst_b_t, axi_mst_r_t)
+
+`REG_BUS_TYPEDEF_ALL(conf, logic [31:0], logic [31:0], logic [3:0])
+
+typedef struct packed {
+   int unsigned idx;
+   axi_addr_t   start_addr;
+   axi_addr_t   end_addr;
+} rule_full_t;
+
+axi_llc_pkg::events_t llc_events;
+axi_slv_req_t  axi_cpu_req;
+axi_slv_resp_t axi_cpu_res;
+axi_mst_req_t  axi_mem_req;
+axi_mst_resp_t axi_mem_res;
+conf_req_t     reg_cfg_req;
+conf_rsp_t     reg_cfg_rsp;
+
+assign reg_cfg_req = '0;
+
+localparam axi_addr_t SpmRegionStart       = axi_addr_t'(0);
+localparam axi_addr_t SpmRegionLength      = 0;
+localparam axi_addr_t L2CachedRegionStart  = axi_addr_t'(culsans_pkg::DRAMBase);
+localparam axi_addr_t L2CachedRegionLength = axi_addr_t'(culsans_pkg::DRAMLength);
+
+`AXI_ASSIGN_TO_REQ(axi_cpu_req, to_llc)
+`AXI_ASSIGN_FROM_RESP(to_llc, axi_cpu_res)
+`AXI_ASSIGN_FROM_REQ(dram, axi_mem_req)
+`AXI_ASSIGN_TO_RESP(axi_mem_res, dram)
+
+axi_llc_reg_wrap #(
+   .SetAssociativity ( 32'd8              ),
+   .NumLines         ( 32'd256            ),
+   .NumBlocks        ( 32'd8              ),
+   .AxiIdWidth       ( AxiIdWidthSlaves   ),
+   .AxiAddrWidth     ( AxiAddrWidth       ),
+   .AxiDataWidth     ( AxiDataWidth       ),
+   .AxiUserWidth     ( AxiUserWidth       ),
+   .slv_req_t        ( axi_slv_req_t      ),
+   .slv_resp_t       ( axi_slv_resp_t     ),
+   .mst_req_t        ( axi_mst_req_t      ),
+   .mst_resp_t       ( axi_mst_resp_t     ),
+   .reg_req_t        ( conf_req_t         ),
+   .reg_resp_t       ( conf_rsp_t         ),
+   .rule_full_t      ( rule_full_t        )
+) i_axi_llc (
+   .clk_i               ( clk                                        ),
+   .rst_ni              ( ndmreset_n                                 ),
+   .test_i              ( 1'b0                                       ),
+   .slv_req_i           ( axi_cpu_req                                ),
+   .slv_resp_o          ( axi_cpu_res                                ),
+   .mst_req_o           ( axi_mem_req                                ),
+   .mst_resp_i          ( axi_mem_res                                ),
+   .conf_req_i          ( reg_cfg_req                                ),
+   .conf_resp_o         ( reg_cfg_rsp                                ),
+   .cached_start_addr_i ( L2CachedRegionStart                        ),
+   .cached_end_addr_i   ( L2CachedRegionStart + L2CachedRegionLength ),
+   .spm_start_addr_i    ( SpmRegionStart                             ),
+   .axi_llc_events_o    ( llc_events                                 )
 );
 
 `ifdef PROTOCOL_CHECKER
@@ -1840,67 +1940,79 @@ axi_clock_converter_0 pcie_axi_clock_converter (
   xlnx_ila i_ila_top (
     .clk     (clk),
 
-    .probe0  ({cache_ctrL_0_0_state, // 4
-               cache_ctrL_0_1_state, // 4
-               cache_ctrL_0_2_state, // 4
-               cache_ctrL_1_0_state, // 4
-               cache_ctrL_1_1_state, // 4
-               cache_ctrL_1_2_state, // 4
-               snoop_ctrL_0_state,   // 3
-               snoop_ctrL_1_state}), // 3 = 30
+    .probe0  ({cache_ctrL_0_0_state, // 4 [29:26]
+               cache_ctrL_0_1_state, // 4 [25:22]
+               cache_ctrL_0_2_state, // 4 [21:18]
+               cache_ctrL_1_0_state, // 4 [17:!4]
+               cache_ctrL_1_1_state, // 4 [13:10]
+               cache_ctrL_1_2_state, // 4 [9:6]
+               snoop_ctrL_0_state,   // 3 [5:3]
+               snoop_ctrL_1_state}), // 3 [2:0] = 30
 
     .probe1  ({miss_handler_0_state, // 5
                miss_handler_1_state, // 5
                ccu_fsm_state}),      // 6 = 16
 
-    .probe2  ({master[culsans_pkg::DRAM].aw_valid,         // 1
-               master[culsans_pkg::DRAM].aw_lock,          // 1
-               master[culsans_pkg::DRAM].aw_atop,          // 6
-               master[culsans_pkg::DRAM].aw_id,            // 9
-               master[culsans_pkg::DRAM].aw_user[7:0],     // 8
-               master[culsans_pkg::DRAM].aw_ready,         // 1
-               master[culsans_pkg::DRAM].w_valid,          // 1
-               master[culsans_pkg::DRAM].w_ready}),        // 1  = 27
+    .probe2  ({to_xbar[0].aw_valid,         // 1
+               to_xbar[0].aw_lock,          // 1
+               to_xbar[0].aw_atop,          // 6
+               to_xbar[0].aw_id,            // 9
+               to_xbar[0].aw_user[7:0],     // 8
+               to_xbar[0].aw_ready,         // 1
+               to_xbar[0].w_valid,          // 1
+               to_xbar[0].w_ready}),        // 1  = 27
 
-    .probe3  (master[culsans_pkg::DRAM].aw_addr[31:0]),    // 32 = 32
+    .probe3  (to_xbar[0].aw_addr[31:0]),    // 32 = 32
 
-    .probe4  ({master[culsans_pkg::DRAM].b_valid,          // 1
-               master[culsans_pkg::DRAM].b_id,             // 9
-               master[culsans_pkg::DRAM].b_resp,           // 2
-               master[culsans_pkg::DRAM].b_ready}),        // 1  = 13
+    .probe4  ({to_xbar[0].b_valid,          // 1
+               to_xbar[0].b_id,             // 9
+               to_xbar[0].b_resp,           // 2
+               to_xbar[0].b_ready}),        // 1  = 13
 
-    .probe5  ({master[culsans_pkg::DRAM].ar_valid,         // 1
-               master[culsans_pkg::DRAM].ar_lock,          // 1
-               master[culsans_pkg::DRAM].ar_id,            // 9
-               master[culsans_pkg::DRAM].ar_user[1:0],     // 2
-               master[culsans_pkg::DRAM].ar_ready,         // 1
-               master[culsans_pkg::DRAM].r_valid,          // 1
-               master[culsans_pkg::DRAM].r_id,             // 9
-               master[culsans_pkg::DRAM].r_resp,           // 2
-               master[culsans_pkg::DRAM].r_ready}),        // 1  = 27
+    .probe5  ({to_xbar[0].ar_valid,         // 1
+               to_xbar[0].ar_lock,          // 1
+               to_xbar[0].ar_id,            // 9
+               to_xbar[0].ar_user[1:0],     // 2
+               to_xbar[0].ar_ready,         // 1
+               to_xbar[0].r_valid,          // 1
+               to_xbar[0].r_id,             // 9
+               to_xbar[0].r_resp,           // 2
+               to_xbar[0].r_ready}),        // 1  = 27
 
-    .probe6  (master[culsans_pkg::DRAM].ar_addr[31:0]),    // 32 = 32
+    .probe6  (to_xbar[0].ar_addr[31:0]),    // 32 = 32
 
     .probe7  ({gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[0].i_ariane.i_cva6.controller_i.fence_t_i,
+               gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.spec,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_i,
                gen_ariane[1].i_ariane.i_cva6.controller_i.fence_t_i,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_clr_gnt,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt,
+               gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_valid,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.req,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s1,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.kill_s2,
+               gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.spec,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_excl,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_clr_gnt,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_id,
                i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_res,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_req,
-               i_axi_riscv_atomics.i_atomics.i_lrsc.art_check_gnt}), // = 15
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_id,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_req,
+               i_axi_riscv_atomics.i_atomics.i_lrsc.art_set_gnt}), // = 24
 
-    .probe8  ('0),
-    .probe9  ('0),
-    .probe10 ('0),
-    .probe11 ('0),
+    .probe8  (gen_ariane[0].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+
+    .probe9  (gen_ariane[0].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
+
+    .probe10 (gen_ariane[1].i_ariane.i_cva6.icache_dreq_if_cache.vaddr[31:0]), // 32
+
+    .probe11 (gen_ariane[1].i_ariane.i_cva6.icache_areq_ex_cache.fetch_paddr[31:0]), // 32
 
     .probe12  ({gen_ariane[0].i_ariane.i_cva6.amo_req.req,
                gen_ariane[0].i_ariane.i_cva6.amo_resp.ack,

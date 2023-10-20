@@ -23,7 +23,7 @@ void thread_entry(int cid, int nc)
     { asm volatile ("nop"); }
 
   // flush the cache
-  asm volatile ("fence");
+  asm volatile ("fence.i");
 
   // cores > 0 wait here
   while(cid)

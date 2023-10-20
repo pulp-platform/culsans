@@ -72,6 +72,14 @@ endif
 rerun: sw rtl
 	for d in $(TESTLIST); do if [ -e $$d/$(TEST_REPORT) ] and [ -e $$d/$(VERIFICATION_REPORT) ]; then if grep -q FAIL $$d/$(TEST_REPORT) ; then make -C $$d all; fi; else make -C $$d all; fi; done
 
+# coverage
+$(MERGED_UCDB):
+	$(VCOVER) merge -out $(MERGED_UCDB) $(COVERAGE_DIR)
+
+report_coverage: $(MERGED_UCDB)
+	$(VCOVER) report -details       -codeAll -output $(COVERAGE_REPORT)      $(MERGED_UCDB)
+	$(VCOVER) report -details -html -codeAll -output $(COVERAGE_REPORT_HTML) $(MERGED_UCDB)
+
 # Cleanup
 
 clean_sw:
@@ -81,6 +89,6 @@ clean_sw:
 clean_tests:
 	for d in $(TESTLIST); do make -C $$d clean; done
 
-clean: clean_sw clean_tests
+clean: clean_sw clean_rtl clean_tests
 
-.PHONY: all sw sw_all rerun clean clean_sw
+.PHONY: all sw sw_all rerun clean clean_sw report_coverage

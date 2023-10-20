@@ -22,6 +22,3 @@ add wave /culsans_tb/i_culsans/gen_ariane[1]/i_ariane/i_cva6/WB/i_cache_subsyste
 #add wave /culsans_tb/i_culsans/gen_ariane[2]/i_ariane/*
 #add wave /culsans_tb/i_culsans/gen_ariane[3]/i_ariane/*
 # set a timeout
-run 100ms
-
-quit
