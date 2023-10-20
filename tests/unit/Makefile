@@ -32,6 +32,7 @@ help:
 	@echo "    make help                  print this message"
 	@echo ""
 
+
 # Run the test(s)
 
 TEST ?= all
@@ -114,16 +115,13 @@ status:
 list_tests:
 	@for d in $(TESTLIST); do printf "$$d\n"; done
 
-
-MERGED_UCDB          = $(COVERAGE_DIR)/merged_coverage.ucdb
-COVERAGE_REPORT      = $(COVERAGE_DIR)/coverage.rpt
-COVERAGE_REPORT_HTML = $(COVERAGE_DIR)/html
-merge_coverage:
+# coverage
+$(MERGED_UCDB):
 	$(VCOVER) merge -out $(MERGED_UCDB) $(COVERAGE_DIR)
 
-report_coverage: merge_coverage
-	$(VCOVER) report -details       -output $(COVERAGE_REPORT)      $(MERGED_UCDB)
-	$(VCOVER) report -details -html -output $(COVERAGE_REPORT_HTML) $(MERGED_UCDB)
+report_coverage: $(MERGED_UCDB)
+	$(VCOVER) report -details       -codeAll -output $(COVERAGE_REPORT)      $(MERGED_UCDB)
+	$(VCOVER) report -details -html -codeAll -output $(COVERAGE_REPORT_HTML) $(MERGED_UCDB)
 
 
 # Cleanup
@@ -132,4 +130,4 @@ clean_tests:
 
 clean: clean_tests clean_rtl
 
-.PHONY: all pass fail rerun status list_tests clean_tests clean clean_sw merge_cover report_cover
+.PHONY: all pass fail rerun status list_tests clean_tests clean report_coverage

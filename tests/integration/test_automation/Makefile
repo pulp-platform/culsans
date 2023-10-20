@@ -1,3 +1,4 @@
+ROOT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 include ../../../common.mk
 
 SYS_DIR = ../../sw/sys
@@ -26,6 +27,7 @@ main.hex : main.riscv
 sw : main.hex
 
 # Test execution
+TESTNAME := $(notdir $(patsubst %/,%,$(ROOT_DIR)))
 
 GUI ?= 0
 
@@ -34,26 +36,34 @@ VERILATOR_LIB = ../../work_verilate
 
 TOP_LEVEL = culsans_tb
 SIM_TCL = sim.tcl
+SIM_RUNTIME ?= 100ms
+
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
-VSIM_FLAGS = -t 1ns -64 -coverage -classdebug
-VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -suppress 12110
+VSIM_FLAGS = -t 1ns -64 -classdebug
+VSIM_FLAGS = -suppress 12110
+
+ifneq ($(COVER), 0)
+    VSIM_FLAGS += -coverage
+    VSIM_FLAGS += -coverstore ../../$(COVERAGE_DIR) -testname $(TESTNAME)
+endif
 
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
+	VSIM_CMD = -do "run $(SIM_RUNTIME);"
 else
 	ifneq ($(GUI), 1)
 		$(error GUI must be 0 or 1)
 	else
 		GTKWAVE_CMD = gtkwave waveform.vcd
 	endif
+	VSIM_CMD = -do "source $(SIM_TCL); run $(SIM_RUNTIME);"
 endif
-VSIM_CMD = -do $(SIM_TCL)
 
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
 	rm -rf $(TEST_REPORT)
-	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL) | tee sim.log
+	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee sim.log
 	@if [[ "$$PWD" =~ integration ]]; then \
 		if [ -f test.yaml ]; then \
 			python3.6 ../../test_automation/testParser.py; \
@@ -83,5 +93,6 @@ clean:
 	rm -rf main.map
 	rm -rf ace_log/
 	rm -rf axi_log/
+	rm -rf ../../$(COVERAGE_DIR)/$(TESTNAME)*
 
 .PHONY: all gui sw dis sw clean

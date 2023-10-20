@@ -47,6 +47,7 @@ SEED ?= 0
 
 VSIM_FLAGS += -t 1ns -64 -suppress 12110
 VSIM_FLAGS += -classdebug
+VSIM_FLAGS += -noassertdebug
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
@@ -108,6 +109,6 @@ clean:
 	rm -rf ace_log/
 	rm -rf axi_log/
 	rm -rf vsim.wlf
-	rm -rf $(COVERAGE_DIR)/$(TESTNAME)*
+	rm -rf ../../$(COVERAGE_DIR)/$(TESTNAME)*
 
 .PHONY: all gui sw dis sw clean $(TEST_REPORT)

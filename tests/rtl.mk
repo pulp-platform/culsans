@@ -98,9 +98,15 @@ ifneq ($(DEFINES), "")
 VLOG_FLAGS += $(foreach def, $(DEFINES), +define+$(def))
 endif
 
-COVER ?= 0
+COVER            ?= 0
+COVERAGE_MODULES ?= 
 ifneq ($(COVER), 0)
-    VOPT_FLAGS += +cover=sbecft
+	ifneq ($(COVERAGE_MODULES), )
+		VOPT_FLAGS += $(foreach mod, $(COVERAGE_MODULES), +cover+$(mod))
+	else
+		VOPT_FLAGS += +cover
+	endif
+	VOPT_FLAGS += -coveropt 1
 endif
 # why is this needed?
 VOPT_FLAGS += +acc
