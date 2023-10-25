@@ -42,6 +42,7 @@ module culsans_tb
     logic                                   clk;
     logic                                   rst_n;
     logic                                   rtc;
+    logic [31:0]                            exit_val;
 
     // TB interfaces
     amo_intf                amo_if           [NB_CORES]               (clk);
@@ -59,11 +60,15 @@ module culsans_tb
     amo_driver              amo_drv          [NB_CORES];
     amo_monitor             amo_mon          [NB_CORES];
 
-    mailbox #(dcache_req)   dcache_req_mbox  [NB_CORES][DCACHE_PORTS];
-    mailbox #(dcache_resp)  dcache_resp_mbox [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_req)   dcache_req_mbox      [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_resp)  dcache_resp_mbox     [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_req)   dcache_req_mbox_fwd  [NB_CORES];
+    mailbox #(dcache_resp)  dcache_resp_mbox_fwd [NB_CORES];
 
-    mailbox #(amo_req)      amo_req_mbox     [NB_CORES];
-    mailbox #(amo_resp)     amo_resp_mbox    [NB_CORES];
+    mailbox #(amo_req)      amo_req_mbox      [NB_CORES];
+    mailbox #(amo_resp)     amo_resp_mbox     [NB_CORES];
+    mailbox #(amo_req)      amo_req_mbox_fwd  [NB_CORES];
+    mailbox #(amo_resp)     amo_resp_mbox_fwd [NB_CORES];
 
     mailbox #(dcache_mgmt_trans) mgmt_mbox   [NB_CORES];
 
@@ -143,7 +148,7 @@ module culsans_tb
         .clk_i  ( clk      ),
         .rtc_i  ( rtc      ),
         .rst_ni ( rst_n    ),
-        .exit_o ( /* NC */ )
+        .exit_o ( exit_val )
     );
 
     //--------------------------------------------------------------------------
@@ -383,7 +388,7 @@ module culsans_tb
 
                 dcache_mon[core_idx][port] = new(dcache_if[core_idx][port], port, $sformatf("%s[%0d][%0d]","dcache_monitor",core_idx, port));
 
-                dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[ core_idx][port];
+                dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[core_idx][port];
                 dcache_mon[core_idx][port].resp_mbox = dcache_resp_mbox[core_idx][port];
 
                 dcache_mon[core_idx][port].monitor();
@@ -445,24 +450,34 @@ module culsans_tb
 
         initial begin : CACHE_SCBD
             cache_scbd[core_idx] = new(dc_sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_scoreboard",core_idx));
+            amo_req_mbox_fwd      [core_idx] = new();
+            amo_resp_mbox_fwd     [core_idx] = new();
+            dcache_req_mbox_fwd   [core_idx] = new();
+            dcache_resp_mbox_fwd  [core_idx] = new();
 
-            cache_scbd[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
-            cache_scbd[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
+            for (int port=0; port<=2; port++) begin : PORT
+                cache_scbd[core_idx].dcache_req_mbox[port]  = dcache_req_mbox  [core_idx][port];
+                cache_scbd[core_idx].dcache_resp_mbox[port] = dcache_resp_mbox [core_idx][port];
+            end
+            cache_scbd[core_idx].dcache_req_mbox_fwd   = dcache_req_mbox_fwd   [core_idx];
+            cache_scbd[core_idx].dcache_resp_mbox_fwd  = dcache_resp_mbox_fwd  [core_idx];
 
-            cache_scbd[core_idx].amo_req_mbox     = amo_req_mbox     [core_idx];
-            cache_scbd[core_idx].amo_resp_mbox    = amo_resp_mbox    [core_idx];
+            cache_scbd[core_idx].amo_req_mbox      = amo_req_mbox      [core_idx];
+            cache_scbd[core_idx].amo_resp_mbox     = amo_resp_mbox     [core_idx];
+            cache_scbd[core_idx].amo_req_mbox_fwd  = amo_req_mbox_fwd  [core_idx];
+            cache_scbd[core_idx].amo_resp_mbox_fwd = amo_resp_mbox_fwd [core_idx];
 
-            cache_scbd[core_idx].aw_mbx           = aw_mbx           [core_idx];
-            cache_scbd[core_idx].w_mbx            = w_mbx            [core_idx];
-            cache_scbd[core_idx].b_mbx            = b_mbx            [core_idx];
-            cache_scbd[core_idx].ar_mbx           = ar_mbx           [core_idx];
-            cache_scbd[core_idx].r_mbx            = r_mbx            [core_idx];
+            cache_scbd[core_idx].aw_mbx            = aw_mbx            [core_idx];
+            cache_scbd[core_idx].w_mbx             = w_mbx             [core_idx];
+            cache_scbd[core_idx].b_mbx             = b_mbx             [core_idx];
+            cache_scbd[core_idx].ar_mbx            = ar_mbx            [core_idx];
+            cache_scbd[core_idx].r_mbx             = r_mbx             [core_idx];
 
-            cache_scbd[core_idx].ac_mbx           = ac_mbx           [core_idx];
-            cache_scbd[core_idx].cd_mbx           = cd_mbx           [core_idx];
-            cache_scbd[core_idx].cr_mbx           = cr_mbx           [core_idx];
+            cache_scbd[core_idx].ac_mbx            = ac_mbx            [core_idx];
+            cache_scbd[core_idx].cd_mbx            = cd_mbx            [core_idx];
+            cache_scbd[core_idx].cr_mbx            = cr_mbx            [core_idx];
 
-            cache_scbd[core_idx].mgmt_mbox        = mgmt_mbox        [core_idx];
+            cache_scbd[core_idx].mgmt_mbox         = mgmt_mbox         [core_idx];
 
             cache_scbd[core_idx].run();
         end
@@ -481,14 +496,31 @@ module culsans_tb
         dcache_chk = new(sram_if, dc_sram_if, ArianeCfg, "dcache_checker");
         void'($value$plusargs("ENABLE_MEM_CHECK=%b", enable_mem_check));
         dcache_chk.enable_mem_check = enable_mem_check;
+
+        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+            dcache_chk.amo_req_mbox[core_idx]  = amo_req_mbox_fwd  [core_idx];
+            dcache_chk.amo_resp_mbox[core_idx] = amo_resp_mbox_fwd [core_idx];
+
+            dcache_chk.dcache_req_mbox[core_idx]  = dcache_req_mbox_fwd  [core_idx];
+            dcache_chk.dcache_resp_mbox[core_idx] = dcache_resp_mbox_fwd [core_idx];
+        end
+
         dcache_chk.monitor();
+
+
     end
+
+    task automatic start_amo_monitor;
+        fork
+            dcache_chk.check_amo_lock();
+        join_none
+    endtask
 
     //--------------------------------------------------------------------------
     // Tests
     //--------------------------------------------------------------------------
 
-    task test_header (string testname, string description="");
+    task automatic test_header (string testname, string description="");
         $display("--------------------------------------------------------------------------");
         $display("Running test %s", testname);
         $display("%s", description);
@@ -518,9 +550,9 @@ module culsans_tb
         // - shared, non-cached
         // - cached, shared
         // - cached, non-shared
-        a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] > 64'(culsans_pkg::DRAMBase)) else
+        a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] >= 64'(culsans_pkg::DRAMBase)) else
             $error("Non-cached, shared region must be after non-cached, non-shared region");
-        a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] > ArianeCfg.SharedRegionAddrBase[0]) else
+        a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] >= ArianeCfg.SharedRegionAddrBase[0]) else
             $error("Cached, shared region must be after non-cached, shared region");
 
         fork
@@ -888,6 +920,98 @@ module culsans_tb
                             end
                         end join
                         `WAIT_CYC(clk, 100)
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "raw_spin_lock" : begin
+                        logic [63:0] lock_addr0, lock_addr1;
+                        test_header(testname, "emulate the Linux raw_spin_lock/unlock functions");
+                        start_amo_monitor();
+
+                        lock_addr0 = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(100) * 8; // 64 bit
+                        lock_addr1 = lock_addr0 + $urandom_range(1,100) * 8 + 4; // 32 bit
+
+                        wait_time = 10000;
+                        timeout   = 500000;
+
+                        for (int c=0; c < NB_CORES; c++) begin
+                            cache_scbd[c].set_amo_msg_timeout(wait_time);
+                        end
+
+                        // arm spurious kills
+                        for (int c=0; c < NB_CORES; c++) begin
+                            dcache_drv[c][1].arm_kill(.prob(25));
+                        end
+
+                        // initialize locks to 0
+                        dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
+                        dcache_drv[cid][2].wr(.addr(lock_addr1), .data(0));
+
+
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int          cc     = c;
+                                    automatic logic [63:0] locked;
+                                    automatic int          wait_cyc;
+                                    automatic logic [63:0] laddr;
+                                    automatic int          sel;
+                                    automatic logic  [1:0] size;
+                                    automatic logic  [7:0] be;
+                                    begin
+                                        for (int i=0; i<1000; i++) begin
+                                            wait_cyc = $urandom_range(10);
+                                            // try to get one of two locks
+                                            // selec which lock to try to aquire
+                                            sel = $urandom_range(1);
+                                            case (sel)
+                                                0 : begin
+                                                    laddr = lock_addr0;
+                                                    size  = 2'b11;
+                                                    be    = 8'hFF;
+                                                end
+                                                default : begin
+                                                    laddr = lock_addr1;
+                                                    size  = 2'b10;
+                                                    be    = 8'hF0;
+                                                end
+                                            endcase
+
+                                            $display("%t ns : Core %0d Waiting %0d cycles before trying to get lock (check_amo_lock)",$time ,cc,wait_cyc);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // lock
+                                            locked = 1;
+                                            while (locked != 0) begin
+                                                // read lock
+                                                while (locked != 0) begin
+                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .result(locked));
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                end
+                                                $display("%t ns : Core %0d saw free lock, trying to aquire it (check_amo_lock)",$time ,cc);
+
+                                                // try to swap in 1
+                                                amo_drv[cc].req_resp(.addr(laddr), .size(size), .op(AMO_SWAP), .data(1), .result(locked));
+                                                `WAIT_CYC(clk, $urandom_range(10))
+                                            end
+
+                                            // waste time
+                                            wait_cyc = $urandom_range(100);
+                                            $display("%t ns : Core %0d Waiting %0d cycles before releasing lock (check_amo_lock)",$time , cc,wait_cyc);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // unlock
+                                            dcache_drv[cc][2].wr(.addr(laddr), .size(size), .be(be), .data(0));
+                                        end
+                                    end
+                                join_none
+                            end
+                            wait fork;
+                        end join
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
+
                     end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

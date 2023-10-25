@@ -15,7 +15,7 @@ int raw_spin_lock(int cid, int nc)
 
   asm volatile ("li a0, 0x80050000"); // Initialize lock address 0x80001000
 
-  for (i=0; i<100; i++)
+  for (i=0; i<10; i++)
   {
     asm volatile ("li        a4,1");           // initialize swap value
     asm volatile ("_raw_spin_lock:");

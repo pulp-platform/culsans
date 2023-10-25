@@ -11,13 +11,11 @@ int amo_mutex(int cid, int nc)
 {
 
   // implement the example code of mutual exclusion from RISC-V spec section 8.4
-
   int tmp = 1;
   int i,j;
 
-  asm volatile ("li t0, 1");                  // Initialize swap value.
-  asm volatile ("li a0, 0x0000000080001000");         // Initialize lock address 0x80001000
-  //asm volatile ("li a0, 0x0000000000000100");         // Initialize lock address 0x100
+  asm volatile ("li t0, 1");                   // Initialize swap value.
+  asm volatile ("li a0, 0x0000000080060000");  // Initialize lock address 0x80001000
 
   for (i=0; i<100; i++)
   {

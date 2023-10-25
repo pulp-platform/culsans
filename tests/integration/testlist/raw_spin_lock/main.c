@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "amo_mutex.h"
+#include "raw_spin_lock.h"
 
 // synchronization variable: non-cached and shared
 volatile uint64_t count __attribute__((section(".nocache_share_region")));
@@ -16,7 +16,8 @@ void thread_entry(int cid, int nc)
 
   // actual test
   count++;
-  amo_mutex(cid, nc);
+  raw_spin_lock(cid, nc);
+  count++;
 
   // cores > 0 wait here
   while(cid)
@@ -24,7 +25,7 @@ void thread_entry(int cid, int nc)
 
   // core 0 continues after all cores have finished
   if (cid == 0) {
-    while (count != nc)
+    while (count != 2 * nc)
       { asm volatile ("nop"); }
   }
 }

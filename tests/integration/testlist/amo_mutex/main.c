@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "raw_spin_lock.h"
+#include "amo_mutex.h"
 
 // synchronization variable: non-cached and shared
 volatile uint64_t count __attribute__((section(".nocache_share_region")));
@@ -9,14 +9,19 @@ extern void exit(int);
 void thread_entry(int cid, int nc)
 {
   // core 0 initializes the synchronization variable
-  if (cid == 0)
+  if (cid == 0) {
+    asm volatile ("li a0, 0x0000000080060000");  // Initialize lock address 0x80001000
+    asm volatile ("sw    zero,0(a0)"); // release lock to 
     count = 0;
-  else
+
+  } else {
     while(count != cid);
+  }
 
   // actual test
   count++;
-  raw_spin_lock(cid, nc);
+  amo_mutex(cid, nc);
+  count++;
 
   // cores > 0 wait here
   while(cid)
@@ -24,9 +29,10 @@ void thread_entry(int cid, int nc)
 
   // core 0 continues after all cores have finished
   if (cid == 0) {
-    while (count != nc)
+    while (count != 2 * nc)
       { asm volatile ("nop"); }
   }
+
 }
 
 int main()

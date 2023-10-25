@@ -1,5 +1,6 @@
 ROOT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 include ../../../common.mk
+include ../../../rtl.mk
 
 SYS_DIR = ../../sw/sys
 LIB_DIR = ../../libs
@@ -31,6 +32,12 @@ TESTNAME := $(notdir $(patsubst %/,%,$(ROOT_DIR)))
 
 GUI ?= 0
 
+# the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
+ENABLE_CCU_MON ?= 1
+
+# enable check of cache contents vs main memory (disable if LLC is present)
+ENABLE_MEM_CHECK ?= 0
+
 VSIM_LIB = ../../work
 VERILATOR_LIB = ../../work_verilate
 
@@ -40,8 +47,11 @@ SIM_RUNTIME ?= 100ms
 
 
 #UVM_FLAGS = +UVM_NO_RELNOTES +UVM_VERBOSITY=LOW
-VSIM_FLAGS = -t 1ns -64 -classdebug
-VSIM_FLAGS = -suppress 12110
+VSIM_FLAGS += -t 1ns -64 -classdebug
+VSIM_FLAGS += -suppress 12110
+VSIM_FLAGS += +TESTNAME=$(TESTNAME)
+VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
+VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 
 ifneq ($(COVER), 0)
     VSIM_FLAGS += -coverage
@@ -70,6 +80,8 @@ $(TEST_REPORT): main.hex
 		fi \
 	fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
+	@grep "\*\* Error" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
+	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
 else
 $(TEST_REPORT): main.riscv
 	-$(VERILATOR_LIB)/Vculsans_top main.riscv
@@ -78,7 +90,10 @@ endif
 
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
-	@(! grep -q -n "FAIL" $(TEST_REPORT))
+	(! grep -q -n "Error:" $(TEST_REPORT))
+	(! grep -q -n "Fatal:" $(TEST_REPORT))
+	(! grep -q -n "FAIL" $(TEST_REPORT))
+
 
 clean:
 	rm -rf objs
