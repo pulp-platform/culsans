@@ -47,9 +47,9 @@ LLC_INCDIR := $(foreach dir, ${LLC_INCDIR}, +incdir+$(dir))
 list_incdir += $(LLC_INCDIR)
 
 # culsans
-.PHONY: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
-$(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
-	cd $$(dirname $@); \
+.PHONY: plic_regmap
+plic_regmap: $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
+	cd $(CVA6_DIR)/corev_apu/rv_plic/rtl; \
 	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
 
 $(library) : $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv
@@ -173,7 +173,7 @@ endif
 
 # Cleanup
 
-clean_rtl: nb_cores_rtl
+clean_rtl: nb_cores_rtl plic_regmap
 	rm -rf $(library)
 	rm -rf $(VERILATOR_LIB)
 	rm -rf $(COVERAGE_DIR)
