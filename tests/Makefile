@@ -19,10 +19,10 @@ integr:
 	echo make -C integration VERILATE=$(VERILATE) $(TEST_SELECT)
 
 perf:
-	echo make -C perf VERILATE=$(VERILATE) $(TEST_SELECT)
+	echo make -C performance VERILATE=$(VERILATE) $(TEST_SELECT)
 
-fpga:
-	echo make -C fpga $(TEST_SELECT)
+litmus:
+	echo make -C litmus VERILATE=$(VERILATE) $(TEST_SELECT)
 
 sanity:
 	@make -C unit clean sanity
@@ -40,14 +40,14 @@ regr:
 
 # it only makes sense to call the target "all" if TESTS is set to "all"
 ifeq ($(TEST), all)
-all: unit integr perf fpga
+all: unit integr perf litmus
 else
 all:
 	echo "TEST must be set to \"all\""
 	false
 endif
 
-.PHONY : all unit integr perf fpga
+.PHONY : all unit integr perf litmus
 
 # Test summary generation
 
@@ -57,14 +57,14 @@ summary:
 # Cleanup
 
 clean_unit:
-	echo make -C unit clean
+	make -C unit clean
 clean_integr:
-	echo make -C integration clean
+	make -C integration clean
 clean_perf:
-	echo make -C perf clean
-clean_fpga:
-	echo make -C fpga clean
+	make -C performance clean
+clean_litmus:
+	make -C litmus clean
 
-clean: clean_unit clean_integr clean_perf clean_fpga
+clean: clean_unit clean_integr clean_perf clean_litmus
 
-.PHONY: clean clean_unit clean_integr clean_perf clean_fpga
+.PHONY: clean clean_unit clean_integr clean_perf clean_litmus
