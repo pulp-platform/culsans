@@ -102,10 +102,6 @@ set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE RuntimeOptimized      [get_runs imp
 set_property STEPS.POST_PLACE_POWER_OPT_DESIGN.IS_ENABLED false    [get_runs impl_1]
 set_property STEPS.POWER_OPT_DESIGN.IS_ENABLED false               [get_runs impl_1]
 
-
-# Temp: allow combinatorial loop in AXI interface between i_axi_llc and i_axi_riscv_atomics
-set_property ALLOW_COMBINATORIAL_LOOPS TRUE [get_nets i_axi_llc/i_axi_llc_top_raw/i_axi_bypass_demux/gen_demux.gen_aw_id_counter.i_aw_id_counter/gen_counters[*].i_in_flight_cnt/* ]
-
 # CRITICAL WARNING: [DRC LUTLP-1] Combinatorial Loop Alert: 13 LUT cells form a combinatorial loop.
 # This can create a race condition. Timing analysis may not be accurate. The preferred resolution is
 # to modify the design to remove combinatorial logic loops. If the loop is known and understood, this
