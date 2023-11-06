@@ -769,7 +769,7 @@ end
     MaxMstTrans: 2, // Probably requires update
     MaxSlvTrans: 2, // Probably requires update
     FallThrough: 1'b0,
-    LatencyMode: ace_pkg::NO_LATENCY,
+    LatencyMode: ace_pkg::CUT_ALL_PORTS,
     AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
