@@ -241,17 +241,15 @@ module culsans_tb
     //--------------------------------------------------------------------------
 
     bit enable_ccu_mon=1;
+    bit ccu_mon_end_check=0;
 
     initial begin : CCU_MON
         ccu_mon = new(ace_bus_dv, axi_bus_dv, snoop_bus_dv);
         void'($value$plusargs("ENABLE_CCU_MON=%b", enable_ccu_mon));
-        if (enable_ccu_mon) begin
-            ccu_mon.run();
-        end
     end
 
     final begin : CCU_CHECK
-        if (enable_ccu_mon) begin
+        if (ccu_mon_end_check) begin
             $display("--------------------------------------------------------------------------");
             $display("CCU scoreboard results");
             $display("--------------------------------------------------------------------------");
@@ -276,8 +274,6 @@ module culsans_tb
             ace_mon[core_idx].b_mbx  = b_mbx  [core_idx];
             ace_mon[core_idx].ar_mbx = ar_mbx [core_idx];
             ace_mon[core_idx].r_mbx  = r_mbx  [core_idx];
-
-            ace_mon[core_idx].monitor();
         end
 
         initial begin : SNOOP_MON
@@ -290,8 +286,6 @@ module culsans_tb
             snoop_mon[core_idx].ac_mbx = ac_mbx[core_idx];
             snoop_mon[core_idx].cd_mbx = cd_mbx[core_idx];
             snoop_mon[core_idx].cr_mbx = cr_mbx[core_idx];
-
-            snoop_mon[core_idx].monitor();
         end
 
         // assign SRAM IF
@@ -320,10 +314,15 @@ module culsans_tb
         assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[4] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[4];
 
+        for (genvar p=0; p<5; p++) begin
+            assign gnt_if[core_idx].req[p] = |i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.req[p];
+        end
+
         assign gnt_if[core_idx].rd_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt;
 
         assign gnt_if[core_idx].snoop_wr_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[1] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[1];
+
 
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
         assign gnt_if[core_idx].bypass_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[1];
@@ -374,7 +373,6 @@ module culsans_tb
             mgmt_mbox[core_idx] = new();
             dcache_mgmt_mon[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_monitor",core_idx));
             dcache_mgmt_mon[core_idx].mbox = mgmt_mbox[core_idx];
-            dcache_mgmt_mon[core_idx].monitor();
         end
 
         for (genvar port=0; port<=2; port++) begin : PORT
@@ -393,8 +391,6 @@ module culsans_tb
 
                 dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[core_idx][port];
                 dcache_mon[core_idx][port].resp_mbox = dcache_resp_mbox[core_idx][port];
-
-                dcache_mon[core_idx][port].monitor();
             end
 
             initial begin : DCACHE_DRV
@@ -442,14 +438,11 @@ module culsans_tb
 
             amo_mon[core_idx].req_mbox  = amo_req_mbox[core_idx];
             amo_mon[core_idx].resp_mbox = amo_resp_mbox[core_idx];
-
-            amo_mon[core_idx].monitor();
         end
 
         initial begin : AMO_DRV
             amo_drv[core_idx] = new(amo_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","amo_driver",core_idx));
         end
-
 
         initial begin : CACHE_SCBD
             cache_scbd[core_idx] = new(dc_sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_scoreboard",core_idx));
@@ -481,8 +474,6 @@ module culsans_tb
             cache_scbd[core_idx].cr_mbx            = cr_mbx            [core_idx];
 
             cache_scbd[core_idx].mgmt_mbox         = mgmt_mbox         [core_idx];
-
-            cache_scbd[core_idx].run();
         end
 
         // assign SRAM IF
@@ -507,10 +498,6 @@ module culsans_tb
             dcache_chk.dcache_req_mbox[core_idx]  = dcache_req_mbox_fwd  [core_idx];
             dcache_chk.dcache_resp_mbox[core_idx] = dcache_resp_mbox_fwd [core_idx];
         end
-
-        dcache_chk.monitor();
-
-
     end
 
     task automatic start_amo_monitor;
@@ -518,6 +505,39 @@ module culsans_tb
             dcache_chk.check_amo_lock();
         join_none
     endtask
+
+    // start all monitors
+    task automatic start_monitors;
+        fork
+            for (int c=0; c<NB_CORES; c++) begin : CORE
+                fork
+                    automatic int core_idx = c;
+                    begin
+                        for (int p=0; p<=2; p++) begin : PORT
+                            fork
+                                automatic int port = p;
+                                begin
+                                    dcache_mon[core_idx][port].monitor();
+                                end
+                            join_none
+                        end
+                    end
+                    ace_mon[core_idx].monitor();
+                    snoop_mon[core_idx].monitor();
+                    amo_mon[core_idx].monitor();
+                    dcache_mgmt_mon[core_idx].monitor();
+                    cache_scbd[core_idx].run();
+                join_none
+            end
+            if (enable_ccu_mon) begin
+                ccu_mon_end_check = 1;
+                ccu_mon.run();
+            end
+            dcache_chk.monitor();
+        join_none
+    endtask
+
+
 
     //--------------------------------------------------------------------------
     // Tests
@@ -563,6 +583,7 @@ module culsans_tb
             begin
 
                 `WAIT_SIG(clk, rst_n)
+                start_monitors();
                 `WAIT_CYC(clk, 300)
                 `WAIT_CYC(clk, 1500) // wait some more for LLC initialization
 
@@ -600,52 +621,56 @@ module culsans_tb
                         end
 
                         // simultaneous writes to same address
-                        for (int i=0; i<100; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
-                                        end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, ((i+cc)%19))
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<100; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
+                                            end else begin
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, ((i+cc)%19))
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
-                        end
+                        end join
 
                         `WAIT_CYC(clk, 100)
 
                         test_header(testname, "Part 2 : Write conflicts to addresses in the same cache set");
 
                         // simultaneous writes to same set
-                        for (int i=0; i<100; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                        end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, (i+cc)%19)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<100; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                            end else begin
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, (i+cc)%19)
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
-                        end
+                        end join
 
                     end
 
@@ -660,11 +685,6 @@ module culsans_tb
                         for (int c=0; c < NB_CORES; c++) begin
                             dcache_drv[c][0].rd(.addr(addr));
                             `WAIT_CYC(clk, 100)
-                        end
-
-                        // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill();
                         end
 
                         // simultaneous writes and read to same address
@@ -830,24 +850,26 @@ module culsans_tb
                             dcache_drv[cid][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            fork
-                                automatic int cc = c;
-                                automatic int port;
-                                automatic logic [63:0] laddr;
-                                begin
-                                    if (cc == cid) begin
-                                        // flush
-                                        dcache_mgmt_drv[cc].flush();
-                                    end else begin
-                                        for (int i=2047;  i>=0; i--) begin
-                                            dcache_drv[cc][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    automatic int port;
+                                    automatic logic [63:0] laddr;
+                                    begin
+                                        if (cc == cid) begin
+                                            // flush
+                                            dcache_mgmt_drv[cc].flush();
+                                        end else begin
+                                            for (int i=2047;  i>=0; i--) begin
+                                                dcache_drv[cc][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                            end
                                         end
                                     end
-                                end
-                            join_none
-                        end
-                        wait fork;
+                                join_none
+                            end
+                            wait fork;
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
@@ -1030,25 +1052,27 @@ module culsans_tb
 
 
                         // simultaneous writes to same address
-                        for (int i=0; i<10; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
-                                            `WAIT_CYC(clk, 5)
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
-                                        end else begin
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
-                                            `WAIT_CYC(clk, (i+cc))
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<10; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
+                                                `WAIT_CYC(clk, 5)
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                                            end else begin
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
+                                                `WAIT_CYC(clk, (i+cc))
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
-                        end
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
@@ -1073,6 +1097,7 @@ module culsans_tb
                             amo_t       op;
                             logic       word_op;
                             int         size;
+                            logic       check_res_cid;
 
                             word_op = $urandom_range(1); // operate on word or double
 
@@ -1116,34 +1141,45 @@ module culsans_tb
 
                             // core X or Y writes data
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
                                 dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                                check_res_cid = 1'b1;
                             end else begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid2, (data << shift), addr);
                                 dcache_drv[cid2][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                                check_res_cid = 1'b0;
                             end
 
                             // core X possibly writes data to upper cache line
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid, addr+8);
                                 dcache_drv[cid][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
                             end
                             // core Y possibly writes data to upper cache line
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid2, addr+8);
                                 dcache_drv[cid2][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
                             end
 
                             // core X possibly reads data
                             if ($urandom_range(1)) begin
-                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data << shift));
+                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
+                                // only check results if it was written by core X (cid)
+                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(check_res_cid), .exp_result(data << shift));
                             end
 
                             // core X sends AMO request
+                            $display("%t ns : [Test %s (%0d)] Core %0d sending AMO request to addr 0x%16h",$time , testname, i, cid, addr);
                             amo_drv[cid].req(.addr(addr), .op(op), .data(data_op), .size(size), .check_result(1), .exp_result(data));
 
                             // core Y possibly reads data
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid2, addr);
                                 dcache_drv[cid2][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
                             end
 
                             // core X reads data
+                            $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
                             dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
 
                         end
@@ -1479,32 +1515,34 @@ module culsans_tb
                             end
                         end
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            fork
-                                automatic int cc = c;
-                                automatic int port;
-                                automatic int offset;
-                                begin
-                                    if (cc == cid) begin
-                                        `WAIT_CYC(clk, rep_cnt*10)
-                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_SC));
-                                        `WAIT_CYC(clk, 5)
-                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_LR));
-                                    end else begin
-                                        for (int i=0; i<rep_cnt; i++) begin
-                                            port   = $urandom_range(2);
-                                            offset = $urandom_range(1024);
-                                            if (port == 2) begin
-                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
-                                            end else begin
-                                                dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset), .rand_size_be(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    automatic int port;
+                                    automatic int offset;
+                                    begin
+                                        if (cc == cid) begin
+                                            `WAIT_CYC(clk, rep_cnt*10)
+                                            amo_drv[cc].req(.addr(base_addr), .op(AMO_SC));
+                                            `WAIT_CYC(clk, 5)
+                                            amo_drv[cc].req(.addr(base_addr), .op(AMO_LR));
+                                        end else begin
+                                            for (int i=0; i<rep_cnt; i++) begin
+                                                port   = $urandom_range(2);
+                                                offset = $urandom_range(1024);
+                                                if (port == 2) begin
+                                                    dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
+                                                end else begin
+                                                    dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset), .rand_size_be(1));
+                                                end
                                             end
                                         end
                                     end
-                                end
-                            join_none
-                        end
-                        wait fork;
+                                join_none
+                            end
+                            wait fork;
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
