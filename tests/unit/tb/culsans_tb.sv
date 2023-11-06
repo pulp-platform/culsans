@@ -958,15 +958,16 @@ module culsans_tb
 
                         wait_time = 10000;
                         timeout   = 500000;
+                        rep_cnt   = 1000;
 
                         for (int c=0; c < NB_CORES; c++) begin
                             cache_scbd[c].set_amo_msg_timeout(wait_time);
                         end
 
                         // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][1].arm_kill(.prob(25));
-                        end
+//                        for (int c=0; c < NB_CORES; c++) begin
+//                            dcache_drv[c][1].arm_kill(.prob(25));
+//                        end
 
                         // initialize locks to 0
                         dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
@@ -984,7 +985,7 @@ module culsans_tb
                                     automatic logic  [1:0] size;
                                     automatic logic  [7:0] be;
                                     begin
-                                        for (int i=0; i<1000; i++) begin
+                                        for (int i=0; i<rep_cnt; i++) begin
                                             wait_cyc = $urandom_range(10);
                                             // try to get one of two locks
                                             // selec which lock to try to aquire
@@ -1010,7 +1011,7 @@ module culsans_tb
                                             while (locked != 0) begin
                                                 // read lock
                                                 while (locked != 0) begin
-                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .result(locked));
+                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .rand_kill(25), .result(locked));
                                                     `WAIT_CYC(clk, $urandom_range(10))
                                                 end
                                                 $display("%t ns : Core %0d saw free lock, trying to aquire it (check_amo_lock)",$time ,cc);
@@ -1038,6 +1039,109 @@ module culsans_tb
                         `WAIT_CYC(clk, wait_time)
 
                     end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "raw_spin_lock_wait" : begin
+                        logic [63:0] lock_addr0, lock_addr1;
+                        test_header(testname, "emulate the Linux raw_spin_lock/unlock functions");
+                        start_amo_monitor();
+
+                        lock_addr0 = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(100) * 8; // 64 bit
+                        lock_addr1 = lock_addr0 + $urandom_range(1,100) * 8 + 4; // 32 bit
+
+                        wait_time = 10000;
+                        timeout   = 500000;
+                        rep_cnt   = 1000;
+
+                        for (int c=0; c < NB_CORES; c++) begin
+                            cache_scbd[c].set_amo_msg_timeout(wait_time);
+                        end
+
+                        // arm spurious kills
+//                        for (int c=0; c < NB_CORES; c++) begin
+//                            dcache_drv[c][1].arm_kill(.prob(25));
+//                        end
+
+                        // initialize locks to 0
+                        dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
+                        dcache_drv[cid][2].wr(.addr(lock_addr1), .data(0));
+
+
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<rep_cnt; i++) begin
+                                $display("%t ns %s: Iteration %0d", $time, testname, i);
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int          cc     = c;
+                                        automatic logic [63:0] locked;
+                                        automatic int          wait_cyc;
+                                        automatic logic [63:0] laddr;
+                                        automatic int          sel;
+                                        automatic logic  [1:0] size;
+                                        automatic logic  [7:0] be;
+                                        begin
+                                            wait_cyc = $urandom_range(10);
+                                            // try to get one of two locks
+                                            // selec which lock to try to aquire
+                                            sel = $urandom_range(1);
+                                            case (sel)
+                                                0 : begin
+                                                    laddr = lock_addr0;
+                                                    size  = 2'b11;
+                                                    be    = 8'hFF;
+                                                end
+                                                default : begin
+                                                    laddr = lock_addr1;
+                                                    size  = 2'b10;
+                                                    be    = 8'hF0;
+                                                end
+                                            endcase
+
+                                            $display("%t ns %s: Core %0d Waiting %0d cycles before trying to get lock %0d", $time, testname, cc, wait_cyc, sel);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // lock
+                                            locked = 1;
+                                            while (locked != 0) begin
+                                                // read lock
+                                                while (locked != 0) begin
+                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .rand_kill(25), .result(locked));
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                end
+                                                $display("%t ns %s: Core %0d saw free lock %0d, trying to aquire it", $time, testname, cc, sel);
+
+                                                // try to swap in 1
+                                                amo_drv[cc].req_resp(.addr(laddr), .size(size), .op(AMO_SWAP), .data(1), .result(locked));
+                                                `WAIT_CYC(clk, $urandom_range(10))
+                                            end
+
+                                            // waste time
+                                            wait_cyc = $urandom_range(100);
+                                            $display("%t ns %s: Core %0d Waiting %0d cycles before releasing lock %0d", $time, testname, cc, wait_cyc, sel);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // unlock
+                                            $display("%t ns %s: Core %0d releasing lock %0d", $time, testname, cc, sel);
+                                            dcache_drv[cc][2].wr(.addr(laddr), .size(size), .be(be), .data(0));
+
+                                            // read the lock again (to make sure write has finished)
+                                            dcache_drv[cc][1].rd(.addr(laddr), .size(size), .be(be), .do_wait(1));
+                                        end
+                                    join_none
+                                end
+                                wait fork;
+                            end
+                        end join
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
+
+                    end
+
+
+
+
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_read_write" : begin
