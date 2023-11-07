@@ -896,6 +896,11 @@ module culsans_tb
 
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 200;
+                        wait_time = 5000;
+
+                        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+                            cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
+                        end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
                             for (int r=0; r<rep_cnt; r++) begin
@@ -950,7 +955,9 @@ module culsans_tb
                                 wait fork;
                             end
                         end join
-                        `WAIT_CYC(clk, 100)
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
                     end
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1051,17 +1058,12 @@ module culsans_tb
                         lock_addr1 = lock_addr0 + $urandom_range(1,100) * 8 + 4; // 32 bit
 
                         wait_time = 10000;
-                        timeout   = 500000;
+                        timeout  += 500000;
                         rep_cnt   = 1000;
 
                         for (int c=0; c < NB_CORES; c++) begin
                             cache_scbd[c].set_amo_msg_timeout(wait_time);
                         end
-
-                        // arm spurious kills
-//                        for (int c=0; c < NB_CORES; c++) begin
-//                            dcache_drv[c][1].arm_kill(.prob(25));
-//                        end
 
                         // initialize locks to 0
                         dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
