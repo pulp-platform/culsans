@@ -37,6 +37,9 @@ ENABLE_CCU_MON ?= 0
 # enable check of cache contents vs main memory
 ENABLE_MEM_CHECK ?= 0
 
+# enable random icache transactions
+ENABLE_ICACHE_RANDOM_GEN ?= 1
+
 VSIM_LIB      = ../../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
 
@@ -52,6 +55,7 @@ VSIM_FLAGS += -noassertdebug
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
+VSIM_FLAGS += +ENABLE_ICACHE_RANDOM_GEN=$(ENABLE_ICACHE_RANDOM_GEN)
 VSIM_FLAGS += -sv_seed $(SEED)
 # allow calling tasks in final procedure
 VSIM_FLAGS += -suppress 2879

@@ -76,6 +76,7 @@ CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/ace_test.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/src/snoop_test.sv
 CVA6_TEST += $(CVA6_DIR)/vendor/planv/ace/test/tb_ace_ccu_pkg.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/dcache_intf.sv
+CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/icache_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/sram_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/amo_intf.sv
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/tb_std_cache_subsystem_pkg.sv
