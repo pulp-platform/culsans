@@ -31,7 +31,8 @@ TEST_SRCS += $(shell find . -name "*.c" -exec basename {} \;)
 GUI ?= 0
 
 # the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
-ENABLE_CCU_MON ?= 1
+# Note: the CCU monitor currently doesn't work when CCU.LatencyMode != NO_LATENCY
+ENABLE_CCU_MON ?= 0
 
 # enable check of cache contents vs main memory
 ENABLE_MEM_CHECK ?= 0
