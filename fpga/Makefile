@@ -11,6 +11,7 @@ endif
 
 target = cv64a6_imafdc_sv39_wb
 include ../modules/cva6/Makefile
+CLK_PERIOD_NS  := 25
 
 CVA6_DIR = $(root-dir)
 LLC_DIR = ../modules/axi_llc
