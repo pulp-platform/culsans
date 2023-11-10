@@ -410,6 +410,26 @@ module culsans_tb
                 dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], ArianeCfg, $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
             end
 
+            // force different AXI IDs for testbench purposes
+            initial begin : FORCE_AXI_ID
+                logic axi_id_per_port = 0;
+                logic enable_axi_id_per_port;
+                if ($value$plusargs("ENABLE_AXI_ID_PER_PORT=%d", enable_axi_id_per_port)) begin
+                    axi_id_per_port = enable_axi_id_per_port;
+                end
+
+                if (axi_id_per_port) begin
+                    force i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.req_fsm_miss_id =
+                        4'hC + i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.mshr_q.id;
+                    // disable assertions checking AXI IDs
+                    $assertoff(0,i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.a_axi_data_awid);
+                    $assertoff(0,i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.a_axi_data_arid);
+                    #0;
+                    cache_scbd[core_idx].axi_id_per_port = 1;
+                end
+            end
+
+
             //------------------------------------------------------------------
             // check that the read responds match the read requests
             //------------------------------------------------------------------
@@ -575,7 +595,7 @@ module culsans_tb
     initial begin : TESTS
         logic [63:0] addr, base_addr;
         logic [63:0] data, base_data;
-        logic        enable_icache_random_gen = 0;
+        static logic enable_icache_random_gen = 0;
 
         automatic string testname="";
         if (!$value$plusargs("TESTNAME=%s", testname)) begin

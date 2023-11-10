@@ -9,6 +9,7 @@ export XCELIUM_HOME=/dev/null
 include $(MKFILE_DIR)/../modules/cva6/Makefile
 
 TEST_REPORT = result.rpt
+TEST_LOG = sim.log
 
 RV_TOOL_PREFIX = riscv64-unknown-elf-
 RV_GCC := $(RV_TOOL_PREFIX)gcc
