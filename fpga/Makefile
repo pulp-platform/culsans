@@ -108,8 +108,12 @@ $(CVA6_DIR)/corev_apu/rv_plic/rtl/plic_regmap.sv:
 	cd $$(dirname $@); \
 	python3 gen_plic_addrmap.py -t $$(($(NB_CORES)*2)) > plic_regmap.sv
 
-scripts/add_sources.tcl: $(ariane_pkg) $(src) $(fpga_src) $(uart_src) $(src_flist) $(LLC_PKG) $(CULSANS_PKG) $(LLC_SRC)  $(CULSANS_SRC)
-	make CORES=2 PYTHON=python3 -C $(CVA6_DIR)/corev_apu/bootrom clean all
+.PHONY: bootrom
+bootrom:
+	@echo "[FPGA] Generate bootrom"
+	$(MAKE) CORES=$(NB_CORES) PYTHON=python3 -C $(CVA6_DIR)/corev_apu/fpga/src/bootrom clean all
+
+scripts/add_sources.tcl: $(ariane_pkg) $(src) $(fpga_src) $(uart_src) $(src_flist) $(LLC_PKG) $(CULSANS_PKG) $(LLC_SRC)  $(CULSANS_SRC) bootrom
 	@echo "[FPGA] Generate sources"
 	@echo read_vhdl        {$(uart_src)}                                          > scripts/add_sources.tcl
 	@echo read_verilog -sv {$(LLC_PKG)}                                          >> scripts/add_sources.tcl
