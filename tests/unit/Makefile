@@ -103,7 +103,11 @@ status:
 	@for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT); then \
-				printf "%-40s\t : \033[31mFAILED\033[0m\n" $$d; \
+				printf "%-40s\t : \033[31mFAILED\033[0m\t" $$d; \
+				# print error message \
+				grep -m 1 -E "Error|Fatal" $$d/$(TEST_REPORT) | cut -c 6-72 | tr -d '\012\015'; \
+				# print time \
+				grep -m 1 -A1 -E "\* Error|\* Fatal" $$d/$(TEST_LOG) | grep -v -E "\* Error|\* Fatal" | cut -d" " -f3-7; \
 			else \
 				printf "%-40s\t : \033[32mPASSED\033[0m\n" $$d; \
 			fi; \
