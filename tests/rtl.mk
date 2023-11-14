@@ -88,7 +88,7 @@ TB_SRC := $(wildcard $(TB_DIR)/*.sv)
 TOP_LEVEL := culsans_tb
 
 VERILATOR_LIB = work_verilate
-DEFINES = 
+DEFINES ?=
 
 #VLOG_FLAGS += +cover=bcfst+/dut -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
 #VLOG_FLAGS += -incr -64 -nologo -quiet -suppress 13262 -suppress 2583 -permissive +define+$(defines)
@@ -100,7 +100,7 @@ VLOG_FLAGS += $(foreach def, $(DEFINES), +define+$(def))
 endif
 
 COVER            ?= 0
-COVERAGE_MODULES ?= 
+COVERAGE_MODULES ?=
 ifneq ($(COVER), 0)
 	ifneq ($(COVERAGE_MODULES), )
 		VOPT_FLAGS += $(foreach mod, $(COVERAGE_MODULES), +cover+$(mod))
@@ -144,14 +144,14 @@ verilate_command := $(verilator) $(CVA6_DIR)/verilator_config.vlt               
                     $(list_incdir) --top-module culsans_top                                                      \
                     --threads-dpi none                                                                           \
                     --Mdir $(VERILATOR_LIB) -O3                                                                    \
-                    --exe ./tb/culsans_tb.cpp 
+                    --exe ./tb/culsans_tb.cpp
 
-$(library)/.build-llc-srcs: $(library) $(LLC_PKG) $(LLC_SRC) 
+$(library)/.build-llc-srcs: $(library) $(LLC_PKG) $(LLC_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(library) $(LLC_PKG) $(list_incdir)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(library) -pedanticerrors $(LLC_SRC) $(list_incdir)
 	@touch $(library)/.build-llc-srcs
 
-$(library)/.build-culsans-srcs: $(library) $(library)/.build-llc-srcs $(CULSANS_PKG) $(CULSANS_SRC) 
+$(library)/.build-culsans-srcs: $(library) $(library)/.build-llc-srcs $(CULSANS_PKG) $(CULSANS_SRC)
 	$(VLOG) $(VLOG_FLAGS) -work $(library) $(CULSANS_PKG) $(list_incdir)
 	$(VLOG) $(VLOG_FLAGS) -timescale "1ns / 1ns" -work $(library) -pedanticerrors $(CULSANS_SRC) $(list_incdir)
 	@touch $(library)/.build-culsans-srcs

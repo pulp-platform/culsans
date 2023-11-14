@@ -27,9 +27,9 @@ module culsans_tb
     localparam int unsigned DCACHE_PORTS       = 3;
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
-    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1 `endif;
-    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0   `endif;
-    localparam bit          HAS_LLC            = 1'b1;
+    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1  `endif;
+    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0     `endif;
+    localparam bit          HAS_LLC            = `ifdef TB_HAS_LLC         `TB_HAS_LLC         `else  1'b1 `endif;
     localparam int unsigned DCACHE_INDEX_DIST = std_cache_pkg::DCACHE_NUM_WORDS * DCACHE_LINE_WIDTH / 8; // Distance between two addresses mapping to the same index
 
     // The length of cached, shared region is derived from other constants
@@ -937,7 +937,7 @@ module culsans_tb
 
 
                         // core 0 mgmt will have to wait for flush, increase timeout
-                        wait_time = STALL_RANDOM_DELAY ? 50000 : 20000;
+                        wait_time = STALL_RANDOM_DELAY ? 100000 : 20000;
                         cache_scbd[cid].set_mgmt_trans_timeout (wait_time);
 
                         // other snooped cores will have to wait for flush, increase timeout
@@ -2070,11 +2070,12 @@ module culsans_tb
 
                         rep_cnt   = 1000;
 
-                        wait_time = 10000;
+                        wait_time = 20000;
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
                             timeout  += 300000;
+                            wait_time = 50000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_cache_msg_timeout(wait_time);
                                 cache_scbd[c].set_snoop_msg_timeout(wait_time);
