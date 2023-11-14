@@ -27,9 +27,9 @@ module culsans_tb
     localparam int unsigned DCACHE_PORTS       = 3;
     localparam int unsigned NB_CORES           = culsans_pkg::NB_CORES;
     localparam int unsigned NUM_WORDS          = 4**10;
-    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1 `endif;
-    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0   `endif;
-    localparam bit          HAS_LLC            = 1'b1;
+    localparam bit          STALL_RANDOM_DELAY = `ifdef TB_AXI_RAND_DELAY  `TB_AXI_RAND_DELAY  `else 1'b1  `endif;
+    localparam int unsigned FIXED_AXI_DELAY    = `ifdef TB_AXI_FIXED_DELAY `TB_AXI_FIXED_DELAY `else 0     `endif;
+    localparam bit          HAS_LLC            = `ifdef TB_HAS_LLC         `TB_HAS_LLC         `else  1'b1 `endif;
     localparam int unsigned DCACHE_INDEX_DIST = std_cache_pkg::DCACHE_NUM_WORDS * DCACHE_LINE_WIDTH / 8; // Distance between two addresses mapping to the same index
 
     // The length of cached, shared region is derived from other constants
@@ -42,10 +42,12 @@ module culsans_tb
     logic                                   clk;
     logic                                   rst_n;
     logic                                   rtc;
+    logic [31:0]                            exit_val;
 
     // TB interfaces
     amo_intf                amo_if           [NB_CORES]               (clk);
     dcache_intf             dcache_if        [NB_CORES][DCACHE_PORTS] (clk);
+    icache_intf             icache_if        [NB_CORES]               (clk);
     dcache_sram_if          dc_sram_if       [NB_CORES]               (clk);
     dcache_gnt_if           gnt_if           [NB_CORES]               (clk);
     dcache_mgmt_intf        mgmt_if          [NB_CORES]               (clk);
@@ -56,14 +58,20 @@ module culsans_tb
     dcache_mgmt_driver      dcache_mgmt_drv  [NB_CORES];
     dcache_mgmt_monitor     dcache_mgmt_mon  [NB_CORES];
 
+    icache_driver           icache_drv       [NB_CORES];
+
     amo_driver              amo_drv          [NB_CORES];
     amo_monitor             amo_mon          [NB_CORES];
 
-    mailbox #(dcache_req)   dcache_req_mbox  [NB_CORES][DCACHE_PORTS];
-    mailbox #(dcache_resp)  dcache_resp_mbox [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_req)   dcache_req_mbox      [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_resp)  dcache_resp_mbox     [NB_CORES][DCACHE_PORTS];
+    mailbox #(dcache_req)   dcache_req_mbox_fwd  [NB_CORES];
+    mailbox #(dcache_resp)  dcache_resp_mbox_fwd [NB_CORES];
 
-    mailbox #(amo_req)      amo_req_mbox     [NB_CORES];
-    mailbox #(amo_resp)     amo_resp_mbox    [NB_CORES];
+    mailbox #(amo_req)      amo_req_mbox      [NB_CORES];
+    mailbox #(amo_resp)     amo_resp_mbox     [NB_CORES];
+    mailbox #(amo_req)      amo_req_mbox_fwd  [NB_CORES];
+    mailbox #(amo_resp)     amo_resp_mbox_fwd [NB_CORES];
 
     mailbox #(dcache_mgmt_trans) mgmt_mbox   [NB_CORES];
 
@@ -143,7 +151,7 @@ module culsans_tb
         .clk_i  ( clk      ),
         .rtc_i  ( rtc      ),
         .rst_ni ( rst_n    ),
-        .exit_o ( /* NC */ )
+        .exit_o ( exit_val )
     );
 
     //--------------------------------------------------------------------------
@@ -236,17 +244,15 @@ module culsans_tb
     //--------------------------------------------------------------------------
 
     bit enable_ccu_mon=1;
+    bit ccu_mon_end_check=0;
 
     initial begin : CCU_MON
         ccu_mon = new(ace_bus_dv, axi_bus_dv, snoop_bus_dv);
         void'($value$plusargs("ENABLE_CCU_MON=%b", enable_ccu_mon));
-        if (enable_ccu_mon) begin
-            ccu_mon.run();
-        end
     end
 
     final begin : CCU_CHECK
-        if (enable_ccu_mon) begin
+        if (ccu_mon_end_check) begin
             $display("--------------------------------------------------------------------------");
             $display("CCU scoreboard results");
             $display("--------------------------------------------------------------------------");
@@ -271,8 +277,6 @@ module culsans_tb
             ace_mon[core_idx].b_mbx  = b_mbx  [core_idx];
             ace_mon[core_idx].ar_mbx = ar_mbx [core_idx];
             ace_mon[core_idx].r_mbx  = r_mbx  [core_idx];
-
-            ace_mon[core_idx].monitor();
         end
 
         initial begin : SNOOP_MON
@@ -285,8 +289,6 @@ module culsans_tb
             snoop_mon[core_idx].ac_mbx = ac_mbx[core_idx];
             snoop_mon[core_idx].cd_mbx = cd_mbx[core_idx];
             snoop_mon[core_idx].cr_mbx = cr_mbx[core_idx];
-
-            snoop_mon[core_idx].monitor();
         end
 
         // assign SRAM IF
@@ -315,10 +317,15 @@ module culsans_tb
         assign gnt_if[core_idx].gnt[4] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[4] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[4];
 
+        for (genvar p=0; p<5; p++) begin
+            assign gnt_if[core_idx].req[p] = |i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.req[p];
+        end
+
         assign gnt_if[core_idx].rd_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt;
 
         assign gnt_if[core_idx].snoop_wr_gnt = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[1] &&
             i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.we[1];
+
 
         assign gnt_if[core_idx].bypass_gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[0];
         assign gnt_if[core_idx].bypass_gnt[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.bypass_gnt[1];
@@ -351,6 +358,9 @@ module culsans_tb
         assign gnt_if[core_idx].mshr_match[1] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.mshr_addr_matches[1];
         assign gnt_if[core_idx].mshr_match[2] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.mshr_index_matches[2];
 
+        assign gnt_if[core_idx].way    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.req_ram;
+        assign gnt_if[core_idx].be_vld = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.be_valid_dirty_ram;
+
         // assign management IF
         assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_en_csr_nbdcache  = mgmt_if[core_idx].dcache_enable;
         assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.dcache_flush_ctrl_cache = mgmt_if[core_idx].dcache_flush;
@@ -366,8 +376,17 @@ module culsans_tb
             mgmt_mbox[core_idx] = new();
             dcache_mgmt_mon[core_idx] = new(mgmt_if[core_idx], $sformatf("%s[%0d]","dcache_mgmt_monitor",core_idx));
             dcache_mgmt_mon[core_idx].mbox = mgmt_mbox[core_idx];
-            dcache_mgmt_mon[core_idx].monitor();
         end
+
+
+        initial begin : ICACHE_DRV
+            icache_drv[core_idx] = new(icache_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","icache_driver",core_idx));
+
+        end
+
+        assign i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.icache_dreq_if_cache = icache_if[core_idx].req;
+        assign icache_if[core_idx].resp = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.icache_dreq_cache_if;
+
 
         for (genvar port=0; port<=2; port++) begin : PORT
             // assign dcache request/response to dcache_if
@@ -383,15 +402,33 @@ module culsans_tb
 
                 dcache_mon[core_idx][port] = new(dcache_if[core_idx][port], port, $sformatf("%s[%0d][%0d]","dcache_monitor",core_idx, port));
 
-                dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[ core_idx][port];
+                dcache_mon[core_idx][port].req_mbox  = dcache_req_mbox[core_idx][port];
                 dcache_mon[core_idx][port].resp_mbox = dcache_resp_mbox[core_idx][port];
-
-                dcache_mon[core_idx][port].monitor();
             end
 
             initial begin : DCACHE_DRV
                 dcache_drv[core_idx][port] = new(dcache_if[core_idx][port], ArianeCfg, $sformatf("%s[%0d][%0d]","dcache_driver",core_idx, port));
             end
+
+            // force different AXI IDs for testbench purposes
+            initial begin : FORCE_AXI_ID
+                logic axi_id_per_port = 0;
+                logic enable_axi_id_per_port;
+                if ($value$plusargs("ENABLE_AXI_ID_PER_PORT=%d", enable_axi_id_per_port)) begin
+                    axi_id_per_port = enable_axi_id_per_port;
+                end
+
+                if (axi_id_per_port) begin
+                    force i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.req_fsm_miss_id =
+                        4'hC + i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.mshr_q.id;
+                    // disable assertions checking AXI IDs
+                    $assertoff(0,i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.a_axi_data_awid);
+                    $assertoff(0,i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.a_axi_data_arid);
+                    #0;
+                    cache_scbd[core_idx].axi_id_per_port = 1;
+                end
+            end
+
 
             //------------------------------------------------------------------
             // check that the read responds match the read requests
@@ -434,37 +471,42 @@ module culsans_tb
 
             amo_mon[core_idx].req_mbox  = amo_req_mbox[core_idx];
             amo_mon[core_idx].resp_mbox = amo_resp_mbox[core_idx];
-
-            amo_mon[core_idx].monitor();
         end
 
         initial begin : AMO_DRV
             amo_drv[core_idx] = new(amo_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","amo_driver",core_idx));
         end
 
-
         initial begin : CACHE_SCBD
             cache_scbd[core_idx] = new(dc_sram_if[core_idx], gnt_if[core_idx], ArianeCfg, $sformatf("%s[%0d]","dcache_scoreboard",core_idx));
+            amo_req_mbox_fwd      [core_idx] = new();
+            amo_resp_mbox_fwd     [core_idx] = new();
+            dcache_req_mbox_fwd   [core_idx] = new();
+            dcache_resp_mbox_fwd  [core_idx] = new();
 
-            cache_scbd[core_idx].dcache_req_mbox  = dcache_req_mbox  [core_idx];
-            cache_scbd[core_idx].dcache_resp_mbox = dcache_resp_mbox [core_idx];
+            for (int port=0; port<=2; port++) begin : PORT
+                cache_scbd[core_idx].dcache_req_mbox[port]  = dcache_req_mbox  [core_idx][port];
+                cache_scbd[core_idx].dcache_resp_mbox[port] = dcache_resp_mbox [core_idx][port];
+            end
+            cache_scbd[core_idx].dcache_req_mbox_fwd   = dcache_req_mbox_fwd   [core_idx];
+            cache_scbd[core_idx].dcache_resp_mbox_fwd  = dcache_resp_mbox_fwd  [core_idx];
 
-            cache_scbd[core_idx].amo_req_mbox     = amo_req_mbox     [core_idx];
-            cache_scbd[core_idx].amo_resp_mbox    = amo_resp_mbox    [core_idx];
+            cache_scbd[core_idx].amo_req_mbox      = amo_req_mbox      [core_idx];
+            cache_scbd[core_idx].amo_resp_mbox     = amo_resp_mbox     [core_idx];
+            cache_scbd[core_idx].amo_req_mbox_fwd  = amo_req_mbox_fwd  [core_idx];
+            cache_scbd[core_idx].amo_resp_mbox_fwd = amo_resp_mbox_fwd [core_idx];
 
-            cache_scbd[core_idx].aw_mbx           = aw_mbx           [core_idx];
-            cache_scbd[core_idx].w_mbx            = w_mbx            [core_idx];
-            cache_scbd[core_idx].b_mbx            = b_mbx            [core_idx];
-            cache_scbd[core_idx].ar_mbx           = ar_mbx           [core_idx];
-            cache_scbd[core_idx].r_mbx            = r_mbx            [core_idx];
+            cache_scbd[core_idx].aw_mbx_pre_filt   = aw_mbx            [core_idx];
+            cache_scbd[core_idx].w_mbx_pre_filt    = w_mbx             [core_idx];
+            cache_scbd[core_idx].b_mbx_pre_filt    = b_mbx             [core_idx];
+            cache_scbd[core_idx].ar_mbx_pre_filt   = ar_mbx            [core_idx];
+            cache_scbd[core_idx].r_mbx_pre_filt    = r_mbx             [core_idx];
 
-            cache_scbd[core_idx].ac_mbx           = ac_mbx           [core_idx];
-            cache_scbd[core_idx].cd_mbx           = cd_mbx           [core_idx];
-            cache_scbd[core_idx].cr_mbx           = cr_mbx           [core_idx];
+            cache_scbd[core_idx].ac_mbx            = ac_mbx            [core_idx];
+            cache_scbd[core_idx].cd_mbx            = cd_mbx            [core_idx];
+            cache_scbd[core_idx].cr_mbx            = cr_mbx            [core_idx];
 
-            cache_scbd[core_idx].mgmt_mbox        = mgmt_mbox        [core_idx];
-
-            cache_scbd[core_idx].run();
+            cache_scbd[core_idx].mgmt_mbox         = mgmt_mbox         [core_idx];
         end
 
         // assign SRAM IF
@@ -481,21 +523,67 @@ module culsans_tb
         dcache_chk = new(sram_if, dc_sram_if, ArianeCfg, "dcache_checker");
         void'($value$plusargs("ENABLE_MEM_CHECK=%b", enable_mem_check));
         dcache_chk.enable_mem_check = enable_mem_check;
-        dcache_chk.monitor();
+
+        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+            dcache_chk.amo_req_mbox[core_idx]  = amo_req_mbox_fwd  [core_idx];
+            dcache_chk.amo_resp_mbox[core_idx] = amo_resp_mbox_fwd [core_idx];
+
+            dcache_chk.dcache_req_mbox[core_idx]  = dcache_req_mbox_fwd  [core_idx];
+            dcache_chk.dcache_resp_mbox[core_idx] = dcache_resp_mbox_fwd [core_idx];
+        end
     end
+
+    task automatic start_amo_monitor;
+        fork
+            dcache_chk.check_amo_lock();
+        join_none
+    endtask
+
+    // start all monitors
+    task automatic start_monitors;
+        fork
+            for (int c=0; c<NB_CORES; c++) begin : CORE
+                fork
+                    automatic int core_idx = c;
+                    begin
+                        for (int p=0; p<=2; p++) begin : PORT
+                            fork
+                                automatic int port = p;
+                                begin
+                                    dcache_mon[core_idx][port].monitor();
+                                end
+                            join_none
+                        end
+                    end
+                    ace_mon[core_idx].monitor();
+                    snoop_mon[core_idx].monitor();
+                    amo_mon[core_idx].monitor();
+                    dcache_mgmt_mon[core_idx].monitor();
+                    cache_scbd[core_idx].run();
+                join_none
+            end
+            if (enable_ccu_mon) begin
+                ccu_mon_end_check = 1;
+                ccu_mon.run();
+            end
+            dcache_chk.monitor();
+        join_none
+    endtask
+
+
 
     //--------------------------------------------------------------------------
     // Tests
     //--------------------------------------------------------------------------
 
-    task test_header (string testname, string description="");
+    task automatic test_header (string testname, string description="");
         $display("--------------------------------------------------------------------------");
         $display("Running test %s", testname);
         $display("%s", description);
         $display("--------------------------------------------------------------------------");
     endtask
 
-    int timeout = 100000; // default
+    int timeout = 500000; // default
     int wait_time = 0;
     int test_id = -1;
     int rep_cnt;
@@ -507,20 +595,23 @@ module culsans_tb
     initial begin : TESTS
         logic [63:0] addr, base_addr;
         logic [63:0] data, base_data;
+        static logic enable_icache_random_gen = 0;
 
         automatic string testname="";
         if (!$value$plusargs("TESTNAME=%s", testname)) begin
             $error("No TESTNAME plusarg given");
         end
 
+        void'($value$plusargs("ENABLE_ICACHE_RANDOM_GEN=%b", enable_icache_random_gen));
+
         // The tests assume that the address regions are arranged in increaisng address order:
         // - non-cached, non-shared
         // - shared, non-cached
         // - cached, shared
         // - cached, non-shared
-        a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] > 64'(culsans_pkg::DRAMBase)) else
+        a_shared_gt_nonshared: assert (ArianeCfg.SharedRegionAddrBase[0] >= 64'(culsans_pkg::DRAMBase)) else
             $error("Non-cached, shared region must be after non-cached, non-shared region");
-        a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] > ArianeCfg.SharedRegionAddrBase[0]) else
+        a_cached_gt_shared: assert (ArianeCfg.CachedRegionAddrBase[0] >= ArianeCfg.SharedRegionAddrBase[0]) else
             $error("Cached, shared region must be after non-cached, shared region");
 
         fork
@@ -528,8 +619,15 @@ module culsans_tb
             begin
 
                 `WAIT_SIG(clk, rst_n)
+                start_monitors();
                 `WAIT_CYC(clk, 300)
                 `WAIT_CYC(clk, 1500) // wait some more for LLC initialization
+
+                if (enable_icache_random_gen) begin
+                    for (int c=0; c < NB_CORES; c++) begin
+                        icache_drv[c].start_random_req();
+                    end
+                end
 
                 case (testname)
 
@@ -543,6 +641,7 @@ module culsans_tb
                         for (int i=0; i<16; i++) begin
                             dcache_drv[cid][2].wr(.addr(addr + (i << DCACHE_INDEX_WIDTH)), .data(i));
                         end
+
 
                         // read miss x 8 - fill cache 0
                         for (int i=0; i<8; i++) begin
@@ -565,52 +664,129 @@ module culsans_tb
                         end
 
                         // simultaneous writes to same address
-                        for (int i=0; i<100; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
-                                        end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, ((i+cc)%19))
-                                            dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<100; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
+                                            end else begin
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, ((i+cc)%19))
+                                                dcache_drv[cc][2].wr(.addr(addr), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
-                        end
+                        end join
 
                         `WAIT_CYC(clk, 100)
 
                         test_header(testname, "Part 2 : Write conflicts to addresses in the same cache set");
 
                         // simultaneous writes to same set
-                        for (int i=0; i<100; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
-                                        end else begin
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, (i+cc)%19)
-                                            dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
-                                            `WAIT_CYC(clk, 10)
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<100; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBEEFCAFE0100 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                            end else begin
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hBAADF00D0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, (i+cc)%19)
+                                                dcache_drv[cc][2].wr(.addr(addr + ((i%8) << DCACHE_INDEX_WIDTH) + 8*$urandom_range(1)), .data(64'hDEADABBA0000 + i), .rand_size_be(1));
+                                                `WAIT_CYC(clk, 10)
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
+                        end join
+
+                    end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "read_collision" : begin
+                        test_header(testname, "Trigger colliding_read in cache controllers");
+
+                        addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt = 200 / NB_CORES;
+                        wait_time = 2000;
+                        timeout = 600000;
+
+                        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+                            cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
                         end
+
+
+                        for (int i=0; i < rep_cnt; i++) begin
+                            test_id = i;
+                            // make sure data is shared in all caches
+                            for (int c=0; c < NB_CORES; c++) begin
+                                dcache_drv[c][1].rd(.do_wait(1), .addr(addr));
+                            end
+
+                            // overwrite data in all but one cache by reading in other data to the same cache entry
+                            for (int c=0; c < NB_CORES; c++) begin
+                                logic [63:0] laddr;
+                                if (c != cid) begin
+                                    for (int i=1; i<16; i++) begin
+                                        laddr = addr + (i << DCACHE_INDEX_WIDTH);
+                                        dcache_drv[c][1].rd(.do_wait(1), .addr(laddr));
+                                    end
+                                end
+                            end
+
+                            fork begin // this fork is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int         cc     = c;
+                                        // target one 32 bit word inside the 128 bit cacheline
+                                        automatic int         offset = $urandom_range(3);
+                                        // be is either 00001111 or 11110000 depending on offset
+                                        automatic logic [7:0] be     = 8'b00001111 << 4 * (offset % 2);
+                                        begin
+                                            `WAIT_CYC(clk, $urandom_range(10))
+                                            // write in one core while the others read
+                                            if (cc == cid) begin
+                                                fork
+                                                    begin
+                                                        // write the target cacheline
+                                                        `WAIT_CYC(clk, 5)
+                                                        dcache_drv[cc][2].wr(.addr(addr + (offset*4)), .data(cc*1024), .size(2'b10), .be(be));
+                                                    end
+                                                    begin
+                                                        // read some other cacheline - compete withe the write above
+                                                        `WAIT_CYC(clk, $urandom_range(10))
+                                                        dcache_drv[cc][1].rd(.addr(addr + $urandom_range(1024) * 8));
+                                                    end
+                                                join
+                                            end else begin
+                                                // read the target cacheline
+                                                `WAIT_CYC(clk, 5)
+                                                dcache_drv[cc][1].rd(.do_wait(1), .addr(addr + (offset*4)), .size(2'b10), .be(be));
+                                            end
+                                        end
+                                    join_none
+                                end
+                                wait fork;
+                            end join
+                        end
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
 
                     end
 
@@ -625,11 +801,6 @@ module culsans_tb
                         for (int c=0; c < NB_CORES; c++) begin
                             dcache_drv[c][0].rd(.addr(addr));
                             `WAIT_CYC(clk, 100)
-                        end
-
-                        // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill();
                         end
 
                         // simultaneous writes and read to same address
@@ -708,19 +879,11 @@ module culsans_tb
                     end
 
 
-                    //******************************************************************************
-                    //*** NOTE: this test currently fails at it hits bug described in PROJ-269
-                    //******************************************************************************
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "cacheline_rw_collision" : begin
                         test_header(testname, "Read cacheline while it is being updated");
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
-
-                        // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][1].arm_kill();
-                        end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
                             repeat (100) begin
@@ -774,10 +937,8 @@ module culsans_tb
 
 
                         // core 0 mgmt will have to wait for flush, increase timeout
-                        wait_time = STALL_RANDOM_DELAY ? 50000 : 20000;
+                        wait_time = STALL_RANDOM_DELAY ? 100000 : 20000;
                         cache_scbd[cid].set_mgmt_trans_timeout (wait_time);
-
-                        timeout = 200000 + wait_time; // long tests
 
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
@@ -795,24 +956,26 @@ module culsans_tb
                             dcache_drv[cid][2].wr(.addr(addr + i*8),  .data(64'hBEEFCAFE0000 + i));
                         end
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            fork
-                                automatic int cc = c;
-                                automatic int port;
-                                automatic logic [63:0] laddr;
-                                begin
-                                    if (cc == cid) begin
-                                        // flush
-                                        dcache_mgmt_drv[cc].flush();
-                                    end else begin
-                                        for (int i=2047;  i>=0; i--) begin
-                                            dcache_drv[cc][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    automatic int port;
+                                    automatic logic [63:0] laddr;
+                                    begin
+                                        if (cc == cid) begin
+                                            // flush
+                                            dcache_mgmt_drv[cc].flush();
+                                        end else begin
+                                            for (int i=2047;  i>=0; i--) begin
+                                                dcache_drv[cc][1].rd(.do_wait(1), .addr(addr + i*8), .check_result(1), .exp_result(64'hBEEFCAFE0000 + i));
+                                            end
                                         end
                                     end
-                                end
-                            join_none
-                        end
-                        wait fork;
+                                join_none
+                            end
+                            wait fork;
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
@@ -826,12 +989,10 @@ module culsans_tb
 
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 200;
-                        timeout   = 400000; // long test
+                        wait_time = 5000;
 
-                        // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill(.prob(20));
-                            dcache_drv[c][1].arm_kill(.prob(20));
+                        for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
+                            cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
                         end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
@@ -887,8 +1048,195 @@ module culsans_tb
                                 wait fork;
                             end
                         end join
-                        `WAIT_CYC(clk, 100)
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
                     end
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "raw_spin_lock" : begin
+                        logic [63:0] lock_addr0, lock_addr1;
+                        test_header(testname, "emulate the Linux raw_spin_lock/unlock functions");
+                        start_amo_monitor();
+
+                        lock_addr0 = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(100) * 8; // 64 bit
+                        lock_addr1 = lock_addr0 + $urandom_range(1,100) * 8 + 4; // 32 bit
+
+                        wait_time = 10000;
+                        timeout  += 500000; // long test
+                        rep_cnt   = 1000;
+
+                        for (int c=0; c < NB_CORES; c++) begin
+                            cache_scbd[c].set_amo_msg_timeout(wait_time);
+                        end
+
+                        // initialize locks to 0
+                        dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
+                        dcache_drv[cid][2].wr(.addr(lock_addr1), .data(0));
+
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int          cc     = c;
+                                    automatic logic [63:0] locked;
+                                    automatic int          wait_cyc;
+                                    automatic logic [63:0] laddr;
+                                    automatic int          sel;
+                                    automatic logic  [1:0] size;
+                                    automatic logic  [7:0] be;
+                                    begin
+                                        for (int i=0; i<rep_cnt; i++) begin
+                                            wait_cyc = $urandom_range(10);
+                                            // try to get one of two locks
+                                            // selec which lock to try to aquire
+                                            sel = $urandom_range(1);
+                                            case (sel)
+                                                0 : begin
+                                                    laddr = lock_addr0;
+                                                    size  = 2'b11;
+                                                    be    = 8'hFF;
+                                                end
+                                                default : begin
+                                                    laddr = lock_addr1;
+                                                    size  = 2'b10;
+                                                    be    = 8'hF0;
+                                                end
+                                            endcase
+
+                                            $display("%t ns : Core %0d Waiting %0d cycles before trying to get lock (check_amo_lock)",$time ,cc,wait_cyc);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // lock
+                                            locked = 1;
+                                            while (locked != 0) begin
+                                                // read lock
+                                                while (locked != 0) begin
+                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .rand_kill(25), .result(locked));
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                end
+                                                $display("%t ns : Core %0d saw free lock, trying to aquire it (check_amo_lock)",$time ,cc);
+
+                                                // try to swap in 1
+                                                amo_drv[cc].req_resp(.addr(laddr), .size(size), .op(AMO_SWAP), .data(1), .result(locked));
+                                                `WAIT_CYC(clk, $urandom_range(10))
+                                            end
+
+                                            // waste time
+                                            wait_cyc = $urandom_range(100);
+                                            $display("%t ns : Core %0d Waiting %0d cycles before releasing lock (check_amo_lock)",$time , cc,wait_cyc);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // unlock
+                                            dcache_drv[cc][2].wr(.addr(laddr), .size(size), .be(be), .data(0));
+                                        end
+                                    end
+                                join_none
+                            end
+                            wait fork;
+                        end join
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
+
+                    end
+
+
+                    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                    "raw_spin_lock_wait" : begin
+                        logic [63:0] lock_addr0, lock_addr1;
+                        test_header(testname, "emulate the Linux raw_spin_lock/unlock functions");
+                        start_amo_monitor();
+
+                        lock_addr0 = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(100) * 8; // 64 bit
+                        lock_addr1 = lock_addr0 + $urandom_range(1,100) * 8 + 4; // 32 bit
+
+                        wait_time = 10000;
+                        timeout  += 500000;
+                        rep_cnt   = 1000;
+
+                        for (int c=0; c < NB_CORES; c++) begin
+                            cache_scbd[c].set_amo_msg_timeout(wait_time);
+                        end
+
+                        // initialize locks to 0
+                        dcache_drv[cid][2].wr(.addr(lock_addr0), .data(0));
+                        dcache_drv[cid][2].wr(.addr(lock_addr1), .data(0));
+
+
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<rep_cnt; i++) begin
+                                $display("%t ns %s: Iteration %0d", $time, testname, i);
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int          cc     = c;
+                                        automatic logic [63:0] locked;
+                                        automatic int          wait_cyc;
+                                        automatic logic [63:0] laddr;
+                                        automatic int          sel;
+                                        automatic logic  [1:0] size;
+                                        automatic logic  [7:0] be;
+                                        begin
+                                            wait_cyc = $urandom_range(10);
+                                            // try to get one of two locks
+                                            // selec which lock to try to aquire
+                                            sel = $urandom_range(1);
+                                            case (sel)
+                                                0 : begin
+                                                    laddr = lock_addr0;
+                                                    size  = 2'b11;
+                                                    be    = 8'hFF;
+                                                end
+                                                default : begin
+                                                    laddr = lock_addr1;
+                                                    size  = 2'b10;
+                                                    be    = 8'hF0;
+                                                end
+                                            endcase
+
+                                            $display("%t ns %s: Core %0d Waiting %0d cycles before trying to get lock %0d", $time, testname, cc, wait_cyc, sel);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // lock
+                                            locked = 1;
+                                            while (locked != 0) begin
+                                                // read lock
+                                                while (locked != 0) begin
+                                                    dcache_drv[cc][1].rd_resp(.addr(laddr), .size(size), .be(be), .do_wait(1), .rand_kill(25), .result(locked));
+                                                    `WAIT_CYC(clk, $urandom_range(10))
+                                                end
+                                                $display("%t ns %s: Core %0d saw free lock %0d, trying to aquire it", $time, testname, cc, sel);
+
+                                                // try to swap in 1
+                                                amo_drv[cc].req_resp(.addr(laddr), .size(size), .op(AMO_SWAP), .data(1), .result(locked));
+                                                `WAIT_CYC(clk, $urandom_range(10))
+                                            end
+
+                                            // waste time
+                                            wait_cyc = $urandom_range(100);
+                                            $display("%t ns %s: Core %0d Waiting %0d cycles before releasing lock %0d", $time, testname, cc, wait_cyc, sel);
+                                            `WAIT_CYC(clk, wait_cyc);
+
+                                            // unlock
+                                            $display("%t ns %s: Core %0d releasing lock %0d", $time, testname, cc, sel);
+                                            dcache_drv[cc][2].wr(.addr(laddr), .size(size), .be(be), .data(0));
+
+                                            // read the lock again (to make sure write has finished)
+                                            dcache_drv[cc][1].rd(.addr(laddr), .size(size), .be(be), .do_wait(1));
+                                        end
+                                    join_none
+                                end
+                                wait fork;
+                            end
+                        end join
+
+                        $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
+                        `WAIT_CYC(clk, wait_time)
+
+                    end
+
+
+
+
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_read_write" : begin
@@ -903,25 +1251,27 @@ module culsans_tb
 
 
                         // simultaneous writes to same address
-                        for (int i=0; i<10; i++) begin
-                            for (int c=0; c < NB_CORES; c++) begin
-                                fork
-                                    automatic int cc = c;
-                                    begin
-                                        if (cc == cid) begin
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
-                                            `WAIT_CYC(clk, 5)
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
-                                        end else begin
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
-                                            `WAIT_CYC(clk, (i+cc))
-                                            amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int i=0; i<10; i++) begin
+                                for (int c=0; c < NB_CORES; c++) begin
+                                    fork
+                                        automatic int cc = c;
+                                        begin
+                                            if (cc == cid) begin
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
+                                                `WAIT_CYC(clk, 5)
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                                            end else begin
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
+                                                `WAIT_CYC(clk, (i+cc))
+                                                amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
+                                            end
                                         end
-                                    end
-                                join_none
+                                    join_none
+                                end
+                                wait fork;
                             end
-                            wait fork;
-                        end
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
@@ -937,7 +1287,6 @@ module culsans_tb
                         test_header(testname, "AMO ALU operations");
 
                         rep_cnt = 500;
-                        timeout = 200000;
 
                         // 32 bit
                         for (int i=0; i<rep_cnt; i++) begin
@@ -946,6 +1295,7 @@ module culsans_tb
                             amo_t       op;
                             logic       word_op;
                             int         size;
+                            logic       check_res_cid;
 
                             word_op = $urandom_range(1); // operate on word or double
 
@@ -989,34 +1339,45 @@ module culsans_tb
 
                             // core X or Y writes data
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
                                 dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                                check_res_cid = 1'b1;
                             end else begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid2, (data << shift), addr);
                                 dcache_drv[cid2][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
+                                check_res_cid = 1'b0;
                             end
 
                             // core X possibly writes data to upper cache line
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid, addr+8);
                                 dcache_drv[cid][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
                             end
                             // core Y possibly writes data to upper cache line
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid2, addr+8);
                                 dcache_drv[cid2][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
                             end
 
                             // core X possibly reads data
                             if ($urandom_range(1)) begin
-                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data << shift));
+                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
+                                // only check results if it was written by core X (cid)
+                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(check_res_cid), .exp_result(data << shift));
                             end
 
                             // core X sends AMO request
+                            $display("%t ns : [Test %s (%0d)] Core %0d sending AMO request to addr 0x%16h",$time , testname, i, cid, addr);
                             amo_drv[cid].req(.addr(addr), .op(op), .data(data_op), .size(size), .check_result(1), .exp_result(data));
 
                             // core Y possibly reads data
                             if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid2, addr);
                                 dcache_drv[cid2][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
                             end
 
                             // core X reads data
+                            $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
                             dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
 
                         end
@@ -1352,32 +1713,35 @@ module culsans_tb
                             end
                         end
 
-                        for (int c=0; c < NB_CORES; c++) begin
-                            fork
-                                automatic int cc = c;
-                                automatic int port;
-                                automatic int offset;
-                                begin
-                                    if (cc == cid) begin
-                                        `WAIT_CYC(clk, rep_cnt*10)
-                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_SC));
-                                        `WAIT_CYC(clk, 5)
-                                        amo_drv[cc].req(.addr(base_addr), .op(AMO_LR));
-                                    end else begin
-                                        for (int i=0; i<rep_cnt; i++) begin
-                                            port   = $urandom_range(2);
-                                            offset = $urandom_range(1024);
-                                            if (port == 2) begin
-                                                dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
-                                            end else begin
-                                                dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset), .rand_size_be(1));
+                        fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
+                            for (int c=0; c < NB_CORES; c++) begin
+                                fork
+                                    automatic int cc = c;
+                                    automatic int port;
+                                    automatic int offset;
+                                    begin
+                                        if (cc == cid) begin
+                                            `WAIT_CYC(clk, rep_cnt*10)
+                                            amo_drv[cc].req(.addr(base_addr), .op(AMO_SC));
+                                            `WAIT_CYC(clk, 5)
+                                            amo_drv[cc].req(.addr(base_addr), .op(AMO_LR));
+                                        end else begin
+                                            for (int i=0; i<rep_cnt; i++) begin
+                                                port   = $urandom_range(2);
+                                                offset = $urandom_range(1024);
+                                                if (port == 2) begin
+                                                    dcache_drv[cc][2].wr(.addr(base_addr + offset), .data(64'hBEEFCAFE00000000 + offset), .rand_size_be(1));
+                                                end else begin
+                                                    dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset), .rand_size_be(1));
+                                                end
                                             end
                                         end
+                                        $display("%t ns %s: test sequence ended for core %0d", $time, testname, cc);
                                     end
-                                end
-                            join_none
-                        end
-                        wait fork;
+                                join_none
+                            end
+                            wait fork;
+                        end join
 
                         $display("***\n*** Test finished, waiting %0d cycles to catch possible timeouts\n***",wait_time);
                         `WAIT_CYC(clk, wait_time)
@@ -1473,7 +1837,6 @@ module culsans_tb
                         test_header(testname, "AMO request flushing the cache while other core is accessing its contents");
 
                         wait_time = 50000;
-                        timeout = 200000; // long test
 
                         // core 1 will have to wait for flush, increase timeout
                         cache_scbd[1].set_cache_msg_timeout(wait_time);
@@ -1536,17 +1899,11 @@ module culsans_tb
                         // LLC and random AXI delay cause longer tests
                         wait_time = 10000;
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout   += 500000;
                             wait_time = 20000;
                             for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                                 cache_scbd[core_idx].set_cache_msg_timeout(20000);
                             end
-                        end
-
-                        // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill(.prob(25));
-                            dcache_drv[c][1].arm_kill(.prob(25));
                         end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
@@ -1624,12 +1981,11 @@ module culsans_tb
                         endcase
 
                         rep_cnt   = 1000;
-                        timeout   = 150000; // long test
                         wait_time = 10000;
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout   += 300000;
                             wait_time = 20000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_amo_msg_timeout(wait_time);
@@ -1642,11 +1998,6 @@ module culsans_tb
                             cache_scbd[c].set_snoop_msg_timeout(wait_time);
                         end
 
-                       // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill(.prob(25));
-                            dcache_drv[c][1].arm_kill(.prob(25));
-                        end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
                             for (int c=0; c < NB_CORES; c++) begin
@@ -1719,22 +2070,16 @@ module culsans_tb
 
                         rep_cnt   = 1000;
 
-                        timeout   = 200000; // long test
-                        wait_time = 10000;
+                        wait_time = 20000;
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout  += 300000;
+                            wait_time = 50000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_cache_msg_timeout(wait_time);
                                 cache_scbd[c].set_snoop_msg_timeout(wait_time);
                             end
-                        end
-
-                       // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill(.prob(25));
-                            dcache_drv[c][1].arm_kill(.prob(25));
                         end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
@@ -1789,17 +2134,11 @@ module culsans_tb
 
                         // LLC and random AXI delay cause longer tests
                         if (HAS_LLC && STALL_RANDOM_DELAY) begin
-                            timeout   = 300000;
+                            timeout  += 300000;
                             wait_time = 10000;
                             for (int c=0; c < NB_CORES; c++) begin
                                 cache_scbd[c].set_cache_msg_timeout(wait_time);
                             end
-                        end
-
-                       // arm spurious kills
-                        for (int c=0; c < NB_CORES; c++) begin
-                            dcache_drv[c][0].arm_kill(.prob(25));
-                            dcache_drv[c][1].arm_kill(.prob(25));
                         end
 
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
@@ -1939,6 +2278,10 @@ module culsans_tb
                 //--------------------------------------------------------------
                 // end of tests
                 //--------------------------------------------------------------
+                for (int c=0; c < NB_CORES; c++) begin
+                    icache_drv[c].stop_random_req();
+                end
+
                 `WAIT_CYC(clk, 100)
 
                 $display("Test done");

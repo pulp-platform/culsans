@@ -29,7 +29,17 @@ help:
 	@echo "    make list_tests            list all available tests"
 	@echo "    make report_coverage       generate coverage report (must run tests with COVER=1 first)"
 	@echo "    make clean                 clean all test results"
-	@echo "    make help                  print this message"
+	@echo "    make help                  print this message"	
+	@echo ""
+	@echo " Make variables"
+	@echo "    ENABLE_CCU_MON             Enable CCU monitor (default : 1)"
+	@echo "    ENABLE_MEM_CHECK           Enable check of cache vs memory (default: 0)"
+	@echo "    ENABLE_ICACHE_RANDOM_GEN   Enable random ICache transactions during tests (default: 1)"
+	@echo "    ENABLE_AXI_ID_PER_PORT     Enable forcing of separate AXI IDs per DCache port (default: 1)"
+	@echo "    DEFINES                    Add RTL defines. Available defines:"
+	@echo "        TB_HAS_LLC=<0,1>              Use LLC in design (default: 1)"
+	@echo "        TB_AXI_FIXED_DELAY=[0..15]    Add fixed delay to AXI transactions (default: 0)"
+	@echo "        TB_AXI_RAND_DELAY=<0,1>       Add random delay to AXI transactions (default: 1)"
 	@echo ""
 
 
@@ -103,7 +113,11 @@ status:
 	@for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT); then \
-				printf "%-40s\t : \033[31mFAILED\033[0m\n" $$d; \
+				printf "%-40s\t : \033[31mFAILED\033[0m\t" $$d; \
+				# print error message \
+				grep -m 1 -E "Error|Fatal" $$d/$(TEST_REPORT) | cut -c 6-72 | tr -d '\012\015'; \
+				# print time \
+				grep -m 1 -A1 -E "\* Error|\* Fatal" $$d/$(TEST_LOG) | grep -v -E "\* Error|\* Fatal" | cut -d" " -f3-7; \
 			else \
 				printf "%-40s\t : \033[32mPASSED\033[0m\n" $$d; \
 			fi; \

@@ -769,7 +769,7 @@ end
     MaxMstTrans: 2, // Probably requires update
     MaxSlvTrans: 2, // Probably requires update
     FallThrough: 1'b0,
-    LatencyMode: ace_pkg::NO_LATENCY,
+    LatencyMode: ace_pkg::CUT_ALL_PORTS,
     AxiIdWidthSlvPorts: culsans_pkg::IdWidth,
     AxiIdUsedSlvPorts: culsans_pkg::IdWidth,
     UniqueIds: 1'b1,
@@ -2063,6 +2063,46 @@ axi_clock_converter_0 pcie_axi_clock_converter (
                gen_ariane[1].i_ariane.i_cva6.dcache_flush_ack_cache_ctrl,
                gen_ariane[1].i_ariane.i_cva6.icache_flush_ctrl_cache,
                gen_ariane[1].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.i_miss_handler.serve_amo_q})  // 24 = 48
+  );
+
+
+  xlnx_ila i_ila_dram (
+    .clk     (clk),
+
+    .probe0  ({dram.aw_valid,         // 1
+               dram.aw_lock,          // 1
+               dram.aw_atop,          // 6
+               dram.aw_id,            // 9
+               dram.aw_ready,         // 1
+               dram.w_valid,          // 1
+               dram.w_ready}),        // 1  = 20
+
+    .probe1  (dram.aw_addr[31:0]),    // 32 = 32
+
+    .probe2  ({dram.b_valid,          // 1
+               dram.b_id,             // 9
+               dram.b_resp,           // 2
+               dram.b_ready}),        // 1  = 13
+
+    .probe3  ({dram.ar_valid,         // 1
+               dram.ar_lock,          // 1
+               dram.ar_id,            // 9
+               dram.ar_ready,         // 1
+               dram.r_valid,          // 1
+               dram.r_id,             // 9
+               dram.r_resp,           // 2
+               dram.r_ready}),        // 1  = 25
+
+    .probe4  (dram.ar_addr[31:0]),    // 32 = 32
+
+    .probe5  ( '0 ),
+    .probe6  ( '0 ),
+    .probe7  ( '0 ),
+    .probe8  ( '0 ),
+    .probe9  ( '0 ),
+    .probe10 ( '0 ),
+    .probe11 ( '0 ),
+    .probe12 ( '0 )
   );
 
 endmodule

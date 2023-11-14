@@ -31,10 +31,17 @@ TEST_SRCS += $(shell find . -name "*.c" -exec basename {} \;)
 GUI ?= 0
 
 # the CCU monitor can be disabled by setting ENABLE_CCU_MON=0
-ENABLE_CCU_MON ?= 1
+# Note: the CCU monitor currently doesn't work when CCU.LatencyMode != NO_LATENCY
+ENABLE_CCU_MON ?= 0
 
 # enable check of cache contents vs main memory
 ENABLE_MEM_CHECK ?= 0
+
+# Force use of ID per port for AXI data port
+ENABLE_AXI_ID_PER_PORT ?= 1
+
+# enable random icache transactions
+ENABLE_ICACHE_RANDOM_GEN ?= 1
 
 VSIM_LIB      = ../../work
 VERILATOR_LIB = $(ROOT_DIR)/../work_verilate
@@ -51,6 +58,8 @@ VSIM_FLAGS += -noassertdebug
 VSIM_FLAGS += +TESTNAME=$(TESTNAME)
 VSIM_FLAGS += +ENABLE_CCU_MON=$(ENABLE_CCU_MON)
 VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
+VSIM_FLAGS += +ENABLE_ICACHE_RANDOM_GEN=$(ENABLE_ICACHE_RANDOM_GEN)
+VSIM_FLAGS += +ENABLE_AXI_ID_PER_PORT=$(ENABLE_AXI_ID_PER_PORT)
 VSIM_FLAGS += -sv_seed $(SEED)
 # allow calling tasks in final procedure
 VSIM_FLAGS += -suppress 2879
@@ -79,11 +88,13 @@ endif
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
 	rm -rf $(TEST_REPORT)
-	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee sim.log
+	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee $(TEST_LOG)
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
-	@grep "\*\* Error" sim.log  | tee     $(TEST_REPORT) > /dev/null
-	@grep "\*\* Fatal" sim.log  | tee -a  $(TEST_REPORT) > /dev/null
+ifeq ($(GUI), 0)
+	@grep "\*\* Error" $(TEST_LOG) | tee     $(TEST_REPORT) > /dev/null
+	@grep "\*\* Fatal" $(TEST_LOG) | tee -a  $(TEST_REPORT) > /dev/null
+endif
 
 else
 $(TEST_REPORT): main.riscv
