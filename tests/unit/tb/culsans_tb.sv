@@ -937,7 +937,13 @@ module culsans_tb
 
 
                         // core 0 mgmt will have to wait for flush, increase timeout
-                        wait_time = STALL_RANDOM_DELAY ? 100000 : 20000;
+                        if (STALL_RANDOM_DELAY) begin
+                            wait_time = 40000;
+                            timeout  += 200000;
+                        end else begin
+                            wait_time = 10000;
+                        end
+
                         cache_scbd[cid].set_mgmt_trans_timeout (wait_time);
 
                         // other snooped cores will have to wait for flush, increase timeout
