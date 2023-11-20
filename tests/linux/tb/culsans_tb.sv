@@ -46,11 +46,6 @@ module culsans_tb ();
         end
     end
 
-    initial begin
-        wait (i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_instr_id_commit[0].pc == 64'h800600a0 && i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_instr_id_commit[0].valid == 1'b1 && i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_ack[0] == 1'b1);
-        $finish();
-    end
-
     // Memory initialisation
 
     initial begin
@@ -78,7 +73,7 @@ module culsans_tb ();
     culsans_top #(
         .InclSimDTM (1'b0),
         .NUM_WORDS  (80*1024*1024), // 4Kwords
-        .BootAddress (culsans_pkg::DRAMBase + 64'h60000),
+        .BootAddress (culsans_pkg::DRAMBase /*+ 64'h100000*/),
         .ArianeCfg (culsans_pkg::ArianeFpgaSocCfg)
     ) i_culsans (
         .clk_i (clk),

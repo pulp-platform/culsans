@@ -7,6 +7,8 @@ LITMUS_BIN = $(LITMUS_SRC)/binaries
 
 RESULTS = ./results
 
+VSIM_LIB      = ./work
+
 VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -do test_automation/sim.tcl -suppress 12110 -lib $(VSIM_LIB)
 
 TEST ?= all
@@ -84,7 +86,7 @@ $(RESULTS)/$(TEST).log: $(RESULTS) rtl
 			echo "Test $(TEST) Allow" > uart.log; \
 			echo "Histogram" >> uart.log; \
 			$(VSIM) $(VSIM_FLAGS) $(TOP_LEVEL) > sim.log; \
-      OUTFILE=$(TEST).log && \
+    		OUTFILE=$(TEST).log && \
 			mv uart.log $(RESULTS)/$$OUTFILE; \
 			OUTFILE=$(TEST)_sim.log && \
 			mv sim.log $(RESULTS)/$$OUTFILE; \

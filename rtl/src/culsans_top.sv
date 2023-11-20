@@ -23,6 +23,7 @@ module culsans_top #(
   parameter int unsigned AXI_USER_EN       = ariane_pkg::AXI_USER_EN,
   parameter int unsigned AXI_ADDRESS_WIDTH = 64,
   parameter int unsigned AXI_DATA_WIDTH    = 64,
+  parameter ariane_pkg::ariane_cfg_t ArianeCfg = culsans_pkg::ArianeSocCfg,
 `ifdef DROMAJO
   parameter bit          InclSimDTM        = 1'b0,
 `else
@@ -42,7 +43,6 @@ module culsans_top #(
   output logic [31:0]                    exit_o
 );
 
-  localparam ariane_pkg::ariane_cfg_t ArianeCfg = culsans_pkg::ArianeSocCfg;
   localparam int unsigned AXI_ID_WIDTH_DRAM = HasLLC ? culsans_pkg::IdWidthSlave + 1 : culsans_pkg::IdWidthSlave;
 
   // disable test-enable
@@ -627,7 +627,7 @@ module culsans_top #(
 `ifdef VERILATOR
     .SIM_INIT   ( "none"         ),
 `else
-    .SIM_INIT   ( "random"        ),
+    .SIM_INIT   ( "zeros"        ),
 `endif
 `ifdef DROMAJO
     .DROMAJO_RAM (1),

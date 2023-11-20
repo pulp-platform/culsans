@@ -1002,7 +1002,8 @@ axi_riscv_atomics_wrap #(
     .AXI_USER_ID_MSB    ( $clog2(culsans_pkg::NB_CORES)-1 ),
     .AXI_MAX_READ_TXNS  ( 1                               ),
     .AXI_MAX_WRITE_TXNS ( 1                               ),
-    .RISCV_WORD_WIDTH   ( riscv::XLEN                     )
+    .RISCV_WORD_WIDTH   ( riscv::XLEN                     ),
+    .N_AXI_CUT          ( 1                               )
 ) i_axi_riscv_atomics (
     .clk_i  ( clk                       ),
     .rst_ni ( ndmreset_n                ),
