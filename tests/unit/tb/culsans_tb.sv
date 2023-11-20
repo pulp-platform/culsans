@@ -721,10 +721,10 @@ module culsans_tb
                     "read_collision" : begin
                         test_header(testname, "Trigger colliding_read in cache controllers");
 
-                        addr = ArianeCfg.CachedRegionAddrBase[0];
-                        rep_cnt = 200 / NB_CORES;
+                        addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(256) * 16;
+                        rep_cnt = 400 / NB_CORES;
                         wait_time = 2000;
-                        timeout = 600000;
+                        timeout = 1000000;
 
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
@@ -765,12 +765,12 @@ module culsans_tb
                                                     begin
                                                         // write the target cacheline
                                                         `WAIT_CYC(clk, 5)
-                                                        dcache_drv[cc][2].wr(.addr(addr + (offset*4)), .data(cc*1024), .size(2'b10), .be(be));
+                                                        dcache_drv[cc][2].wr(.addr(addr + (offset*4)), .rand_data(1), .size(2'b10), .be(be));
                                                     end
                                                     begin
                                                         // read some other cacheline - compete withe the write above
                                                         `WAIT_CYC(clk, $urandom_range(10))
-                                                        dcache_drv[cc][1].rd(.addr(addr + $urandom_range(1024) * 8));
+                                                        dcache_drv[cc][1].rd(.addr(addr + $urandom_range(2,1024) * 8));
                                                     end
                                                 join
                                             end else begin
@@ -796,6 +796,7 @@ module culsans_tb
                         test_header(testname, "Part 1 : Write + read conflicts to single address");
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
+                        rep_cnt = 400 / NB_CORES;
 
                         // make sure data 0 is in cache
                         for (int c=0; c < NB_CORES; c++) begin
@@ -805,7 +806,7 @@ module culsans_tb
 
                         // simultaneous writes and read to same address
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
-                            for (int i=0; i<100; i++) begin
+                            for (int i=0; i<rep_cnt; i++) begin
                                 for (int c=0; c < NB_CORES; c++) begin
                                     fork
                                         automatic int cc = c;
@@ -826,6 +827,7 @@ module culsans_tb
                         `WAIT_CYC(clk, 100)
 
                         test_header(testname, "Part 2 : Write + read conflicts to addresses in the same cache set");
+                        rep_cnt = 2000 / NB_CORES;
 
                         // read x 8 - fill cache set 0 in CPU 0
                         for (int c=0; c < NB_CORES; c++) begin
@@ -836,7 +838,7 @@ module culsans_tb
 
                         // simultaneous writes and reads to same set
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
-                            for (int i=0; i<500; i++) begin
+                            for (int i=0; i<rep_cnt; i++) begin
                                 for (int c=0; c < NB_CORES; c++) begin
                                     fork
                                         automatic int cc = c;
@@ -938,7 +940,7 @@ module culsans_tb
 
                         // core 0 mgmt will have to wait for flush, increase timeout
                         if (STALL_RANDOM_DELAY) begin
-                            wait_time = 40000;
+                            wait_time = 100000; // flushing takes long time
                             timeout  += 200000;
                         end else begin
                             wait_time = 10000;
@@ -949,10 +951,7 @@ module culsans_tb
                         // other snooped cores will have to wait for flush, increase timeout
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             cache_scbd[core_idx].set_snoop_msg_timeout(wait_time);
-                            if (core_idx != cid) begin
-                                // other cores will have to wait for flush, increase timeout
-                                cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
-                            end
+                            cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
                         end
 
                         addr = ArianeCfg.CachedRegionAddrBase[0];
@@ -996,6 +995,8 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
                         rep_cnt   = 200;
                         wait_time = 5000;
+                        timeout  += 200000;
+
 
                         for (int core_idx=0; core_idx<NB_CORES; core_idx++) begin : CORE
                             cache_scbd[core_idx].set_cache_msg_timeout(wait_time);
@@ -1301,7 +1302,6 @@ module culsans_tb
                             amo_t       op;
                             logic       word_op;
                             int         size;
-                            logic       check_res_cid;
 
                             word_op = $urandom_range(1); // operate on word or double
 
@@ -1343,16 +1343,9 @@ module culsans_tb
                                 AMO_MIN, AMO_MINU : data_res = data < data_op ? data : data_op;
                             endcase
 
-                            // core X or Y writes data
-                            if ($urandom_range(1)) begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
-                                dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
-                                check_res_cid = 1'b1;
-                            end else begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid2, (data << shift), addr);
-                                dcache_drv[cid2][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
-                                check_res_cid = 1'b0;
-                            end
+                            // core X writes data
+                            $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
+                            dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
 
                             // core X possibly writes data to upper cache line
                             if ($urandom_range(1)) begin
@@ -1369,7 +1362,7 @@ module culsans_tb
                             if ($urandom_range(1)) begin
                                 $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
                                 // only check results if it was written by core X (cid)
-                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(check_res_cid), .exp_result(data << shift));
+                                dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data << shift));
                             end
 
                             // core X sends AMO request
@@ -2075,11 +2068,10 @@ module culsans_tb
                         base_addr = ArianeCfg.CachedRegionAddrBase[0];
 
                         rep_cnt   = 1000;
-
                         wait_time = 20000;
 
-                        // LLC and random AXI delay cause longer tests
-                        if (HAS_LLC && STALL_RANDOM_DELAY) begin
+                        // random AXI delay cause longer tests
+                        if (STALL_RANDOM_DELAY) begin
                             timeout  += 300000;
                             wait_time = 50000;
                             for (int c=0; c < NB_CORES; c++) begin
