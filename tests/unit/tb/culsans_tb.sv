@@ -292,14 +292,16 @@ module culsans_tb
         end
 
         // assign SRAM IF
-        assign dc_sram_if[core_idx].vld_sram  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.i_tc_sram.sram;
         assign dc_sram_if[core_idx].vld_req   = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.req_i;
         assign dc_sram_if[core_idx].vld_we    = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.we_i;
         assign dc_sram_if[core_idx].vld_index = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.addr_i;
-        for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
-            assign dc_sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.i_tc_sram.sram;
-            assign dc_sram_if[core_idx].data_sram[i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.i_tc_sram.sram;
-        end
+        `ifndef USE_XILINX_SRAM
+            assign dc_sram_if[core_idx].vld_sram  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.valid_dirty_sram.i_tc_sram.sram;
+            for (genvar i = 0; i<DCACHE_SET_ASSOC; i++) begin : sram_block
+                assign dc_sram_if[core_idx].tag_sram[i]  = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.sram_block[i].tag_sram.i_tc_sram.sram;
+                assign dc_sram_if[core_idx].data_sram[i] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.sram_block[i].data_sram.i_tc_sram.sram;
+            end
+        `endif
 
         // assign Grant IF
         assign gnt_if[core_idx].gnt[0] = i_culsans.gen_ariane[core_idx].i_ariane.i_cva6.WB.i_cache_subsystem.i_nbdcache.gnt[0] &&
@@ -510,10 +512,12 @@ module culsans_tb
         end
 
         // assign SRAM IF
-        for (genvar w=0; w<DCACHE_SET_ASSOC; w++) begin
-            assign sram_if[core_idx].data[w][0] = i_culsans.i_sram.i_tc_sram.sram[sram_if[core_idx].addr[w]];
-            assign sram_if[core_idx].data[w][1] = i_culsans.i_sram.i_tc_sram.sram[sram_if[core_idx].addr[w]+1];
-        end
+        `ifndef USE_XILINX_SRAM
+            for (genvar w=0; w<DCACHE_SET_ASSOC; w++) begin
+                assign sram_if[core_idx].data[w][0] = i_culsans.i_sram.i_tc_sram.sram[sram_if[core_idx].addr[w]];
+                assign sram_if[core_idx].data[w][1] = i_culsans.i_sram.i_tc_sram.sram[sram_if[core_idx].addr[w]+1];
+            end
+        `endif
 
     end
 
