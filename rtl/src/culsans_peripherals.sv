@@ -31,7 +31,7 @@ module culsans_peripherals #(
     AXI_BUS.Slave      spi             ,
     AXI_BUS.Slave      ethernet        ,
     AXI_BUS.Slave      timer           ,
-    output logic [culsans_pkg::NumTargets-1:0] irq_o   ,
+    output logic [(ariane_soc::NumHarts-1):0][1:0] irq_o,
     // UART
     input  logic       rx_i            ,
     output logic       tx_o            ,
