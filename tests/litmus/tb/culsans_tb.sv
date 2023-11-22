@@ -46,26 +46,27 @@ module culsans_tb ();
         end
     end
 
+    initial begin
+        wait (i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_instr_id_commit[0].pc == 64'h800600a0 && i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_instr_id_commit[0].valid == 1'b1 && i_culsans.gen_ariane[0].i_ariane.i_cva6.commit_ack[0] == 1'b1);
+        $finish();
+    end
+
     // Memory initialisation
 
     initial begin
         integer file;
         integer error;
-        static string  mem_init_file = "main.hex";
-        static string  instr_init_file = "main_instr.hex";
-        static string  data_init_file = "main_data.hex";
+        static string mem_init_file = "main.hex";
 
         @(negedge rst);
         #2
 
-        //file = $fopen(mem_init_file, "r");
-        //$ferror(file, error);
-        //$fclose(file);
-        //if (error == 0) begin
-//        $readmemh(data_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h0000);
-//        $readmemh(instr_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h10_0000);
-        $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].i_tc_sram_wrapper.i_tc_sram.sram);
-        //end
+        `ifdef USE_XILINX_SRAM
+            $readmemh(mem_init_file, i_culsans.i_sram.i_tc_sram.gen_1_ports.i_xpm_memory_spram.xpm_memory_base_inst.mem);
+        `else
+            $readmemh(mem_init_file, i_culsans.i_sram.i_tc_sram.sram);
+        `endif
+
     end
 
     // DUT
@@ -73,7 +74,8 @@ module culsans_tb ();
     culsans_top #(
         .InclSimDTM (1'b0),
         .NUM_WORDS  (80*1024*1024), // 4Kwords
-        .BootAddress (culsans_pkg::DRAMBase + 64'h60000)
+        .BootAddress (culsans_pkg::DRAMBase + 64'h60000),
+        .ArianeCfg (culsans_pkg::ArianeFpgaSocCfg)
     ) i_culsans (
         .clk_i (clk),
         .rtc_i (rtc),

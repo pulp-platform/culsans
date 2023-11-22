@@ -7,14 +7,27 @@ LITMUS_BIN = $(LITMUS_SRC)/binaries
 
 RESULTS = ./results
 
-VSIM_FLAGS = -voptargs=+acc -t 1ns -64 -do test_automation/sim.tcl -suppress 12110 -lib $(VSIM_LIB)
-
 TEST ?= all
 
+VSIM_LIB      = ./work
+
+SIM_RUNTIME ?= 100ms
+SIM_TCL = sim.tcl
+
+VSIM_FLAGS += -voptargs=+acc
+VSIM_FLAGS += -t 1ns
+VSIM_FLAGS += -64
+VSIM_FLAGS += -suppress 12110
+
 GUI ?= 0
+
 ifeq ($(GUI), 0)
 	VSIM_FLAGS += -c
+	VSIM_CMD = -do "run $(SIM_RUNTIME);"
+else
+	VSIM_CMD = -do "source $(SIM_TCL); run $(SIM_RUNTIME);"
 endif
+
 
 $(RESULTS):
 	mkdir $(RESULTS)
@@ -48,13 +61,13 @@ run: $(RESULTS) rtl
 			ln -s $$t main.hex; \
 			echo "Test $$TESTNAME Allow" > uart.log; \
 			echo "Histogram" >> uart.log; \
-			$(VSIM) $(VSIM_FLAGS) $(TOP_LEVEL) > sim.log; \
+			$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(TOP_LEVEL)_optimized > sim.log; \
 			OUTFILE=$$TESTNAME.log && \
 			mv uart.log $(RESULTS)/$$OUTFILE; \
 			OUTFILE=$$TESTNAME_sim.log && \
 			mv sim.log $(RESULTS)/$$OUTFILE; \
 		done
-	rm $(HERD_EXP)
+	rm -f $(HERD_EXP)
 
 RUN_LOG = $(RESULTS)/run.log
 
@@ -83,15 +96,15 @@ $(RESULTS)/$(TEST).log: $(RESULTS) rtl
 			ln -s $(LITMUS_BIN)/$(TEST).hex main.hex; \
 			echo "Test $(TEST) Allow" > uart.log; \
 			echo "Histogram" >> uart.log; \
-			$(VSIM) $(VSIM_FLAGS) $(TOP_LEVEL) > sim.log; \
-      OUTFILE=$(TEST).log && \
+			$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(TOP_LEVEL)_optimized > sim.log; \
+    		OUTFILE=$(TEST).log && \
 			mv uart.log $(RESULTS)/$$OUTFILE; \
 			OUTFILE=$(TEST)_sim.log && \
 			mv sim.log $(RESULTS)/$$OUTFILE; \
 	else \
 		echo "ERROR: TEST $(TEST) doesn't exist"; \
 	fi
-	rm $(HERD_EXP)
+	rm -f $(HERD_EXP)
 
 run: $(RESULTS)/$(TEST).log
 
