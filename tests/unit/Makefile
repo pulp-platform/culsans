@@ -66,8 +66,8 @@ all: rtl tb
 else
 all: rtl
 	@if [ -d $(TESTS_DIR)/$(TEST) ]; then \
-		echo "Running test $$d"; \
-		@$(MAKE) --no-print-directory -C $(TESTS_DIR)/$(TEST) all; \
+		echo "Running test $(TESTS_DIR)/$(TEST)"; \
+		$(MAKE) --no-print-directory -C $(TESTS_DIR)/$(TEST) all; \
 	else \
 		echo "Test $(TEST) doesn't exist"; false; \
 	fi
@@ -103,7 +103,7 @@ rerun: rtl
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				echo "Running test $$d"; \
-				@$(MAKE) --no-print-directory -C $$d all; \
+				$(MAKE) --no-print-directory -C $$d all; \
 			fi; \
 		else \
 			echo "Running test $$d"; \
