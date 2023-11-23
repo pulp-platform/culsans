@@ -87,8 +87,8 @@ endif
 
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
-	rm -rf $(TEST_REPORT)
-	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee $(TEST_LOG)
+	@rm -rf $(TEST_REPORT)
+	@$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee $(TEST_LOG) > /dev/null
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
 ifeq ($(GUI), 0)
@@ -103,10 +103,10 @@ $(TEST_REPORT): main.riscv
 endif
 
 all: $(TEST_REPORT)
-	(! grep -n "Error:" $(TEST_REPORT))
-	(! grep -n "Fatal:" $(TEST_REPORT))
+	@(! grep -n -m 1 "Error:" $(TEST_REPORT))
+	@(! grep -n -m 1 "Fatal:" $(TEST_REPORT))
 
-clean:
+clean_test: clean
 	rm -rf objs
 	rm -rf main.riscv
 	rm -rf main.dis
@@ -122,4 +122,4 @@ clean:
 	rm -rf vsim.wlf
 	rm -rf ../../$(COVERAGE_DIR)/$(TESTNAME)*
 
-.PHONY: all gui sw dis sw clean $(TEST_REPORT)
+.PHONY: all gui sw dis sw clean_test $(TEST_REPORT)

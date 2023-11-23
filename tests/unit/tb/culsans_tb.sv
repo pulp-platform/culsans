@@ -414,7 +414,7 @@ module culsans_tb
 
             // force different AXI IDs for testbench purposes
             initial begin : FORCE_AXI_ID
-                logic axi_id_per_port = 0;
+                automatic logic axi_id_per_port = 0;
                 logic enable_axi_id_per_port;
                 if ($value$plusargs("ENABLE_AXI_ID_PER_PORT=%d", enable_axi_id_per_port)) begin
                     axi_id_per_port = enable_axi_id_per_port;

@@ -50,19 +50,24 @@ TEST ?= all
 # select a test for sanity
 sanity : TEST := read_miss
 sanity : rtl
-	make -C testlist/${TEST} all
+	@echo "Running test testlist/${TEST}"
+	@$(MAKE) --no-print-directory -C testlist/${TEST} all
 
 # run all the tests
 ifeq ($(TEST), all)
 all: rtl tb
-	@-for d in $(TESTLIST); do make -C $$d all; done
+	@-for d in $(TESTLIST); do \
+		echo "Running test $$d"; \
+		$(MAKE) --no-print-directory -C $$d all; \
+	done
 	@$(MAKE) status
 
 # run a single test
 else
 all: rtl
 	@if [ -d $(TESTS_DIR)/$(TEST) ]; then \
-		make -C $(TESTS_DIR)/$(TEST) all; \
+		echo "Running test $$d"; \
+		@$(MAKE) --no-print-directory -C $(TESTS_DIR)/$(TEST) all; \
 	else \
 		echo "Test $(TEST) doesn't exist"; false; \
 	fi
@@ -70,17 +75,26 @@ endif
 
 # run all tests expected to pass
 pass: rtl
-	@-for d in $(PASS_LIST); do make -C $$d all; done
+	@-for d in $(PASS_LIST); do \
+		echo "Running test $$d"; \
+		$(MAKE) --no-print-directory -C $$d all; \
+	done
 	@$(MAKE) status
 
 # run all tests expected to fail
 fail: rtl
-	@-for d in $(FAIL_LIST); do make -C $$d all; done
+	@-for d in $(FAIL_LIST); do \
+		echo "Running test $$d"; \
+		$(MAKE) --no-print-directory -C $$d all; \
+	done
 	@$(MAKE) status
 
 # run all tests expected to fail
 amo: rtl
-	@-for d in $(AMO_LIST); do make -C $$d all; done
+	@-for d in $(AMO_LIST); do \
+		echo "Running test $$d"; \
+		$(MAKE) --no-print-directory -C $$d all; \
+	done
 	@$(MAKE) status
 
 # run failed or not-executed tests
@@ -88,10 +102,12 @@ rerun: rtl
 	@-for d in $(TESTLIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
-				make -C $$d all; \
+				echo "Running test $$d"; \
+				@$(MAKE) --no-print-directory -C $$d all; \
 			fi; \
 		else \
-			make -C $$d all; \
+			echo "Running test $$d"; \
+			@$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
 	@$(MAKE) status
@@ -100,10 +116,12 @@ rerun_pass: rtl
 	@-for d in $(PASS_LIST); do \
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
-				make -C $$d all; \
+				echo "Running test $$d"; \
+				@$(MAKE) --no-print-directory -C $$d all; \
 			fi; \
 		else \
-			make -C $$d all; \
+			echo "Running test $$d"; \
+			@$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
 	@$(MAKE) status
@@ -140,7 +158,7 @@ report_coverage: $(MERGED_UCDB)
 
 # Cleanup
 clean_tests:
-	for d in $(TESTLIST); do make -C $$d clean; done
+	for d in $(TESTLIST); do $(MAKE) --no-print-directory -C $$d clean_test; done
 
 clean: clean_tests clean_rtl
 
