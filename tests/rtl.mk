@@ -90,6 +90,9 @@ TOP_LEVEL := culsans_tb
 VERILATOR_LIB = work_verilate
 DEFINES ?=
 
+HAS_LLC ?= 1
+DEFINES += TB_HAS_LLC=$(HAS_LLC)
+
 ifeq ($(USE_XILINX_SRAM), 1)
 	# overwrite the tc_sram definition
 	CULSANS_SRC += $(XILINX_VIVADO)/data/ip/xpm/xpm_memory/hdl/xpm_memory.sv
