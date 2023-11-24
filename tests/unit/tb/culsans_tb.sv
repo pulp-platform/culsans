@@ -1468,11 +1468,12 @@ module culsans_tb
 
                     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                     "amo_lr_sc_adjacent" : begin
-                        test_header(testname, "Verify that a write to a reserved address from the core that reserved it doesn't invalidate the reservation.\nThis bug triggers issue https://github.com/pulp-platform/axi_riscv_atomics/issues/30");
+                        test_header(testname, "Verify that a write to a cacheline next to a reserved address doesn't invalidate the reservation.");
 
                         rep_cnt = 10;
 
                         for (int i=0; i<rep_cnt; i++) begin
+                            int offset;
                             addr = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(32,1) * 16;
 
                             // write known data to target address
@@ -1484,13 +1485,15 @@ module culsans_tb
                             amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
                             `WAIT_CYC(clk, 100)
 
-                            // Other core writes to the cacheline below target
-                            dcache_drv[cid2][2].wr(.addr(addr-16), .rand_data(1));
+                            offset = $urandom_range(1) ? 16 : -16;
+
+                            // Other core writes to the cacheline next to target
+                            dcache_drv[cid2][2].wr(.addr(addr+offset), .rand_data(1));
                             `WAIT_CYC(clk, 100)
 
                             // read other addresses mapped to the same cache set, forcing evacuation
                             for (int i=0; i<16; i++) begin
-                                dcache_drv[cid2][1].rd(.addr(addr-16 + (i << DCACHE_INDEX_WIDTH)));
+                                dcache_drv[cid2][1].rd(.addr(addr+offset + (i << DCACHE_INDEX_WIDTH)));
                             end
 
                             // store-conditional to the target, expect success
