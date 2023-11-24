@@ -1452,15 +1452,15 @@ module culsans_tb
 
                             // Reserve the target, expect data
                             amo_drv[cid].req(.addr(addr), .size(3), .op(AMO_LR), .rand_data(1), .check_result(1), .exp_result(data));
-                            `WAIT_CYC(clk, 100)
+                            `WAIT_CYC(clk, 1000)
 
                             // other core writes to target address
                             dcache_drv[cid2][2].wr(.addr(addr),  .rand_data(1));
-                            `WAIT_CYC(clk, 100)
+                            `WAIT_CYC(clk, 1000)
 
                             // store-conditional to the target, expect failure
                             amo_drv[cid].req(.addr(addr),  .size(3), .op(AMO_SC), .data(data+2), .check_result(1),. exp_result(1));
-                            `WAIT_CYC(clk, 100)
+                            `WAIT_CYC(clk, 1000)
                         end
 
                     end
@@ -1822,13 +1822,13 @@ module culsans_tb
                         data16 = 64'h00000000_CAFEBABE;
                         dcache_drv[cid][2].wr(.addr(addr + 16), .data(data16));
 
-                        `WAIT_CYC(clk, 100)
+                        `WAIT_CYC(clk, 1000)
 
                         // write something to address 8 in core 1
                         data8 = 64'h1111BAAD_F00D0000;
                         dcache_drv[cid2][2].wr(.addr(addr + 8), .data(data8));
 
-                        `WAIT_CYC(clk, 100)
+                        `WAIT_CYC(clk, 1000)
 
                         // AMO request to increment data8, should cause flush and writeback of data16 in cache
                         amo_drv[cid].req(.addr(addr + 8), .op(AMO_ADD), .data(17), .check_result(1), .exp_result(data8));

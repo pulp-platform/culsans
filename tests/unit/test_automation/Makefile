@@ -103,8 +103,8 @@ $(TEST_REPORT): main.riscv
 endif
 
 all: $(TEST_REPORT)
-	@(! grep -n -m 1 "Error:" $(TEST_REPORT))
-	@(! grep -n -m 1 "Fatal:" $(TEST_REPORT))
+	@(! grep -s -n -m 1 "Error:" $(TEST_REPORT))
+	@(! grep -s -n -m 1 "Fatal:" $(TEST_REPORT))
 
 clean_test: clean
 	rm -rf objs
