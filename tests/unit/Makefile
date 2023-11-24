@@ -8,10 +8,7 @@ TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
 # List known failing tests
 FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PROJ-147
-FAIL_LIST += $(TESTS_DIR)/amo_lr_sc/
-FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_adjacent/
-FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/
-
+FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/             # Triggers Jira Issue PROJ-274
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
 # other sets
@@ -107,7 +104,7 @@ rerun: rtl
 			fi; \
 		else \
 			echo "Running test $$d"; \
-			@$(MAKE) --no-print-directory -C $$d all; \
+			$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
 	@$(MAKE) status
@@ -117,11 +114,11 @@ rerun_pass: rtl
 		if [ -e $$d/$(TEST_REPORT) ]; then \
 			if grep -q -E "Error|Fatal" $$d/$(TEST_REPORT) ; then \
 				echo "Running test $$d"; \
-				@$(MAKE) --no-print-directory -C $$d all; \
+				$(MAKE) --no-print-directory -C $$d all; \
 			fi; \
 		else \
 			echo "Running test $$d"; \
-			@$(MAKE) --no-print-directory -C $$d all; \
+			$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
 	@$(MAKE) status
