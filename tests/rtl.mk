@@ -93,6 +93,9 @@ DEFINES ?=
 HAS_LLC ?= 1
 DEFINES += TB_HAS_LLC=$(HAS_LLC)
 
+# use visualizer as GUI backend for Questa
+USE_VISUALIZER ?= 0
+
 ifeq ($(USE_XILINX_SRAM), 1)
 	# overwrite the tc_sram definition
 	CULSANS_SRC += $(XILINX_VIVADO)/data/ip/xpm/xpm_memory/hdl/xpm_memory.sv
@@ -121,7 +124,17 @@ ifneq ($(COVER), 0)
 	endif
 	VOPT_FLAGS += -coveropt 1
 endif
-# why is this needed?
+
+# add access if running GUI
+ifeq ($(GUI), 1)
+    ifeq ($(USE_VISUALIZER), 1)
+        VOPT_FLAGS += -access=rw+/.
+        VOPT_FLAGS += -cellaccess=rw+/.
+        VOPT_FLAGS += -debug,cell
+        VOPT_FLAGS += -designfile $(library)/design.bin
+    endif
+endif
+# this is still needed due to coding style in stream_xbar.sv
 VOPT_FLAGS += +acc
 
 verilate_command := $(verilator) $(CVA6_DIR)/verilator_config.vlt                                                \

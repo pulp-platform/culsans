@@ -61,6 +61,8 @@ VSIM_FLAGS += +ENABLE_MEM_CHECK=$(ENABLE_MEM_CHECK)
 VSIM_FLAGS += +ENABLE_ICACHE_RANDOM_GEN=$(ENABLE_ICACHE_RANDOM_GEN)
 VSIM_FLAGS += +ENABLE_AXI_ID_PER_PORT=$(ENABLE_AXI_ID_PER_PORT)
 VSIM_FLAGS += -sv_seed $(SEED)
+# allow adding log in QIS mode
+#VSIM_FLAGS += -suppress 12130
 # allow calling tasks in final procedure
 VSIM_FLAGS += -suppress 2879
 # allow declaring a virtual interface without a matching instance of the real interface
@@ -81,6 +83,10 @@ else
 		$(error GUI must be 0 or 1)
 	else
 		GTKWAVE_CMD = gtkwave waveform.vcd
+	endif
+    ifeq ($(USE_VISUALIZER), 1)
+		VSIM_FLAGS += -qwavedb=+signal+memory+assertion+cell+class
+		VSIM_FLAGS += -visualizer=$(VSIM_LIB)/design.bin
 	endif
 	VSIM_CMD = -do "source $(SIM_TCL); run $(SIM_RUNTIME);"
 endif
@@ -121,5 +127,7 @@ clean_test: clean
 	rm -rf axi_log/
 	rm -rf vsim.wlf
 	rm -rf ../../$(COVERAGE_DIR)/$(TESTNAME)*
+	rm -rf .visualizer
+	rm -rf qwave.db
 
 .PHONY: all gui sw dis sw clean_test $(TEST_REPORT)
