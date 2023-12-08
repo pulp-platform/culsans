@@ -112,7 +112,7 @@ all: $(TEST_REPORT)
 	@(! grep -s -n -m 1 "Error:" $(TEST_REPORT))
 	@(! grep -s -n -m 1 "Fatal:" $(TEST_REPORT))
 
-clean_test: clean
+clean_test:
 	rm -rf objs
 	rm -rf main.riscv
 	rm -rf main.dis

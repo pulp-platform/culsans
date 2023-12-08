@@ -49,10 +49,10 @@ libs/libintegr.a: $(OBJS) libs
 	$(RV_AR) -rcs $@ $(OBJS)
 
 sw : libs/libintegr.a nb_cores
-	for d in $(TESTLIST); do make -C $$d sw; done
+	for d in $(TESTLIST); do $(MAKE) --no-print-directory -C $$d sw; done
 
 sw_all : libs/libintegr.a nb_cores
-	for d in $(TESTLIST); do make -C $$d all; done
+	for d in $(TESTLIST); do $(MAKE) --no-print-directory -C $$d all; done
 
 
 # Run the test(s)
@@ -62,11 +62,20 @@ TEST ?= all
 # run all the tests
 ifeq ($(TEST), all)
 all: sw rtl
-	for d in $(TESTLIST); do make -C $$d all; done
+	@for d in $(TESTLIST); do \
+		echo "Running test $$d"; \
+		$(MAKE) --no-print-directory -C $$d all; \
+	done
 # run a single test
 else
 all: sw rtl
-	if [ -d $(TESTS_DIR)/$(TEST) ]; then make -C $(TESTS_DIR)/$(TEST) all; else echo "$(TEST) doesn't exist"; false; fi
+	@if [ -d $(TESTS_DIR)/$(TEST) ]; then \
+		echo "Running test $(TESTS_DIR)/$(TEST)"; \
+		$(MAKE) --no-print-directory -C $(TESTS_DIR)/$(TEST) all; \
+	else \
+		echo "$(TEST) doesn't exist"; \
+		false; \
+	fi
 endif
 
 # run failed or not-executed tests
@@ -88,7 +97,7 @@ clean_sw:
 	rm -rf libs
 
 clean_tests:
-	for d in $(TESTLIST); do make -C $$d clean; done
+	for d in $(TESTLIST); do make -C $$d clean_test; done
 
 clean: clean_sw clean_rtl clean_tests
 
