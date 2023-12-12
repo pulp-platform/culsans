@@ -45,6 +45,7 @@ module culsans_tb
     // TB interfaces
     amo_intf                amo_if           [NB_CORES]               (clk);
     dcache_intf             dcache_if        [NB_CORES][DCACHE_PORTS] (clk);
+    icache_intf             icache_if        [NB_CORES]               (clk);
     dcache_sram_if          dc_sram_if       [NB_CORES]               (clk);
     dcache_gnt_if           gnt_if           [NB_CORES]               (clk);
     dcache_mgmt_intf        mgmt_if          [NB_CORES]               (clk);

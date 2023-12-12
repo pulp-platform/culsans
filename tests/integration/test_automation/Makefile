@@ -73,8 +73,8 @@ endif
 
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT): main.hex
-	rm -rf $(TEST_REPORT)
-	$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee sim.log
+	@rm -rf $(TEST_REPORT)
+	@$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee sim.log > /dev/null
 	@if [[ "$$PWD" =~ integration ]]; then \
 		if [ -f test.yaml ]; then \
 			python3.6 ../../test_automation/testParser.py; \
@@ -91,12 +91,12 @@ endif
 
 all: $(TEST_REPORT)
 	@cat $(TEST_REPORT)
-	(! grep -q -n "Error:" $(TEST_REPORT))
-	(! grep -q -n "Fatal:" $(TEST_REPORT))
-	(! grep -q -n "FAIL" $(TEST_REPORT))
+	@(! grep -s -n -m 1 "Error:" $(TEST_REPORT))
+	@(! grep -s -n -m 1 "Fatal:" $(TEST_REPORT))
+	@(! grep -s -n -m 1 "FAIL" $(TEST_REPORT))
 
 
-clean:
+clean_test:
 	rm -rf objs
 	rm -rf main.riscv
 	rm -rf main.dis
@@ -111,4 +111,4 @@ clean:
 	rm -rf axi_log/
 	rm -rf ../../$(COVERAGE_DIR)/$(TESTNAME)*
 
-.PHONY: all gui sw dis sw clean
+.PHONY: all gui sw dis sw clean_test

@@ -152,12 +152,14 @@ module culsans_xilinx (
   input  logic        rx          ,
   output logic        tx
 );
+localparam HasLLC = 1'b1;
+
 // 24 MByte in 8 byte words
 localparam NumWords = (24 * 1024 * 1024) / 8;
-localparam NBSlave = 2; // debug, CCU_to_xbar
 localparam AxiAddrWidth = 64;
 localparam AxiDataWidth = 64;
-localparam AxiIdWidthSlaves = culsans_pkg::IdWidthToXbar + $clog2(NBSlave);
+localparam AxiIdWidthSlaves = culsans_pkg::IdWidthSlave;
+localparam AxiIdWidthDram = HasLLC ? AxiIdWidthSlaves + 1 : AxiIdWidthSlaves;
 localparam AxiUserWidth = ariane_pkg::AXI_USER_WIDTH;
 localparam ariane_pkg::ariane_cfg_t ArianeCfg = culsans_pkg::ArianeFpgaSocCfg;
 
@@ -173,7 +175,7 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( culsans_pkg::IdWidthToXbar ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) to_xbar[NBSlave-1:0]();
+) to_xbar[culsans_pkg::NrSlaves-1:0]();
 
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
@@ -244,7 +246,7 @@ logic dmactive;
 logic [culsans_pkg::NumTargets-1:0] irq;
 assign test_en    = 1'b0;
 
-logic [NBSlave-1:0] pc_asserted;
+logic [culsans_pkg::NrSlaves-1:0] pc_asserted;
 
 rstgen i_rstgen_main (
     .clk_i        ( clk                      ),
@@ -277,7 +279,7 @@ assign addr_map = '{
 };
 
 localparam axi_pkg::xbar_cfg_t AXI_XBAR_CFG = '{
-  NoSlvPorts:         NBSlave,
+  NoSlvPorts:         culsans_pkg::NrSlaves,
   NoMstPorts:         culsans_pkg::NB_PERIPHERALS,
   MaxMstTrans:        1, // Probably requires update
   MaxSlvTrans:        1, // Probably requires update
@@ -386,10 +388,10 @@ dm_top #(
 );
 
 axi2mem #(
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves    ),
-    .AXI_ADDR_WIDTH ( riscv::XLEN        ),
-    .AXI_DATA_WIDTH ( riscv::XLEN        ),
-    .AXI_USER_WIDTH ( AxiUserWidth        )
+    .AXI_ID_WIDTH   ( AxiIdWidthSlaves ),
+    .AXI_ADDR_WIDTH ( riscv::XLEN      ),
+    .AXI_DATA_WIDTH ( riscv::XLEN      ),
+    .AXI_USER_WIDTH ( AxiUserWidth     )
 ) i_dm_axi2mem (
     .clk_i      ( clk                       ),
     .rst_ni     ( rst_n                     ),
@@ -937,7 +939,7 @@ ariane_peripherals #(
 // ---------------
 // DDR
 // ---------------
-logic [AxiIdWidthSlaves:0]   s_axi_awid;
+logic [AxiIdWidthDram-1:0]   s_axi_awid;
 logic [AxiAddrWidth-1:0]     s_axi_awaddr;
 logic [7:0]                  s_axi_awlen;
 logic [2:0]                  s_axi_awsize;
@@ -954,11 +956,11 @@ logic [AxiDataWidth/8-1:0]   s_axi_wstrb;
 logic                        s_axi_wlast;
 logic                        s_axi_wvalid;
 logic                        s_axi_wready;
-logic [AxiIdWidthSlaves:0]   s_axi_bid;
+logic [AxiIdWidthDram-1:0]   s_axi_bid;
 logic [1:0]                  s_axi_bresp;
 logic                        s_axi_bvalid;
 logic                        s_axi_bready;
-logic [AxiIdWidthSlaves:0]   s_axi_arid;
+logic [AxiIdWidthDram-1:0]   s_axi_arid;
 logic [AxiAddrWidth-1:0]     s_axi_araddr;
 logic [7:0]                  s_axi_arlen;
 logic [2:0]                  s_axi_arsize;
@@ -970,7 +972,7 @@ logic [3:0]                  s_axi_arregion;
 logic [3:0]                  s_axi_arqos;
 logic                        s_axi_arvalid;
 logic                        s_axi_arready;
-logic [AxiIdWidthSlaves:0]   s_axi_rid;
+logic [AxiIdWidthDram-1:0]   s_axi_rid;
 logic [AxiDataWidth-1:0]     s_axi_rdata;
 logic [1:0]                  s_axi_rresp;
 logic                        s_axi_rlast;
@@ -978,10 +980,10 @@ logic                        s_axi_rvalid;
 logic                        s_axi_rready;
 
 AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthSlaves+1 ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
+    .AXI_ADDR_WIDTH ( AxiAddrWidth   ),
+    .AXI_DATA_WIDTH ( AxiDataWidth   ),
+    .AXI_ID_WIDTH   ( AxiIdWidthDram ),
+    .AXI_USER_WIDTH ( AxiUserWidth   )
 ) dram();
 
 AXI_BUS #(
@@ -1011,13 +1013,17 @@ axi_riscv_atomics_wrap #(
     .mst    ( to_llc                    )
 );
 
-localparam int unsigned   AxiStrbWidth = AxiDataWidth / 32'd8;
-typedef logic [AxiIdWidthSlaves-1:0]     axi_slv_id_t;
-typedef logic [AxiIdWidthSlaves:0]       axi_mst_id_t;
-typedef logic [AxiAddrWidth-1:0]   axi_addr_t;
-typedef logic [AxiDataWidth-1:0]   axi_data_t;
-typedef logic [AxiStrbWidth-1:0]   axi_strb_t;
-typedef logic [AxiUserWidth-1:0]   axi_user_t;
+if (HasLLC) begin : LLC
+
+// LLC
+localparam int unsigned AxiStrbWidth = AxiDataWidth / 32'd8;
+
+typedef logic [AxiIdWidthSlaves-1:0] axi_slv_id_t;
+typedef logic [AxiIdWidthDram-1:0]   axi_mst_id_t;
+typedef logic [AxiAddrWidth-1:0]     axi_addr_t;
+typedef logic [AxiDataWidth-1:0]     axi_data_t;
+typedef logic [AxiStrbWidth-1:0]     axi_strb_t;
+typedef logic [AxiUserWidth-1:0]     axi_user_t;
 
 `AXI_TYPEDEF_AW_CHAN_T(axi_slv_aw_t, axi_addr_t, axi_slv_id_t, axi_user_t)
 `AXI_TYPEDEF_AW_CHAN_T(axi_mst_aw_t, axi_addr_t, axi_mst_id_t, axi_user_t)
@@ -1092,6 +1098,11 @@ axi_llc_reg_wrap #(
    .spm_start_addr_i    ( SpmRegionStart                             ),
    .axi_llc_events_o    ( llc_events                                 )
 );
+
+end else begin : NO_LLC
+    // No LLC
+    `AXI_ASSIGN(dram, to_llc)
+end
 
 `ifdef PROTOCOL_CHECKER
 logic pc_status;
