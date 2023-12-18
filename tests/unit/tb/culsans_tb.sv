@@ -1931,11 +1931,22 @@ module culsans_tb
                                     begin
                                         for (int i=0; i<rep_cnt; i++) begin
                                             automatic int offset [3];
+                                            automatic int word_size, byte_cnt;
+                                            automatic logic [7:0] be;
+                                            word_size = $urandom_range(3);
+                                            byte_cnt = 2**word_size;
+
+                                            case (word_size)
+                                                0 : be = 8'b00000001;
+                                                1 : be = 8'b00000011;
+                                                2 : be = 8'b00001111;
+                                                3 : be = 8'b11111111;
+                                            endcase
+
                                             for (int p=0; p<3; p++) begin
                                                 automatic bit hit;
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
-                                                // Only use 8-byte aligned addresses to make final comparison less complex
                                                 hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
@@ -1944,7 +1955,7 @@ module culsans_tb
                                                         "random_non-shared" : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                                     endcase
 
-                                                    offset[p] = (offset[p] / 8) * 8;
+                                                    offset[p] = (offset[p] / byte_cnt) * byte_cnt;
 
                                                 end while ((p == 2) && ((offset[2] == offset[1]) ||
                                                                         (offset[2] == offset[0])));
@@ -1953,15 +1964,17 @@ module culsans_tb
                                             for (int p=0; p<3; p++) begin
                                                 fork
                                                     automatic int port = p;
+                                                    automatic logic [7:0] be_shift;
                                                     begin
+                                                        be_shift = be << (offset[port] % 8);
                                                         // add none or a few cycles between requests
                                                         `WAIT_CYC(clk, $urandom_range(4,0));
                                                         // submit a request on each port with a probability
                                                         if ($urandom_range(100) > 50) begin
                                                             if (port == 2) begin
-                                                                dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]), .rand_size_be(1));
+                                                                dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .rand_data(1), .size(word_size), .be(be_shift));
                                                             end else begin
-                                                                dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset[port]), .rand_size_be(1));
+                                                                dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset[port]), .size(word_size), .be(be_shift));
                                                             end
                                                         end
                                                     end
@@ -2016,19 +2029,30 @@ module culsans_tb
                             cache_scbd[c].set_snoop_msg_timeout(wait_time);
                         end
 
-
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
                             for (int c=0; c < NB_CORES; c++) begin
                                 fork
                                     automatic int cc = c;
                                     begin
                                         for (int i=0; i<rep_cnt; i++) begin
-                                            automatic int offset [3];
-                                            for (int p=0; p<3; p++) begin
+                                            automatic int offset [4];
+                                            automatic int word_size, byte_cnt;
+                                            automatic logic [7:0] be;
+                                            word_size = $urandom_range(3);
+                                            byte_cnt = 2**word_size;
+
+                                            case (word_size)
+                                                0 : be = 8'b00000001;
+                                                1 : be = 8'b00000011;
+                                                2 : be = 8'b00001111;
+                                                3 : be = 8'b11111111;
+                                            endcase
+
+
+                                            for (int p=0; p<4; p++) begin
                                                 automatic bit hit;
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
-                                                // Only use 8-byte aligned addresses to make final comparison less complex
                                                 hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
@@ -2037,36 +2061,48 @@ module culsans_tb
                                                         "random_non-shared_amo" : offset[p] = hit ? $urandom_range(64) + $urandom_range(1) * DCACHE_INDEX_DIST : $urandom_range(ArianeCfg.SharedRegionAddrBase[0] - base_addr); // don't enter the shared region
                                                     endcase
 
-                                                    offset[p] = (offset[p] / 8) * 8;
+                                                    offset[p] = (offset[p] / byte_cnt) * byte_cnt;
 
                                                 end while ((p == 2) && ((offset[2] == offset[1]) ||
                                                                         (offset[2] == offset[0])));
                                             end
 
-                                            // submit requests, or possibly an AMO
-                                            if ($urandom_range(100) > 99) begin
-                                                amo_drv[cc].req(.addr(base_addr+offset[0]), .rand_op(1),. rand_data(1));
-                                            end else begin
-                                                for (int p=0; p<3; p++) begin
-                                                    fork
-                                                        automatic int port = p;
-                                                        begin
-                                                            // add none or a few cycles between requests
-                                                            `WAIT_CYC(clk, $urandom_range(4,0));
+                                            // submit requests and possibly an AMO
+                                            for (int p=0; p<4; p++) begin
+                                                fork
+                                                    automatic int port = p;
+                                                    begin
+                                                        // add none or a few cycles between requests
+                                                        `WAIT_CYC(clk, $urandom_range(4,0));
+
+                                                        if (port < 3) begin
                                                             // submit a request on each port with a probability
+                                                            automatic logic [7:0] be_shift;
+                                                            be_shift = be << (offset[port] % 8);
                                                             if ($urandom_range(100) > 50) begin
                                                                 if (port == 2) begin
-                                                                    dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]), .rand_size_be(1));
+                                                                    dcache_drv[cc][2].wr(.addr(base_addr + offset[port]), .rand_data(1), .size(word_size), .be(be_shift));
                                                                 end else begin
-                                                                    dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset[port]), .rand_size_be(1));
+                                                                    dcache_drv[cc][port].rd(.do_wait(1), .addr(base_addr + offset[port]), .size(word_size), .be(be_shift));
                                                                 end
+                                                            end
+                                                        end else begin
+                                                            // port 3 is AMO
+                                                            if ($urandom_range(100) > 80) begin
+                                                                automatic int amo_offset;
+                                                                automatic int amo_word_size, amo_byte_cnt;
 
+                                                                amo_word_size = $urandom_range(2,3);
+                                                                amo_byte_cnt = 2**amo_word_size;
+                                                                amo_offset = (offset[port] / amo_byte_cnt) * amo_byte_cnt; // AMOs are always aligned with word width
+
+                                                                amo_drv[cc].req(.addr(base_addr+amo_offset), .rand_op(1),. rand_data(1), .size(amo_word_size));
                                                             end
                                                         end
-                                                    join_none
-                                                end
-                                                wait fork;
+                                                    end
+                                                join_none
                                             end
+                                            wait fork;
                                         end
                                     end
                                 join_none
@@ -2164,14 +2200,26 @@ module culsans_tb
                                     automatic int cc = c;
                                     begin
                                         for (int i=0; i<rep_cnt; i++) begin
-                                            automatic int               offset [3];
-                                            automatic logic [2:0][63:0] baddr;
-                                            for (int p=0; p<3; p++) begin
+                                            automatic logic [3:0][63:0] baddr;
+                                            automatic int               offset [4];
+                                            automatic int               word_size, byte_cnt;
+                                            automatic logic       [7:0] be;
+                                            word_size = $urandom_range(3);
+                                            byte_cnt = 2**word_size;
+
+                                            case (word_size)
+                                                0 : be = 8'b00000001;
+                                                1 : be = 8'b00000011;
+                                                2 : be = 8'b00001111;
+                                                3 : be = 8'b11111111;
+                                            endcase
+
+
+                                            for (int p=0; p<4; p++) begin
                                                 automatic bit hit;
                                                 automatic int addr_region;
                                                 // Randomize address, make sure write address is different from read addresses.
                                                 // This emulates to some extent how the core schedules requests.
-                                                // Only use 8-byte aligned addresses to make final comparison less complex
                                                 hit = $urandom_range(1); // increase the chance of address being inside a narrow range to get more hits
                                                 do begin
                                                     case (testname)
@@ -2196,24 +2244,44 @@ module culsans_tb
                                                         end
                                                     endcase
 
-                                                    offset[p] = (offset[p] / 8) * 8;
+                                                    offset[p] = (offset[p] / byte_cnt) * byte_cnt;
 
                                                 end while ((p == 2) && ((offset[2] == offset[1]) ||
                                                                         (offset[2] == offset[0])));
                                             end
 
-                                            for (int p=0; p<3; p++) begin
+                                            for (int p=0; p<4; p++) begin
                                                 fork
                                                     automatic int port = p;
                                                     begin
                                                         // add none or a few cycles between requests
                                                         `WAIT_CYC(clk, $urandom_range(4,0));
-                                                        // submit a request on each port with a probability
-                                                        if ($urandom_range(100) > 50) begin
-                                                            if (port == 2) begin
-                                                                dcache_drv[cc][2].wr(.addr(baddr[port] + offset[port]), .data(64'hBEEFCAFE00000000 + offset[port]), .rand_size_be(1));
-                                                            end else begin
-                                                                dcache_drv[cc][port].rd(.do_wait(1), .addr(baddr[port] + offset[port]), .rand_size_be(1));
+
+
+
+                                                        if (port < 3) begin
+                                                            automatic logic [7:0] be_shift;
+                                                            be_shift = be << (offset[port] % 8);
+
+                                                            // submit a request on each port with a probability
+                                                            if ($urandom_range(100) > 50) begin
+                                                                if (port == 2) begin
+                                                                    dcache_drv[cc][2].wr(.addr(baddr[port] + offset[port]), .rand_data(1), .size(word_size), .be(be_shift));
+                                                                end else begin
+                                                                    dcache_drv[cc][port].rd(.do_wait(1), .addr(baddr[port] + offset[port]), .size(word_size), .be(be_shift));
+                                                                end
+                                                            end
+                                                        end else begin
+                                                            // port 3 is AMO
+                                                            if ($urandom_range(100) > 80) begin
+                                                                automatic int amo_offset;
+                                                                automatic int amo_word_size, amo_byte_cnt;
+
+                                                                amo_word_size = $urandom_range(2,3);
+                                                                amo_byte_cnt = 2**amo_word_size;
+                                                                amo_offset = (offset[port] / amo_byte_cnt) * amo_byte_cnt; // AMOs are always aligned with word width
+
+                                                                amo_drv[cc].req(.addr(baddr[port]+amo_offset), .rand_op(1),. rand_data(1), .size(amo_word_size));
                                                             end
                                                         end
                                                     end
