@@ -3,12 +3,29 @@ include ../rtl.mk
 # add dummy version of cva6 for injecting cache requests from test bench drivers
 CVA6_TEST += $(CVA6_DIR)/corev_apu/tb/tb_std_cache_subsystem/hdl/cva6_cache_dummy.sv
 
+# create list of available tests
 TESTS_DIR = ./testlist
 TESTLIST := $(dir $(wildcard $(TESTS_DIR)/*/.))
 
-# List known failing tests
-FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/ # Triggers Jira Issue PROJ-147
-FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/             # Triggers Jira Issue PROJ-274
+# avoid triggering known bugs
+AVOID_BUG_147  = 0    # Jira ticket https://planv.atlassian.net/browse/PROJ-147
+AVOID_BUG_274  = 0    # Jira ticket https://planv.atlassian.net/browse/PROJ-274
+
+AVOID_BUG_ALL ?= 1
+ifeq ($(AVOID_BUG_ALL), 1)
+    AVOID_BUG_147 = 1
+    AVOID_BUG_274 = 1
+endif
+
+FAIL_LIST = ""
+ifeq ($(AVOID_BUG_147), 1)
+	FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/
+endif
+
+ifeq ($(AVOID_BUG_274), 1)
+	FAIL_LIST += $(TESTS_DIR)/amo_lr_sc_single/
+endif
+
 PASS_LIST = $(filter-out $(FAIL_LIST), $(TESTLIST))
 
 # other sets
