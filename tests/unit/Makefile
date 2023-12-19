@@ -103,6 +103,12 @@ fail: rtl
 	done
 	@$(MAKE) status
 
+# clean all tests expected to fail
+clean_fail:
+	@-for d in $(FAIL_LIST); do \
+		$(MAKE) --no-print-directory -C $$d clean_test; \
+	done
+
 # run all tests expected to fail
 amo: rtl
 	@-for d in $(AMO_LIST); do \
@@ -176,4 +182,4 @@ clean_tests:
 
 clean: clean_tests clean_rtl
 
-.PHONY: all pass fail rerun status list_tests clean_tests clean report_coverage
+.PHONY: all pass fail rerun status list_tests clean_tests clean report_coverage clean_fail
