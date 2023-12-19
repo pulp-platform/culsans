@@ -17,7 +17,7 @@ ifeq ($(AVOID_BUG_ALL), 1)
     AVOID_BUG_274 = 1
 endif
 
-FAIL_LIST = ""
+FAIL_LIST =
 ifeq ($(AVOID_BUG_147), 1)
 	FAIL_LIST += $(TESTS_DIR)/read_two_writes_back_to_back/
 endif
@@ -74,7 +74,7 @@ all: rtl tb
 		echo "Running test $$d"; \
 		$(MAKE) --no-print-directory -C $$d all; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 # run a single test
 else
@@ -93,7 +93,7 @@ pass: rtl
 		echo "Running test $$d"; \
 		$(MAKE) --no-print-directory -C $$d all; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 # run all tests expected to fail
 fail: rtl
@@ -101,11 +101,12 @@ fail: rtl
 		echo "Running test $$d"; \
 		$(MAKE) --no-print-directory -C $$d all; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 # clean all tests expected to fail
 clean_fail:
 	@-for d in $(FAIL_LIST); do \
+		echo "Cleaning test $$d"; \
 		$(MAKE) --no-print-directory -C $$d clean_test; \
 	done
 
@@ -115,7 +116,7 @@ amo: rtl
 		echo "Running test $$d"; \
 		$(MAKE) --no-print-directory -C $$d all; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 # run failed or not-executed tests
 rerun: rtl
@@ -130,7 +131,7 @@ rerun: rtl
 			$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 rerun_pass: rtl
 	@-for d in $(PASS_LIST); do \
@@ -144,7 +145,7 @@ rerun_pass: rtl
 			$(MAKE) --no-print-directory -C $$d all; \
 		fi; \
 	done
-	@$(MAKE) status
+	@$(MAKE) --no-print-directory status
 
 # list status
 status:
