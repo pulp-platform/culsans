@@ -9,18 +9,13 @@ Overview
 
 Test
 
+.. _culsans_tb_img:
 
 .. figure:: _static/images/culsans_unit_tb.drawio.png
     :alt: Culsans unit test bench
 
-    This is a caption
+    Link me!
 
-.. figure:: _static/images/culsans_unit_tb.drawio.svg
-    :alt: Culsans unit test bench
-
-    This is a caption too
-
-.. raw:: xml
-  :file: _static/images/culsans_unit_tb.drawio
+Make a reference to figure here :numref:`culsans_tb_img`.
 
 
