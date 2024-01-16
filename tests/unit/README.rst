@@ -9,13 +9,26 @@ Overview
 
 Test
 
-.. _culsans_tb_img:
-
 .. figure:: _static/images/culsans_unit_tb.drawio.png
     :alt: Culsans unit test bench
 
-    Link me!
+    Caption
 
-Make a reference to figure here :numref:`culsans_tb_img`.
+Not a caption
+
+
+
+
++-------+--------+
+| jonas | Niklas |
++=======+========+
+| hej   | daaa   |
++-------+--------+
+| hej   | daaa   |
++-------+--------+
+
+
+
+
 
 
