@@ -10,8 +10,17 @@ Overview
 Test
 
 
-.. image:: _static/culsans_unit_tb.drawio.png
+.. figure:: _static/images/culsans_unit_tb.drawio.png
     :alt: Culsans unit test bench
 
-.. raw:: html
-  :file: _static/culsans_unit_tb.drawio.svg
+    This is a caption
+
+.. figure:: _static/images/culsans_unit_tb.drawio.svg
+    :alt: Culsans unit test bench
+
+    This is a caption too
+
+.. raw:: xml
+  :file: _static/images/culsans_unit_tb.drawio
+
+
