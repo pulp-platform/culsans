@@ -28,6 +28,9 @@ This is a link to the Overview: :ref:`ov`
 
 `Link text <./test.rst>`_
 
+`tb_std_cache_subsystem <../../modules/cva6/corev_apu/tb/tb_std_cache_subsystem/README.rst>`_
+
+
 
 .. _ov:
 
