@@ -15,6 +15,9 @@ and scoreboards are active to verify the behaviour.
     Culsans unit test bench
 
 
+.. include:: ../../modules/cva6/corev_apu/tb/tb_std_cache_subsystem/README.rst
+
+
 
 
 Overview
