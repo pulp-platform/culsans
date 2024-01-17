@@ -1,7 +1,20 @@
-Culsans unit test bench
+Culsans Unit Test Bench
 ================================================================================
 
-Test
+The Culsans Unit Test Bench verifies the coherency functionality of a system
+with two or more CVA6 cores connected with a coherency interconnect. The test bench
+uses a modified version of the CVA6 core with everything except the cache subsystem
+stripped away.
+
+The test bench applies stimuli directly to the cache CPU ports. Several monitors 
+and scoreboards are active to verify the behaviour.
+
+.. figure:: _static/images/culsans_unit_tb.png
+    :alt: Culsans unit test bench
+
+    Culsans unit test bench
+
+
 
 
 Overview
@@ -9,26 +22,16 @@ Overview
 
 Test
 
-.. figure:: _static/images/culsans_unit_tb.drawio.png
-    :alt: Culsans unit test bench
-
-    Caption
 
 Not a caption
 
+.. table:: List of people
 
-
-
-+-------+--------+
-| jonas | Niklas |
-+=======+========+
-| hej   | daaa   |
-+-------+--------+
-| hej   | daaa   |
-+-------+--------+
-
-
-
-
-
+    +-------+--------+
+    | jonas | Niklas |
+    +=======+========+
+    | hej   | daaa   |
+    +-------+--------+
+    | hej   | daaa   |
+    +-------+--------+
 
