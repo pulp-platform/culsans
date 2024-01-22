@@ -7,19 +7,19 @@ VERILATE ?= 0
 ifeq ($(TEST), all)
 	TEST_SELECT := all
 else
-	TEST_SELECT := run TEST=$(TEST)
+	TEST_SELECT := all TEST=$(TEST)
 endif
 
 # Test execution
 
 unit:
-	echo make -C unit VERILATE=$(VERILATE) $(TEST_SELECT)
+	$(MAKE) -C unit VERILATE=$(VERILATE) $(TEST_SELECT)
 
 integr:
-	echo make -C integration VERILATE=$(VERILATE) $(TEST_SELECT)
+	$(MAKE) -C integration VERILATE=$(VERILATE) $(TEST_SELECT)
 
 perf:
-	echo make -C performance VERILATE=$(VERILATE) $(TEST_SELECT)
+	$(MAKE) -C performance VERILATE=$(VERILATE) $(TEST_SELECT)
 
 litmus:
 	echo make -C litmus VERILATE=$(VERILATE) $(TEST_SELECT)
