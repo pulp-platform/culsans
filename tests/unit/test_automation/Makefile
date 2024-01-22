@@ -94,6 +94,7 @@ endif
 ifeq ($(VERILATE), 0)
 $(TEST_REPORT):
 	@rm -rf $(TEST_REPORT)
+	@echo "Running test ..."
 	@$(VSIM) $(VSIM_FLAGS) $(VSIM_CMD) -lib $(VSIM_LIB) $(UVM_FLAGS) $(TOP_LEVEL)_optimized | tee $(TEST_LOG) > /dev/null
 	@if [ -f verify_truth.txt ]; then ../../test_automation/verify_transactions.py; fi
 	@if [ -f postproc.sh ]; then ./postproc.sh; fi
