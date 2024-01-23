@@ -77,12 +77,12 @@ read_collision
 ================================================================================
 This test triggers the :code:`colliding_read` mechanism in cache controllers,
 which detects if a ``ReadShared`` snoop request has changed the state of an
-entry to *Shared* (``S*``) while at the same time that entry is being changed to
-*Unique* (``U*``).
+entry to *Shared*  while at the same time that entry is being changed to
+*Unique*.
 
 The test repeats the steps below multiple times.
 
-* Get a data into state ``SC`` in one core by:
+* Get a data into state *SharedClean* in one core by:
 
   - Read the data in all cores.
 
@@ -130,7 +130,7 @@ Trigger read from a cacheline while it is being updated.
 
   - In parallel, do:
 
-    - Write to one address.
+    - Write to one of the addresses.
 
     - Read from the other two addresses, verify that data is unchanged.
 
@@ -150,16 +150,90 @@ Flush the cache of one core while another core is accessing its contents.
     entry currently being evicted due to flush and the request for that same
     entry.
 
-Note: in the current implementation of the dcache, a flush will halt any
-incoming snoop requests until the flush is done. Therefore there won't be any
-conflicts. This test was created when the implementation allowed snooping
-requests while the cache was being flushed and there was a possibility for
-conflicts.
+.. note::
+
+  In the current implementation of the dcache, a flush will halt any
+  incoming snoop requests until the flush is done. Therefore there won't be any
+  conflicts. This test was created when the implementation allowed snooping
+  requests while the cache was being flushed and there was a possibility for
+  conflicts.
 
 
 evict_collision
 ================================================================================
+Trigger eviction of a data entry from one core while it is being accessed from
+another core.
+
+* Fill cache set ``S`` in core ``A``
+
+* In parallel, do:
+
+  - In core ``A``, cause eviction by reading or writing cache set ``S``.
+
+  - In other cores, access data in set ``S`` by read, write, or AMO.
+
+
+raw_spin_lock
+================================================================================
+Emulate the Linux raw_spin_lock / unlock functions.
+
+* In each core, repeat multiple times:
+
+  - repeatedly read one of two lock variables until the response is 0 (unlocked).
+
+  - try to aquire lock by swapping in 1 using ``AMO_SWAP``.
+
+    - if the lock succeeded (result == 0), wait some time, then unlock the lock
+      by writing 0.
+
+    - if the lock failed (result == 1), then go back to reading the lock.
+
+During the test, the :code:`std_cache_scoreboard.check_amo_lock()` task is
+active, which flags an error if any of the following occurs:
+
+- A lock request succeeds to an address that is already locked.
+
+- An unlock request succeeds to an address that is not locked, or is locked by
+  another core.
+
+- An unlock request fails.
+
+
+raw_spin_lock_wait
+================================================================================
+This does the same as the **raw_spin_lock** test, but in each main iteration the
+test waits until all cores has aquired the lock once.
+
+
+amo_read_write
+================================================================================
 TBD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -171,11 +245,6 @@ TBD
 
 
 random_all
-================================================================================
-TBD
-
-
-amo_read_write
 ================================================================================
 TBD
 
@@ -210,18 +279,8 @@ random_non-shared_amo
 TBD
 
 
-raw_spin_lock_wait
-================================================================================
-TBD
-
-
 
 amo_alu
-================================================================================
-TBD
-
-
-raw_spin_lock
 ================================================================================
 TBD
 
