@@ -219,7 +219,7 @@ module culsans_tb
         .AW ( AxiAddrWidth ),
         .DW ( AxiDataWidth ),
         .UW ( AxiUserWidth )
-    ) ace_mon [NB_CORES-1:0];
+    ) ace_mon [NB_CORES-1:0] ;
 
     snoop_monitor #(
         .AW ( AxiAddrWidth ),
@@ -1275,7 +1275,7 @@ module culsans_tb
 
                         // simultaneous writes to same address
                         fork begin // this is needed to make sure the "wait fork" below doesn't affect forks outside this scope
-                            for (int i=0; i<10; i++) begin
+                            for (int i=0; i<100; i++) begin
                                 for (int c=0; c < NB_CORES; c++) begin
                                     fork
                                         automatic int cc = c;
@@ -1286,7 +1286,7 @@ module culsans_tb
                                                 amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
                                             end else begin
                                                 amo_drv[cc].req(.addr(addr), .op(AMO_LR), .rand_data(1));
-                                                `WAIT_CYC(clk, (i+cc))
+                                                `WAIT_CYC(clk, ((i%20)+cc))
                                                 amo_drv[cc].req(.addr(addr), .op(AMO_SC), .rand_data(1));
                                             end
                                         end
@@ -1306,6 +1306,7 @@ module culsans_tb
                     "amo_alu" : begin
                         logic [63:0] data_op;   // operand to apply
                         logic [63:0] data_res;  // expaected result in memory
+                        logic [63:0] next_addr; // address to next entry
 
                         test_header(testname, "AMO ALU operations");
 
@@ -1313,39 +1314,45 @@ module culsans_tb
 
                         // 32 bit
                         for (int i=0; i<rep_cnt; i++) begin
-                            logic [7:0] be;
+                            logic [7:0] be, next_be;
                             int         shift;
                             amo_t       op;
                             logic       word_op;
                             int         size;
+                            int         addr_step;
 
                             word_op = $urandom_range(1); // operate on word or double
 
                             if (word_op) begin
-                                addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 4; // addr aligned with data size 32
+                                addr      = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 4; // addr aligned with data size 32
+                                next_addr = addr + 4;
 
-                                // only use unsigned
-                                data    = $urandom() >> 1;
-                                data_op = $urandom() >> 1;
+                                // only use unsigned, avoid too large numbers to avoid overflow
+                                data    = $urandom() >> 2;
+                                data_op = $urandom() >> 2;
 
                                 size = 2;
                                 if (addr % 8 == 4) begin
-                                    shift = 32;
-                                    be = 8'hf0;
+                                    shift   = 32;
+                                    be      = 8'hf0;
+                                    next_be = 8'h0f;
                                 end else begin
-                                    shift = 0;
-                                    be = 8'h0f;
+                                    shift   = 0;
+                                    be      = 8'h0f;
+                                    next_be = 8'hf0;
                                 end
                             end else begin
-                                addr    = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 8; // addr aligned with data size 64
+                                addr      = ArianeCfg.CachedRegionAddrBase[0] + $urandom_range(1024) * 8;  // addr aligned with data size 64
+                                next_addr = addr + 8;
 
-                                // only use unsigned
-                                data    = {$urandom(), $urandom()} >> 1;
-                                data_op = {$urandom(), $urandom()} >> 1;
+                                // only use unsigned, avoid too large numbers to avoid overflow
+                                data    = {$urandom(), $urandom()} >> 2;
+                                data_op = {$urandom(), $urandom()} >> 2;
 
-                                size  = 3;
-                                shift = 0;
-                                be    = 8'hff;
+                                size    = 3;
+                                shift   = 0;
+                                be      = 8'hff;
+                                next_be = 8'hff;
                             end
 
                             op = amo_t'($urandom_range(AMO_MINU, AMO_SWAP)); // only select supported ALU operations
@@ -1360,39 +1367,51 @@ module culsans_tb
                             endcase
 
                             // core X writes data
-                            $display("%t ns : [Test %s (%0d)] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
+                            $display("%t ns : [Test %s (%0d) step 1] Core %0d writing 0x%16h to addr 0x%16h",$time , testname, i, cid, (data << shift), addr);
                             dcache_drv[cid][2].wr(.addr(addr), .data(data << shift), .size(size), .be(be));
 
-                            // core X possibly writes data to upper cache line
+                            // core X possibly writes data to neighboring address
                             if ($urandom_range(1)) begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid, addr+8);
-                                dcache_drv[cid][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
+                                $display("%t ns : [Test %s (%0d) step 2] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid, next_addr);
+                                dcache_drv[cid][2].wr(.addr(next_addr), .rand_data(1), .size(size), .be(next_be));
                             end
-                            // core Y possibly writes data to upper cache line
+                            // core Y possibly writes data to neighboring address
                             if ($urandom_range(1)) begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid2, addr+8);
-                                dcache_drv[cid2][2].wr(.addr(addr+8), .rand_data(1), .size(size), .be(be));
+                                $display("%t ns : [Test %s (%0d) step 3] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid2, next_addr);
+                                dcache_drv[cid2][2].wr(.addr(next_addr), .rand_data(1), .size(size), .be(next_be));
                             end
 
                             // core X possibly reads data
                             if ($urandom_range(1)) begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
+                                $display("%t ns : [Test %s (%0d) step 4] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
                                 // only check results if it was written by core X (cid)
                                 dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data << shift));
                             end
 
                             // core X sends AMO request
-                            $display("%t ns : [Test %s (%0d)] Core %0d sending AMO request to addr 0x%16h",$time , testname, i, cid, addr);
+                            $display("%t ns : [Test %s (%0d) step 5] Core %0d sending AMO request %s with operand 0x%16h to addr 0x%16h",$time , testname, i, cid, op.name(), data_op, addr);
                             amo_drv[cid].req(.addr(addr), .op(op), .data(data_op), .size(size), .check_result(1), .exp_result(data));
+
+                            // core X possibly writes data to neighboring address
+                            if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d) step 6] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid, next_addr);
+                                dcache_drv[cid][2].wr(.addr(next_addr), .rand_data(1), .size(size), .be(next_be));
+                            end
+
+                            // core Y possibly writes data to neighboring address
+                            if ($urandom_range(1)) begin
+                                $display("%t ns : [Test %s (%0d) step 7] Core %0d writing random data to addr 0x%16h",$time , testname, i, cid2, next_addr);
+                                dcache_drv[cid2][2].wr(.addr(next_addr), .rand_data(1), .size(size), .be(next_be));
+                            end
 
                             // core Y possibly reads data
                             if ($urandom_range(1)) begin
-                                $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid2, addr);
+                                $display("%t ns : [Test %s (%0d) step 8] Core %0d reading data from addr 0x%16h",$time , testname, i, cid2, addr);
                                 dcache_drv[cid2][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
                             end
 
                             // core X reads data
-                            $display("%t ns : [Test %s (%0d)] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
+                            $display("%t ns : [Test %s (%0d) step 9] Core %0d reading data from addr 0x%16h",$time , testname, i, cid, addr);
                             dcache_drv[cid][0].rd(.do_wait(1), .size(size), .be(be), .addr(addr),  .check_result(1), .exp_result(data_res << shift));
 
                         end
