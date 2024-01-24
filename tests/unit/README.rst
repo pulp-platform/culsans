@@ -31,15 +31,51 @@ To run the test bench, do::
 
     make all TEST=<test case>
 
-To invoke GUI, add ``GUI=1``. For more options, run ``make help``.
+To invoke GUI, add ``GUI=1``.
+
+``make`` variables
+================================================================================
+This section describes some of the ``make`` variables available to change the
+behaviour of the test bench. To see all available make targets and variables,
+run::
+
+    make help
+
+
+``ENABLE_ICACHE_RANDOM_GEN``
+--------------------------------------------------------------------------------
+By default the testbench sends random read requests to the instruction cache
+during all tests to stress the system. This behaviour can be turned off by
+supplying ``ENABLE_ICACHE_RANDOM_GEN=0`` (e.g. to easy debugging).
+
+
+``ENABLE_AXI_ID_PER_PORT``
+--------------------------------------------------------------------------------
+To help the scoreboard determining from which dcache request port a certain AXI
+transaction origins, the testbench forces different AXI IDs for the different
+ports. Port 0 (PTW) then gets ID ``0xC``, port 1 (load) ``0xD``, and port 2
+(store) ``0xE`` (normally they all get ID ``0xC``). Some, but not all, tests
+require this to properly predict the expected behaviour. To disable this
+forcing, supply ``ENABLE_AXI_ID_PER_PORT=0``.
+
+.. warning::
+
+  The default behaviour of the test bench (``ENABLE_AXI_ID_PER_PORT=1``) changes
+  the behaviour of the DUT. However, this change is deemed to be safe.
+
+.. note::
+
+  The CCU scoreboard :code:`ace_ccu_monitor` does not support different AXI IDs per
+  dcache port. Therefore, the default behaviour of this testbench is to have the
+  CCU scoreboard disabled (``ENABLE_CCU_MON=0``).
 
 
 --------------------------------------------------------------------------------
 Test cases
 --------------------------------------------------------------------------------
 This section lists all test cases in the unit test bench. During all tests, the
-**std_cache_scoreboard** and **dcache_checker** modules are active and checking
-the correctness of the transactions and cache contents.
+:code:`std_cache_scoreboard` and :code:`dcache_checker` modules are active and
+check the correctness of the transactions and cache contents.
 
 In general, the test cases themselves do not perform any additional checks,
 unless explicitly specified in the test case description.
@@ -115,14 +151,16 @@ For each core, do:
 
   - Wait 0-19 cycles
 
-  - Write to, or read from, address *A+N\*256+8* mapping to index *I* (upper part of cache line)
+  - Write to, or read from, address *A+N\*256+8* mapping to index *I* (upper
+    part of cache line)
 
 
 cacheline_rw_collision
 ================================================================================
 Trigger read from a cacheline while it is being updated.
 
-* Write known data into three addresses (covering two consecutive cache lines) in one core.
+* Write known data into three addresses (covering two consecutive cache lines)
+  in one core.
 
 * In all other cores, do:
 
@@ -152,11 +190,11 @@ Flush the cache of one core while another core is accessing its contents.
 
 .. note::
 
-  In the current implementation of the dcache, a flush will halt any
+  In the current implementation of the data cache, a flush will stall any
   incoming snoop requests until the flush is done. Therefore there won't be any
   conflicts. This test was created when the implementation allowed snooping
-  requests while the cache was being flushed and there was a possibility for
-  conflicts.
+  requests to be processed while the cache was being flushed and there was a
+  possibility for conflicts.
 
 
 evict_collision
@@ -179,7 +217,8 @@ Emulate the Linux raw_spin_lock / unlock functions.
 
 * In each core, repeat multiple times:
 
-  - repeatedly read one of two lock variables until the response is 0 (unlocked).
+  - repeatedly read one of two lock variables until the response is 0
+    (unlocked).
 
   - try to aquire lock by swapping in 1 using ``AMO_SWAP``.
 
@@ -207,12 +246,49 @@ test waits until all cores has aquired the lock once.
 
 amo_read_write
 ================================================================================
-TBD
+This test sends AMO LR/SC operations to the same address from multiple cores. It
+does not predict any results from the operations, the test just verifies that
+the generated transactions are as expected.
+
+In each core, repeat a few times:
+
+* Send ``AMO.LR`` to address ``A``
+
+* Wait 0-10 clocks
+
+* Send ``AMO.SC`` to address ``A``
 
 
+amo_alu
+================================================================================
+This test send various AMO ALU operations and verifies the result. Both 64-bit
+and 32-bit operations are verified. Other cache requests are send simultaneously
+to add disturbance and verify data values.
 
+Repeat multiple times:
 
+* Randomize address ``A``.
 
+* Core ``X`` writes known data to address ``A``.
+
+* Core ``X`` possibly (randomize with a 50% chance) writes random data to
+  neighboring address (``A+8`` for 64-bit operations, ``A+4`` for 32-bit
+  operations).
+
+* Core ``Y`` possibly writes random data to neighboring address.
+
+* Core ``X`` possibly reads data from address ``A`` and verifies the result.
+
+* Core ``X`` sends random AMO ALU operation with a known operand to address
+  ``A``.
+
+* Core ``X`` possibly writes random data to neighboring address.
+
+* Core ``Y`` possibly writes random data to neighboring address.
+
+* Core ``Y`` possibly reads data from address ``A`` and verifies the result.
+
+* Core ``X`` reads data from address ``A`` and verifies the result.
 
 
 
@@ -278,11 +354,6 @@ random_non-shared_amo
 ================================================================================
 TBD
 
-
-
-amo_alu
-================================================================================
-TBD
 
 
 amo_read_write_collision
