@@ -222,10 +222,17 @@ Emulate the Linux raw_spin_lock / unlock functions.
 
   - try to aquire lock by swapping in 1 using ``AMO_SWAP``.
 
-    - if the lock succeeded (result == 0), wait some time, then unlock the lock
-      by writing 0.
+    - if the lock succeeded (result == 0):
 
-    - if the lock failed (result == 1), then go back to reading the lock.
+      - wait some time
+
+      - unlock the lock by writing 0.
+
+      - exit loop.
+
+    - if the lock failed (result == 1):
+
+      - go back to reading the lock.
 
 During the test, the :code:`std_cache_scoreboard.check_amo_lock()` task is
 active, which flags an error if any of the following occurs:
@@ -241,7 +248,7 @@ active, which flags an error if any of the following occurs:
 raw_spin_lock_wait
 ================================================================================
 This does the same as the **raw_spin_lock** test, but in each main iteration the
-test waits until all cores has aquired the lock once.
+test waits until all cores has successfully aquired the lock once.
 
 
 amo_read_write
@@ -291,16 +298,51 @@ Repeat multiple times:
 * Core ``X`` reads data from address ``A`` and verifies the result.
 
 
+amo_cacheline_collision
+================================================================================
+This test does an ``LR`` / ``SC`` reservation to an address from one core, while
+another core writes to a different address within the same cache line. The test
+then expects the ``SC`` operation to fail.
+
+This test was developed to trigger bug `PROJ-272
+<https://planv.atlassian.net/browse/PROJ-272>`_. However, the bug was misleading
+since the reservation set was set to 64 bits at the time it was reported. The
+correct/intended usage of the reservation is to be at least the size of a cache
+line (128 bits). The reservation has since been changed to 128 bits and the
+expected ``SC`` result is to fail.
 
 
+amo_lr_sc_upper
+================================================================================
+This test does an ``LR`` / ``SC`` reservation to an address residing in the
+upper part of a cache line from one core, while another core writes to the same
+address. The conditional store is expected to fail.
+
+This test was developed to trigger bug `PROJ-270
+<https://planv.atlassian.net/browse/PROJ-270>`_, where the ``SC`` would succeed
+erroneously. The bug has since been fixed and the test passes.
 
 
+amo_lr_sc_adjacent
+================================================================================
+This test does an ``LR`` / ``SC`` reservation to an address while another core
+writes to the adjacent cache line (address +/- 16). The conditional store is
+expected to succed.
 
 
+amo_lr_sc_single
+================================================================================
+This test does an ``LR`` to an address, then writes that address with a regular
+store from the same core, and then does an ``SC`` to that address. The ``SC`` is
+expected to succeed.
 
+This test was developed to trigger `bug 29 in the axi_riscv_atomics repository
+<https://github.com/pulp-platform/axi_riscv_atomics/issues/29>`_. However, as is
+discussed in the bug report, the current behaviour is that the ``SC`` fails,
+which is allowed by the RISC-V spec.
 
-
-
+This test is therefore expected to fail and is excluded from the regression test
+suite. It is kept for future use if the atomics module is updated to allow this.
 
 
 
@@ -376,16 +418,6 @@ amo_lr_sc
 TBD
 
 
-amo_lr_sc_adjacent
-================================================================================
-TBD
-
-
-amo_lr_sc_single
-================================================================================
-TBD
-
-
 random_cached_shared
 ================================================================================
 TBD
@@ -402,11 +434,6 @@ TBD
 
 
 amo_snoop_single_collision
-================================================================================
-TBD
-
-
-amo_lr_sc_upper
 ================================================================================
 TBD
 
@@ -431,9 +458,6 @@ random_shared
 TBD
 
 
-amo_cacheline_collision
-================================================================================
-TBD
 
 
 
