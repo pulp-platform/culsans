@@ -20,7 +20,7 @@ behaviour.
 .. .. include:: ../../modules/cva6/corev_apu/tb/tb_std_cache_subsystem/README.rst
 
 The verification components are documented in
-`cva6/corev_apu/tb/tb_std_cache_subsystem <https://github.com/planvtech/cva6/blob/PROJ-325-add-documentation-for-cache-subsystem-unit-test-bench/corev_apu/tb/tb_std_cache_subsystem/README.rst>`_.
+`cva6/corev_apu/tb/tb_std_cache_subsystem <https://github.com/planvtech/cva6/blob/culsans_pulp/corev_apu/tb/tb_std_cache_subsystem/README.rst>`_.
 
 
 --------------------------------------------------------------------------------
@@ -71,10 +71,11 @@ To get an HTML report after coverage has been generated, do::
 The report will be generated into the coverage/html folder.
 
 
-``make`` variables
+make variables
 ================================================================================
 The section below describes some of the ``make`` variables available to change the
-behaviour of the test bench.
+behaviour of the test bench. To see all available variables, do ``make help``.
+
 
 ``ENABLE_ICACHE_RANDOM_GEN``
 --------------------------------------------------------------------------------
@@ -474,20 +475,157 @@ amo_read_cached
 This is a directed test targeting bug `PROJ-153
 <https://planv.atlassian.net/browse/PROJ-153>`_. The bug caused data residing in
 the upper part of the cache line not to be read correctly. Instead, data from
-the lower part of the cache line was returned. This bug has now been fixed and the test passes.
+the lower part of the cache line was returned. This bug has now been fixed and
+the test passes.
 
 The test writes known data to a complete cache line using regular stores, and
 then reads back the data using AMO_LR and verifies the result.
 
 
-random_non-shared
+amo_snoop_single_collision
 ================================================================================
-TBD
+This is a directed test targeting bug `PROJ-150
+<https://planv.atlassian.net/browse/PROJ-150>`_. The bug caused flush before AMO
+to be skipped during certain circumstances. The bug has been fixed, and since
+then, flushing before AMO has been disabled.
 
 
-random_all
+amo_upper_cache_line
 ================================================================================
-TBD
+This is a directed test targeting bug `PROJ-151
+<https://planv.atlassian.net/browse/PROJ-151>`_. The bug caused write-back of
+"next" cache line when doing an AMO operation to the upper part of a dirty cache
+line. The bug has been fixed, and the test passes.
+
+
+amo_snoop_collision
+================================================================================
+Send an AMO request, causing flush the cache of one core while another core is accessing its contents.
+
+* Fill the cache in core *A* with writes
+
+* In parallel, do:
+
+  - Send an AMO request from core *A*
+
+  - Read from the same addresses from core B in decreasing order and verify the
+    result. The decreasing order increases the chances of a collision between an
+    entry currently being evicted due to flush and the request for that same
+    entry.
+
+.. note::
+
+  In the current implementation of the data cache, an AMO will not cause a
+  flush. Therefore there won't be any conflicts. This test was created when the
+  AMO caused a cache flush, which has since been disabled.
+
+
+random_non-shared, random_cached, random_shared
+================================================================================
+These tests will create random accesses from all cores to addresses within
+different address areas:
+
+* random_shared:
+
+  * non-cacheable, shareable area
+
+* random_non-shared:
+
+  * non-cacheable, non-shareable area
+
+* random_cached:
+
+  * cacheable, shareable area
+
+  * cacheable, non-shareable area (one core only [1]_)
+
+Accesses include loads and stores with sizes 1, 2, 4, and 8 bytes. Loads and
+stores are requested in parallel, but not to the same address within a core.
+
+The addresses are randomized over the complete address area, but with a 50%
+chance to target adresses with an offset of 0..63 from the base address. This is
+to increase the chance of address conflicts.
+
+
+.. [1] With the current configuration options, it is not possible to assign
+    different private cached areas to different cores. Having multiple cores
+    using the same cached areas for private (non-shared) data doesn't make sense
+    and would cause incoherent behaviour.
+
+
+random_non-shared_amo, random_cached_amo, random_shared_amo
+================================================================================
+These tests are similar to **random_non-shared**, **random_cached**, and
+**random_shared** respectively, but includes AMO requests.
+
+
+random_cached_flush
+================================================================================
+This test is similar to **random_cached**, but adds occaisional :code:`flush`
+requests.
+
+
+random_shared_non-shared, random_cached_shared, random_cached_non-shared, random_all
+=====================================================================================
+These tests will create random accesses from all cores to addresses within
+multiple different address areas:
+
+* random_shared_non-shared:
+
+  * non-cacheable, shareable area
+
+  * non-cacheable, non-shareable area
+
+* random_cached_shared:
+
+  * cacheable, shareable area
+
+  * cacheable, non-shareable area (one core only [1]_)
+
+  * non-cacheable, shareable area
+
+* random_cached_non-shared:
+
+  * cacheable, shareable area
+
+  * cacheable, non-shareable area (one core only [1]_)
+
+  * non-cacheable, non-shareable area
+
+* random_all - all defined areas:
+
+  * cacheable, shareable area
+
+  * cacheable, non-shareable area (one core only [1]_)
+
+  * non-cacheable, shareable area
+
+  * non-cacheable, non-shareable area
+
+
+Accesses include loads and stores with sizes 1, 2, 4, and 8 bytes, and AMO
+requests of size 4 or 8 bytes. Loads, stores, and AMO are requested in parallel,
+but not to the same address within a core.
+
+The addresses are randomized over the complete address area, but with a 50%
+chance to target adresses with an offset of 0..63 from the base address. This is
+to increase the chance of address conflicts.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 snoop_non-cached_collision
@@ -495,75 +633,9 @@ snoop_non-cached_collision
 TBD
 
 
-random_shared_non-shared
-================================================================================
-TBD
-
-
-random_shared_amo
-================================================================================
-TBD
-
-
-amo_upper_cache_line
-================================================================================
-TBD
-
-
-random_cached
-================================================================================
-TBD
-
-
-random_non-shared_amo
-================================================================================
-TBD
-
-
-
-random_cached_flush
-================================================================================
-TBD
-
-
-random_cached_shared
-================================================================================
-TBD
-
-
-amo_snoop_collision
-================================================================================
-TBD
-
-
-amo_snoop_single_collision
-================================================================================
-TBD
-
-
-random_cached_non-shared
-================================================================================
-TBD
-
-
 read_two_writes_back_to_back
 ================================================================================
 TBD
-
-
-random_cached_amo
-================================================================================
-TBD
-
-
-random_shared
-================================================================================
-TBD
-
-
-
-
-
 
 
 --------------------------------------------------------------------------------
