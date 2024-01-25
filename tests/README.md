@@ -34,7 +34,7 @@ Within each regression list, these commands are available:
 - `make all TEST=<testname>`: runs a specific testcase
 - `make rtl`: compiles the RTL code
 
-Within the integration and performance regression lists, these commands are available:
+Within the **integration** and **performance** regression lists, these commands are available:
 - `make sw`: compiles the C-code for all the tests
 
 ## Testcases

@@ -27,20 +27,54 @@ The verification components are documented in
 Running the test bench
 --------------------------------------------------------------------------------
 
+To see all available make targets and variables, run::
+
+    make help
+
 To run the test bench, do::
 
     make all TEST=<test case>
 
 To invoke GUI, add ``GUI=1``.
 
+In batch mode, the test will report the first failure (if any) to the terminal.
+No failure means success. To see details of the simulation, open the
+testlist/<test_case>/sim.log file.
+
+
+Regression tests and status
+================================================================================
+
+To run the regression test suite, do::
+
+    make pass
+
+To see the status of tests, do::
+
+    make status
+
+Note that all tests are not included in the **pass** test suite, so even after a
+completed test suite run the status of some tests will be :code:`NOT RUN` (but
+no test should have :code:`FAILED`).
+
+
+Code coverage
+================================================================================
+To generate code coverage for a test (suite), add ``COVER=1``::
+
+    make pass COVER=1
+
+To get an HTML report after coverage has been generated, do::
+
+    make report_coverage
+
+The report will be generated into the coverage/html folder.
+
+
 ``make`` variables
 ================================================================================
-This section describes some of the ``make`` variables available to change the
-behaviour of the test bench. To see all available make targets and variables,
-run::
-
-    make help
-
+The section below describes some of the ``make`` variables available to change the
+behaviour of the test bench.
 
 ``ENABLE_ICACHE_RANDOM_GEN``
 --------------------------------------------------------------------------------
@@ -80,6 +114,11 @@ check the correctness of the transactions and cache contents.
 In general, the test cases themselves do not perform any additional checks,
 unless explicitly specified in the test case description.
 
+Some of the scoreboard tasks have timeouts that fail if a certain expected event
+doesn't happen within a timeout period. For some tests, the timeouts are
+increased due to expected long wait times (e.g. waiting for a cache flush). In
+each test, a wait time is typically added at the end of the test to catch any
+possible pending timeout failures.
 
 read_miss
 ================================================================================
@@ -345,16 +384,100 @@ This test is therefore expected to fail and is excluded from the regression test
 suite. It is kept for future use if the atomics module is updated to allow this.
 
 
+amo_lr_sc_delay
+================================================================================
+This test verfies that ``LR`` / ``SC`` reservation works when there are delays
+in the AXI bus system.
+
+This test was developed to trigger bug `PROJ-271
+<https://planv.atlassian.net/browse/PROJ-271>`_, which has now been fixed.
+
+.. note::
+
+    The test bench adds random delays in the AXI system by default, but this
+    test checks that this is actually the case and fails if it is running in a
+    system where there is no delay added on the AXI bus.
+
+The test repeats the following steps a few times for a single core:
+
+* Write known data ``D`` to address ``A``.
+
+* Reserve address ``A`` using ``LR``, expect to get ``D``.
+
+* Store new data ``D+1`` to address ``A`` using ``SC``, expect success.
+
+* Store new data ``D+2`` to address ``A`` using ``SC``, expect failure.
+
+* Read address ``A`` using regular load, expect to get ``D+1``.
+
+* Increment ``A`` and ``D``.
 
 
+amo_lr_sc
+================================================================================
+Directed test to verify the ``LR`` / ``SC`` functionality.
+
+This test has four subparts:
+
+1. LR / SC with 32-bit operations.
+
+* Write known data ``D`` to address ``A``.
+
+* Reserve address ``A`` using ``LR``, expect success.
+
+* Store new data ``D+1`` to address ``A`` using ``SC``, expect success.
+
+* Store new data ``D+2`` to address ``A`` using ``SC``, expect failure.
+
+* Read address ``A`` using regular load, expect success.
+
+2. LR / SC with 64-bit operations
+
+* Same as in 1. but using 64-bit operations.
+
+3. Failing LR / SC
+
+* Core ``X`` writes known data ``D`` to address ``A``.
+
+* Core ``Y`` reserves address ``A`` using ``LR``, expect success.
+
+* Core ``X`` stores new data ``D+1`` to address ``A`` using regular store.
+
+* Core ``Y`` stores new data ``D+3`` to address ``A`` using ``SC``, expect failure.
+
+* Core ``X`` reads address ``A`` using regular load, expect ``D+1``.
+
+4. Successful + failing LR / SC
+
+* Core ``X`` writes known data ``D`` to address ``A``.
+
+* Core ``Y`` reserves address ``A`` using ``LR``, expect success.
+
+* Core ``Y`` stores new data ``D+2`` to address ``A`` using ``SC``, expect success.
+
+* Core ``X`` reads address ``A`` using regular load, expect ``D+2``.
+
+* Core ``Y`` stores new data ``D+3`` to address ``A`` using ``SC``, expect failure.
+
+* Core ``X`` reads address ``A`` using regular load, expect ``D+2``.
 
 
+amo_read_write_collision
+================================================================================
+This simple test sends AMO operations ``LR`` and ``SC`` from one core while
+other cores send regular load and store requests. Transactions are observed and
+verified by the scoreboards as usual, no other checks on data is done.
 
 
+amo_read_cached
+================================================================================
+This is a directed test targeting bug `PROJ-153
+<https://planv.atlassian.net/browse/PROJ-153>`_. The bug caused data residing in
+the upper part of the cache line not to be read correctly. Instead, data from
+the lower part of the cache line was returned. This bug has now been fixed and the test passes.
 
-
-
-
+The test writes known data to a complete cache line using regular stores, and
+then reads back the data using AMO_LR and verifies the result.
 
 
 random_non-shared
@@ -398,22 +521,7 @@ TBD
 
 
 
-amo_read_write_collision
-================================================================================
-TBD
-
-
 random_cached_flush
-================================================================================
-TBD
-
-
-amo_lr_sc_delay
-================================================================================
-TBD
-
-
-amo_lr_sc
 ================================================================================
 TBD
 
@@ -424,11 +532,6 @@ TBD
 
 
 amo_snoop_collision
-================================================================================
-TBD
-
-
-amo_read_cached
 ================================================================================
 TBD
 

@@ -55,6 +55,7 @@ help:
 	@echo "    ENABLE_ICACHE_RANDOM_GEN        Enable random ICache transactions during tests (default: 1)"
 	@echo "    ENABLE_AXI_ID_PER_PORT          Enable forcing of separate AXI IDs per DCache port (default: 1)"
 	@echo "    HAS_LLC                         Use LLC in design (default: 1)"
+	@echo "    COVER                           Record coverage data during simulation (default: 0)"
 	@echo "    USE_XILINX_SRAM                 Use Xilinx primitives for SRAM (default: 0)"
 	@echo "    DEFINES                         Add RTL defines. Available defines:"
 	@echo "        TB_AXI_FIXED_DELAY=[0..15]    Add fixed delay to AXI transactions (default: 0)"
