@@ -381,8 +381,9 @@ This test was developed to trigger `bug 29 in the axi_riscv_atomics repository
 discussed in the bug report, the current behaviour is that the ``SC`` fails,
 which is allowed by the RISC-V spec.
 
-This test is therefore expected to fail and is excluded from the regression test
-suite. It is kept for future use if the atomics module is updated to allow this.
+This test is therefore expected to fail and is excluded from the **pass**
+regression test suite. It is kept for future use if the atomics module is
+updated to allow this.
 
 
 amo_lr_sc_delay
@@ -540,17 +541,13 @@ different address areas:
   * cacheable, non-shareable area (one core only [1]_)
 
 Accesses include loads and stores with sizes 1, 2, 4, and 8 bytes. Loads and
-stores are requested in parallel, but not to the same address within a core.
+stores are requested in parallel, but a single core does not send a load and
+store request to the same address in parallel.
 
 The addresses are randomized over the complete address area, but with a 50%
 chance to target adresses with an offset of 0..63 from the base address. This is
 to increase the chance of address conflicts.
 
-
-.. [1] With the current configuration options, it is not possible to assign
-    different private cached areas to different cores. Having multiple cores
-    using the same cached areas for private (non-shared) data doesn't make sense
-    and would cause incoherent behaviour.
 
 
 random_non-shared_amo, random_cached_amo, random_shared_amo
@@ -605,38 +602,39 @@ multiple different address areas:
 
 Accesses include loads and stores with sizes 1, 2, 4, and 8 bytes, and AMO
 requests of size 4 or 8 bytes. Loads, stores, and AMO are requested in parallel,
-but not to the same address within a core.
+but a single core does not send a load and store request to the same address in
+parallel.
 
 The addresses are randomized over the complete address area, but with a 50%
 chance to target adresses with an offset of 0..63 from the base address. This is
 to increase the chance of address conflicts.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 snoop_non-cached_collision
 ================================================================================
-TBD
+This is a directed test targeting bug `PROJ-149
+<https://planv.atlassian.net/browse/PROJ-149>`_. The bug caused a deadlock when
+one core was accessing the AXI bypass bus while another core issued e.g. a
+``CleanInvalid`` coherence transaction. The bug has been fixed and the test now
+passes.
 
 
 read_two_writes_back_to_back
 ================================================================================
-TBD
+This is a directed test targeting bug `PROJ-147
+<https://planv.atlassian.net/browse/PROJ-147>`_. If a single cache controller
+gets a load request immediately followed by two store requests, all to the same
+address, then the data from the second store is discarded.
 
+This is however not a valid scenario since in the current CVA6 core each cache
+controller only receives loads *or* stores (not both). The test is excluded from
+the **pass** regression list.
+
+
+.. [1] With the current configuration options, it is not possible to assign
+    different private cached areas to different cores. Having multiple cores
+    using the same cached areas for private (non-shared) data doesn't make sense
+    and would cause incoherent behaviour.
 
 --------------------------------------------------------------------------------
 Limitations
