@@ -121,189 +121,14 @@ increased due to expected long wait times (e.g. waiting for a cache flush). In
 each test, a wait time is typically added at the end of the test to catch any
 possible pending timeout failures.
 
-read_miss
-================================================================================
-This test triggers read misses to the same index from a single core.
 
-#. Write to 16 different addresses that map to the same cache index, forcing
-   eviction of some of the first written addresses.
-#. Read the first 8 addresses again.
 
 
-write_collision
-================================================================================
-This test triggers writes from different cores to the same cache index.
 
-For each core, do:
 
-* Repeat multiple times:
 
-  - Write to address *A* mapping to index *I*
 
-  - Wait 0-19 cycles
 
-* Repeat multiple times:
-
-  - Write to address *A+N\*256* mapping to index *I*
-
-  - Wait 0-19 cycles
-
-
-read_collision
-================================================================================
-This test triggers the :code:`colliding_read` mechanism in cache controllers,
-which detects if a ``ReadShared`` snoop request has changed the state of an
-entry to *Shared*  while at the same time that entry is being changed to
-*Unique*.
-
-The test repeats the steps below multiple times.
-
-* Get a data into state *SharedClean* in one core by:
-
-  - Read the data in all cores.
-
-  - Force eviction of the data in all but one core.
-
-* Then, in parallel:
-
-  - Write the data in the core that has the data in cache (causing a
-    ``ReadUnique`` snoop transaction).
-
-  - Read the data in the other cores (causing a ``ReadShared`` transaction from
-    each core).
-
-
-read_write_collision
-================================================================================
-This test triggers reads and writes to the same cache index.
-
-For each core, do:
-
-* Repeat multiple times:
-
-  - Write to, or read from, address *A* mapping to index *I*
-
-  - Wait 0-5 cycles
-
-* Repeat multiple times:
-
-  - Write to, or read from, address *A+N\*256* mapping to index *I*
-
-  - Wait 0-19 cycles
-
-  - Write to, or read from, address *A+N\*256+8* mapping to index *I* (upper
-    part of cache line)
-
-
-cacheline_rw_collision
-================================================================================
-Trigger read from a cacheline while it is being updated.
-
-* Write known data into three addresses (covering two consecutive cache lines)
-  in one core.
-
-* In all other cores, do:
-
-  - Read the data from the three addresses - they are now *Shared*
-
-  - In parallel, do:
-
-    - Write to one of the addresses.
-
-    - Read from the other two addresses, verify that data is unchanged.
-
-
-flush_collision
-================================================================================
-Flush the cache of one core while another core is accessing its contents.
-
-* Fill the cache in core *A* with writes
-
-* In parallel, do:
-
-  - Flush the cache in core *A*
-
-  - Read from the same addresses from core B in decreasing order and verify the
-    result. The decreasing order increases the chances of a collision between an
-    entry currently being evicted due to flush and the request for that same
-    entry.
-
-.. note::
-
-  In the current implementation of the data cache, a flush will stall any
-  incoming snoop requests until the flush is done. Therefore there won't be any
-  conflicts. This test was created when the implementation allowed snooping
-  requests to be processed while the cache was being flushed and there was a
-  possibility for conflicts.
-
-
-evict_collision
-================================================================================
-Trigger eviction of a data entry from one core while it is being accessed from
-another core.
-
-* Fill cache set ``S`` in core ``A``
-
-* In parallel, do:
-
-  - In core ``A``, cause eviction by reading or writing cache set ``S``.
-
-  - In other cores, access data in set ``S`` by read, write, or AMO.
-
-
-raw_spin_lock
-================================================================================
-Emulate the Linux raw_spin_lock / unlock functions.
-
-* In each core, repeat multiple times:
-
-  - repeatedly read one of two lock variables until the response is 0
-    (unlocked).
-
-  - try to aquire lock by swapping in 1 using ``AMO_SWAP``.
-
-    - if the lock succeeded (result == 0):
-
-      - wait some time
-
-      - unlock the lock by writing 0.
-
-      - exit loop.
-
-    - if the lock failed (result == 1):
-
-      - go back to reading the lock.
-
-During the test, the :code:`std_cache_scoreboard.check_amo_lock()` task is
-active, which flags an error if any of the following occurs:
-
-- A lock request succeeds to an address that is already locked.
-
-- An unlock request succeeds to an address that is not locked, or is locked by
-  another core.
-
-- An unlock request fails.
-
-
-raw_spin_lock_wait
-================================================================================
-This does the same as the **raw_spin_lock** test, but in each main iteration the
-test waits until all cores has successfully aquired the lock once.
-
-
-amo_read_write
-================================================================================
-This test sends AMO LR/SC operations to the same address from multiple cores. It
-does not predict any results from the operations, the test just verifies that
-the generated transactions are as expected.
-
-In each core, repeat a few times:
-
-* Send ``AMO.LR`` to address ``A``
-
-* Wait 0-10 clocks
-
-* Send ``AMO.SC`` to address ``A``
 
 
 amo_alu
@@ -350,69 +175,6 @@ since the reservation set was set to 64 bits at the time it was reported. The
 correct/intended usage of the reservation is to be at least the size of a cache
 line (128 bits). The reservation has since been changed to 128 bits and the
 expected ``SC`` result is to fail.
-
-
-amo_lr_sc_upper
-================================================================================
-This test does an ``LR`` / ``SC`` reservation to an address residing in the
-upper part of a cache line from one core, while another core writes to the same
-address. The conditional store is expected to fail.
-
-This test was developed to trigger bug `PROJ-270
-<https://planv.atlassian.net/browse/PROJ-270>`_, where the ``SC`` would succeed
-erroneously. The bug has since been fixed and the test passes.
-
-
-amo_lr_sc_adjacent
-================================================================================
-This test does an ``LR`` / ``SC`` reservation to an address while another core
-writes to the adjacent cache line (address +/- 16). The conditional store is
-expected to succed.
-
-
-amo_lr_sc_single
-================================================================================
-This test does an ``LR`` to an address, then writes that address with a regular
-store from the same core, and then does an ``SC`` to that address. The ``SC`` is
-expected to succeed.
-
-This test was developed to trigger `bug 29 in the axi_riscv_atomics repository
-<https://github.com/pulp-platform/axi_riscv_atomics/issues/29>`_. However, as is
-discussed in the bug report, the current behaviour is that the ``SC`` fails,
-which is allowed by the RISC-V spec.
-
-This test is therefore expected to fail and is excluded from the **pass**
-regression test suite. It is kept for future use if the atomics module is
-updated to allow this.
-
-
-amo_lr_sc_delay
-================================================================================
-This test verfies that ``LR`` / ``SC`` reservation works when there are delays
-in the AXI bus system.
-
-This test was developed to trigger bug `PROJ-271
-<https://planv.atlassian.net/browse/PROJ-271>`_, which has now been fixed.
-
-.. note::
-
-    The test bench adds random delays in the AXI system by default, but this
-    test checks that this is actually the case and fails if it is running in a
-    system where there is no delay added on the AXI bus.
-
-The test repeats the following steps a few times for a single core:
-
-* Write known data ``D`` to address ``A``.
-
-* Reserve address ``A`` using ``LR``, expect to get ``D``.
-
-* Store new data ``D+1`` to address ``A`` using ``SC``, expect success.
-
-* Store new data ``D+2`` to address ``A`` using ``SC``, expect failure.
-
-* Read address ``A`` using regular load, expect to get ``D+1``.
-
-* Increment ``A`` and ``D``.
 
 
 amo_lr_sc
@@ -464,11 +226,67 @@ This test has four subparts:
 * Core ``X`` reads address ``A`` using regular load, expect ``D+2``.
 
 
-amo_read_write_collision
+amo_lr_sc_adjacent
 ================================================================================
-This simple test sends AMO operations ``LR`` and ``SC`` from one core while
-other cores send regular load and store requests. Transactions are observed and
-verified by the scoreboards as usual, no other checks on data is done.
+This test does an ``LR`` / ``SC`` reservation to an address while another core
+writes to the adjacent cache line (address +/- 16). The conditional store is
+expected to succed.
+
+
+amo_lr_sc_delay
+================================================================================
+This test verfies that ``LR`` / ``SC`` reservation works when there are delays
+in the AXI bus system.
+
+This test was developed to trigger bug `PROJ-271
+<https://planv.atlassian.net/browse/PROJ-271>`_, which has now been fixed.
+
+.. note::
+
+    The test bench adds random delays in the AXI system by default, but this
+    test checks that this is actually the case and fails if it is running in a
+    system where there is no delay added on the AXI bus.
+
+The test repeats the following steps a few times for a single core:
+
+* Write known data ``D`` to address ``A``.
+
+* Reserve address ``A`` using ``LR``, expect to get ``D``.
+
+* Store new data ``D+1`` to address ``A`` using ``SC``, expect success.
+
+* Store new data ``D+2`` to address ``A`` using ``SC``, expect failure.
+
+* Read address ``A`` using regular load, expect to get ``D+1``.
+
+* Increment ``A`` and ``D``.
+
+
+amo_lr_sc_single
+================================================================================
+This test does an ``LR`` to an address, then writes that address with a regular
+store from the same core, and then does an ``SC`` to that address. The ``SC`` is
+expected to succeed.
+
+This test was developed to trigger `bug 29 in the axi_riscv_atomics repository
+<https://github.com/pulp-platform/axi_riscv_atomics/issues/29>`_. However, as is
+discussed in the bug report, the current behaviour is that the ``SC`` fails,
+which is allowed by the RISC-V spec.
+
+This test is therefore expected to fail and is excluded from the **pass**
+regression test suite. It is kept for future use if the atomics module is
+updated to allow this.
+
+
+amo_lr_sc_upper
+================================================================================
+This test does an ``LR`` / ``SC`` reservation to an address residing in the
+upper part of a cache line from one core, while another core writes to the same
+address. The conditional store is expected to fail.
+
+This test was developed to trigger bug `PROJ-270
+<https://planv.atlassian.net/browse/PROJ-270>`_, where the ``SC`` would succeed
+erroneously. The bug has since been fixed and the test passes.
 
 
 amo_read_cached
@@ -483,20 +301,26 @@ The test writes known data to a complete cache line using regular stores, and
 then reads back the data using AMO_LR and verifies the result.
 
 
-amo_snoop_single_collision
+amo_read_write
 ================================================================================
-This is a directed test targeting bug `PROJ-150
-<https://planv.atlassian.net/browse/PROJ-150>`_. The bug caused flush before AMO
-to be skipped during certain circumstances. The bug has been fixed, and since
-then, flushing before AMO has been disabled.
+This test sends AMO LR/SC operations to the same address from multiple cores. It
+does not predict any results from the operations, the test just verifies that
+the generated transactions are as expected.
+
+In each core, repeat a few times:
+
+* Send ``AMO.LR`` to address ``A``
+
+* Wait 0-10 clocks
+
+* Send ``AMO.SC`` to address ``A``
 
 
-amo_upper_cache_line
+amo_read_write_collision
 ================================================================================
-This is a directed test targeting bug `PROJ-151
-<https://planv.atlassian.net/browse/PROJ-151>`_. The bug caused write-back of
-"next" cache line when doing an AMO operation to the upper part of a dirty cache
-line. The bug has been fixed, and the test passes.
+This simple test sends AMO operations ``LR`` and ``SC`` from one core while
+other cores send regular load and store requests. Transactions are observed and
+verified by the scoreboards as usual, no other checks on data is done.
 
 
 amo_snoop_collision
@@ -521,10 +345,88 @@ Send an AMO request, causing flush the cache of one core while another core is a
   AMO caused a cache flush, which has since been disabled.
 
 
-random_non-shared, random_cached, random_shared
+amo_snoop_single_collision
+================================================================================
+This is a directed test targeting bug `PROJ-150
+<https://planv.atlassian.net/browse/PROJ-150>`_. The bug caused flush before AMO
+to be skipped during certain circumstances. The bug has been fixed, and since
+then, flushing before AMO has been disabled.
+
+
+amo_upper_cache_line
+================================================================================
+This is a directed test targeting bug `PROJ-151
+<https://planv.atlassian.net/browse/PROJ-151>`_. The bug caused write-back of
+"next" cache line when doing an AMO operation to the upper part of a dirty cache
+line. The bug has been fixed, and the test passes.
+
+
+cacheline_rw_collision
+================================================================================
+Trigger read from a cacheline while it is being updated.
+
+* Write known data into three addresses (covering two consecutive cache lines)
+  in one core.
+
+* In all other cores, do:
+
+  - Read the data from the three addresses - they are now *Shared*
+
+  - In parallel, do:
+
+    - Write to one of the addresses.
+
+    - Read from the other two addresses, verify that data is unchanged.
+
+
+evict_collision
+================================================================================
+Trigger eviction of a data entry from one core while it is being accessed from
+another core.
+
+* Fill cache set ``S`` in core ``A``
+
+* In parallel, do:
+
+  - In core ``A``, cause eviction by reading or writing cache set ``S``.
+
+  - In other cores, access data in set ``S`` by read, write, or AMO.
+
+
+flush_collision
+================================================================================
+Flush the cache of one core while another core is accessing its contents.
+
+* Fill the cache in core *A* with writes
+
+* In parallel, do:
+
+  - Flush the cache in core *A*
+
+  - Read from the same addresses from core B in decreasing order and verify the
+    result. The decreasing order increases the chances of a collision between an
+    entry currently being evicted due to flush and the request for that same
+    entry.
+
+.. note::
+
+  In the current implementation of the data cache, a flush will stall any
+  incoming snoop requests until the flush is done. Therefore there won't be any
+  conflicts. This test was created when the implementation allowed snooping
+  requests to be processed while the cache was being flushed and there was a
+  possibility for conflicts.
+
+
+random_cached, random_shared, random_non-shared
 ================================================================================
 These tests will create random accesses from all cores to addresses within
 different address areas:
+
+* random_cached:
+
+  * cacheable, shareable area
+
+  * cacheable, non-shareable area (one core only [1]_)
 
 * random_shared:
 
@@ -533,12 +435,6 @@ different address areas:
 * random_non-shared:
 
   * non-cacheable, non-shareable area
-
-* random_cached:
-
-  * cacheable, shareable area
-
-  * cacheable, non-shareable area (one core only [1]_)
 
 Accesses include loads and stores with sizes 1, 2, 4, and 8 bytes. Loads and
 stores are requested in parallel, but a single core does not send a load and
@@ -549,29 +445,22 @@ chance to target adresses with an offset of 0..63 from the base address. This is
 to increase the chance of address conflicts.
 
 
+random_cached_flush
+================================================================================
+This test is similar to **random_cached**, but adds occasional :code:`flush`
+requests.
 
-random_non-shared_amo, random_cached_amo, random_shared_amo
+
+random_cached_amo, random_shared_amo, random_non-shared_amo
 ================================================================================
 These tests are similar to **random_non-shared**, **random_cached**, and
 **random_shared** respectively, but includes AMO requests.
 
 
-random_cached_flush
-================================================================================
-This test is similar to **random_cached**, but adds occaisional :code:`flush`
-requests.
-
-
-random_shared_non-shared, random_cached_shared, random_cached_non-shared, random_all
+random_cached_shared, random_cached_non-shared, random_shared_non-shared, random_all
 =====================================================================================
 These tests will create random accesses from all cores to addresses within
 multiple different address areas:
-
-* random_shared_non-shared:
-
-  * non-cacheable, shareable area
-
-  * non-cacheable, non-shareable area
 
 * random_cached_shared:
 
@@ -586,6 +475,12 @@ multiple different address areas:
   * cacheable, shareable area
 
   * cacheable, non-shareable area (one core only [1]_)
+
+  * non-cacheable, non-shareable area
+
+* random_shared_non-shared:
+
+  * non-cacheable, shareable area
 
   * non-cacheable, non-shareable area
 
@@ -610,13 +505,77 @@ chance to target adresses with an offset of 0..63 from the base address. This is
 to increase the chance of address conflicts.
 
 
-snoop_non-cached_collision
+raw_spin_lock
 ================================================================================
-This is a directed test targeting bug `PROJ-149
-<https://planv.atlassian.net/browse/PROJ-149>`_. The bug caused a deadlock when
-one core was accessing the AXI bypass bus while another core issued e.g. a
-``CleanInvalid`` coherence transaction. The bug has been fixed and the test now
-passes.
+Emulate the Linux raw_spin_lock / unlock functions.
+
+* In each core, repeat multiple times:
+
+  - repeatedly read one of two lock variables until the response is 0
+    (unlocked).
+
+  - try to aquire lock by swapping in 1 using ``AMO_SWAP``.
+
+    - if the lock succeeded (result == 0):
+
+      - wait some time
+
+      - unlock the lock by writing 0.
+
+      - exit loop.
+
+    - if the lock failed (result == 1):
+
+      - go back to reading the lock.
+
+During the test, the :code:`std_cache_scoreboard.check_amo_lock()` task is
+active, which flags an error if any of the following occurs:
+
+- A lock request succeeds to an address that is already locked.
+
+- An unlock request succeeds to an address that is not locked, or is locked by
+  another core.
+
+- An unlock request fails.
+
+
+raw_spin_lock_wait
+================================================================================
+This does the same as the **raw_spin_lock** test, but in each main iteration the
+test waits until all cores has successfully aquired the lock once.
+
+
+read_collision
+================================================================================
+This test triggers the :code:`colliding_read` mechanism in cache controllers,
+which detects if a ``ReadShared`` snoop request has changed the state of an
+entry to *Shared*  while at the same time that entry is being changed to
+*Unique*.
+
+The test repeats the steps below multiple times.
+
+* Get a data into state *SharedClean* in one core by:
+
+  - Read the data in all cores.
+
+  - Force eviction of the data in all but one core.
+
+* Then, in parallel:
+
+  - Write the data in the core that has the data in cache (causing a
+    ``ReadUnique`` snoop transaction).
+
+  - Read the data in the other cores (causing a ``ReadShared`` transaction from
+    each core).
+
+
+read_miss
+================================================================================
+This test triggers read misses to the same index from a single core.
+
+#. Write to 16 different addresses that map to the same cache index, forcing
+   eviction of some of the first written addresses.
+#. Read the first 8 addresses again.
 
 
 read_two_writes_back_to_back
@@ -629,6 +588,56 @@ address, then the data from the second store is discarded.
 This is however not a valid scenario since in the current CVA6 core each cache
 controller only receives loads *or* stores (not both). The test is excluded from
 the **pass** regression list.
+
+
+read_write_collision
+================================================================================
+This test triggers reads and writes to the same cache index.
+
+For each core, do:
+
+* Repeat multiple times:
+
+  - Write to, or read from, address *A* mapping to index *I*
+
+  - Wait 0-5 cycles
+
+* Repeat multiple times:
+
+  - Write to, or read from, address *A+N\*256* mapping to index *I*
+
+  - Wait 0-19 cycles
+
+  - Write to, or read from, address *A+N\*256+8* mapping to index *I* (upper
+    part of cache line)
+
+
+snoop_non-cached_collision
+================================================================================
+This is a directed test targeting bug `PROJ-149
+<https://planv.atlassian.net/browse/PROJ-149>`_. The bug caused a deadlock when
+one core was accessing the AXI bypass bus while another core issued e.g. a
+``CleanInvalid`` coherence transaction. The bug has been fixed and the test now
+passes.
+
+
+write_collision
+================================================================================
+This test triggers writes from different cores to the same cache index.
+
+For each core, do:
+
+* Repeat multiple times:
+
+  - Write to address *A* mapping to index *I*
+
+  - Wait 0-19 cycles
+
+* Repeat multiple times:
+
+  - Write to address *A+N\*256* mapping to index *I*
+
+  - Wait 0-19 cycles
 
 
 .. [1] With the current configuration options, it is not possible to assign
