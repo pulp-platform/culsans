@@ -11,7 +11,7 @@ The test bench applies stimuli directly to the cache CPU ports through a number
 of drivers. Several monitors and scoreboards are active to verify the
 behaviour.
 
-.. figure:: _static/images/culsans_unit_tb.png
+.. figure:: _static/images/culsans_unit_tb.svg
     :alt: Culsans unit test bench
 
     Culsans unit test bench
