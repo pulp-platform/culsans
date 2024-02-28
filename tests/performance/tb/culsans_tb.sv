@@ -70,13 +70,11 @@ module culsans_tb ();
         @(negedge rst);
         #2
 
-        //file = $fopen(mem_init_file, "r");
-        //$ferror(file, error);
-        //$fclose(file);
-        //if (error == 0) begin
-//        $readmemh(data_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h0000);
-//        $readmemh(instr_init_file, i_culsans.i_sram.gen_cut[0].gen_mem.i_tc_sram_wrapper.i_tc_sram.sram, 32'h10_0000);
-        $readmemh(mem_init_file, i_culsans.i_sram.gen_cut[0].i_tc_sram_wrapper.i_tc_sram.sram);
+        `ifdef USE_XILINX_SRAM
+            $readmemh(mem_init_file, i_culsans.i_sram.i_tc_sram.gen_1_ports.i_xpm_memory_spram.xpm_memory_base_inst.mem);
+        `else
+            $readmemh(mem_init_file, i_culsans.i_sram.i_tc_sram.sram);
+        `endif
         //end
     end
 
@@ -89,6 +87,7 @@ module culsans_tb ();
         .StallRandomOutput(1'b0),
         .FixedDelayInput  (0),
         .FixedDelayOutput (0),
+        .HasLLC           (1'b0),
         .BootAddress      (culsans_pkg::DRAMBase + 64'h10_0000)
     ) i_culsans (
         .clk_i (clk),
