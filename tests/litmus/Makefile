@@ -33,7 +33,7 @@ $(RESULTS):
 	mkdir $(RESULTS)
 
 .build-litmus-srcs:
-	cd $(LITMUS_BIN) && ./make-riscv.sh ../tests; cd -
+	cd $(LITMUS_BIN) && ./make-riscv.sh ../tests $(NB_CORES); cd -
 	touch .build-litmus-srcs
 
 .PHONY: sw

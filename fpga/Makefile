@@ -9,7 +9,7 @@ ifneq ($(NB_CORES), 2)
 $(error "NB_CORES must be 2")
 endif
 
-target = cv64a6_imafdc_sv39_wb
+target = cv64a6_imafdch_sv39_wb
 include ../modules/cva6/Makefile
 
 CVA6_DIR = $(root-dir)
