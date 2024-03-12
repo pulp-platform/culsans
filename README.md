@@ -18,6 +18,12 @@ cardinal points and thus of order in general.
 git clone https://github.com/planvtech/culsans.git --recursive
 ```
 
+Useful documentation:
+
+- [CVA6's coherent WB cache](https://github.com/planvtech/cva6/blob/culsans_pulp/docs/03_cva6_design/wb_cache_with_coherence_support.md)
+- [ACE Interconnector](https://github.com/planvtech/ace/blob/pulp/doc/ace_ccu_top.md)
+- Testing (see below)
+
 ### Synthesis on FPGA (Genesys2)
 
 ```
