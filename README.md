@@ -104,3 +104,7 @@ A CITS test consists of a batch of files within the folder `testlist/<test_name>
 | sim.tcl         | Symlink to `../../test_automation/sim.tcl` |
 
 The test function defined in <test_name>.c should be self-checking and call `exit(arg)` with arg > 0 if the test fails, otherwise `return 0`.
+
+## License
+
+The ACE repository is released under Solderpad v0.51 (SHL-0.51) see [LICENSE](LICENSE)

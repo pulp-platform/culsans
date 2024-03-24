@@ -1,3 +1,7 @@
+// Copyright 2022 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
 // non synthesisable ace master logger module
 // this module logs the activity of the input axi channel
 // the log files will be found in "./ace_log/<LoggerName>/"

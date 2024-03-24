@@ -1,3 +1,7 @@
+// Copyright 2022 ETH Zurich and University of Bologna.
+// Solderpad Hardware License, Version 0.51, see LICENSE for details.
+// SPDX-License-Identifier: SHL-0.51
+
 #include "read_hit_busy_snoop.h"
 #include <stdint.h>
 

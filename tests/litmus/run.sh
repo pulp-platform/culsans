@@ -1,3 +1,7 @@
+# Copyright 2022 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
 for t in ../integration/testlist/cva6-litmus/binaries/*.hex
 do
     rm main.hex 2> /dev/null

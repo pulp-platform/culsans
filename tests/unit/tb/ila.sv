@@ -1,4 +1,3 @@
-
 module xlnx_ila(clk, probe0, probe1, probe2, probe3, probe4, probe5, 
                 probe6, probe7, probe8, probe9, probe10, probe11, probe12);
    

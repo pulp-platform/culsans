@@ -1,3 +1,7 @@
+# Copyright 2022 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
 # Check that RTL is aligned with the NB_CORES setting
 
 RTL_NBCORES_DEF = "localparam NB_CORES = $(NB_CORES);"

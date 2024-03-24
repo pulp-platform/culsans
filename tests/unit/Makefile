@@ -1,3 +1,7 @@
+# Copyright 2022 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
+
 include ../common.mk
 include ../rtl.mk
 # add dummy version of cva6 for injecting cache requests from test bench drivers
